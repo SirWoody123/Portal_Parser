@@ -1,3 +1,54 @@
+// Tag name to unique ID mapping for tags
+const TAG_NAME_TO_ID = {
+  "Advertising": "JcM1sqyxbJeyZsvXislN",
+  "Marketing": "7zcvW4rUaiE9OCqGAf8f",
+  "PR": "TwbKLH1maPxUpOMgo7av",
+  "All industries": "IG7yzsOdsZcE1IttKMe8",
+  "Arts": "NoUufyQpwT3qGsVQ7eKC",
+  "Museums": "B00NlXT3BgZEcteyEBiQ",
+  "Craft": "mVeikPlrGkeqUaNB3RUc",
+  "Visual art": "D1lmqQmbFCGTby8HNHuK",
+  "Culture": "ieHxxs2T7J0RTWQyDqBJ",
+  "Graphic Design": "X2dTLDagIIrEBa40pwBL",
+  "Design": "d25TFMPGin2nn2HUQ2ZS",
+  "UX/UI Design": "XDeiUF1tpazrs6j8nJnt",
+  "Fashion": "BSAM73pkE5akPm0aAWEi",
+  "Film": "TQP5sTYaSao3hzKyHoqX",
+  "Directing": "Ar0PFRfo2BizErhHzOB1", // Note: two codes for Directing
+  "TV": "VluuJp7ikBDJvOZkCtMI",
+  "Presenting": "eTJVhmAyjFVgLM1xobKQ",
+  "Acting": "8EnwP2QmxphKt3xMydIv",
+  "Production": "5HaU8j0qhkr55nMhkjD2",
+  "Gaming": "gEODfWliFcVDPzPsaURG",
+  "E-sport": "LnCw0jhbobNNgU9ndhil",
+  "Animation": "jtwd6Also1z1gnxf7cCR",
+  "Social Media": "2Bhal1Eyn4bfN719dFdM",
+  "Content creation": "ajxlsmbwodNP5FfVPbvf",
+  "Digital Media": "MyNQqi1cxSKxDzTFIUD1",
+  "Media": "2Bhal1Eyn4bfN719dFdM",
+  "Digitial": "MyNQqi1cxSKxDzTFIUD1",
+  "Music": "H9gLcUeM65AkTEjk8IzH",
+  "Podcasting": "nHy5ygseyuQtNDUVxn0J",
+  "Radio": "VxeP5CwyZNoKYK3hF8eC",
+  "Audio": "Uq7j4jOln0DVzS5VQZIl",
+  "Photography": "bloZiCkPp97FWIUFqKcI",
+  "Videography": "GjC6ilPu74QiVYRvRvgg",
+  "Publishing": "ybNc8iJxaoo7TjoJyl71",
+  "Writing": "OWX5xMlENH8zEqL6ZJzI",
+  "Journalism": "ggclbk2GjvOUbFZUH4ym",
+  "Theatre": "CG68CfUNdPkL8nJFzAih",
+  "Performing Arts": "zxLgYbKNdPL4QwJecnIw",
+  "Comedy": "gvTLKWX76UhDquYF9UuL",
+  "Dance": "CV02t8BX1lZ1teVZQpdM",
+  "VFX": "OKucTagUEJ5OSftS6DjH",
+  "CVs & Portfolios": "Cfm3Qi6fKuYCnkrzNdqz",
+  "money&finance": "Fsupenr6EtZuhFXCUGAY",
+  "advice": "2OKsPtBRoqvFJQEkA9XU",
+  "mentoring": "XYrofvp4aWJUN8q0kqbA",
+  "interviews": "HH7ZuqesVJkUEgyYa9nL",
+  "networking": "Vy6sKZydj6wJIj9DTETW"
+  // ...add all other mappings as needed
+};
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
@@ -88,7 +139,9 @@ const transformData = (data) => {
     schedulePost: data.schedulePost || null,
     status: data.status || 'expired',
     supportSettings: Array.isArray(data.supportSettings) ? data.supportSettings : [],
-    tags: Array.isArray(data.tags) ? data.tags : [],
+    tags: Array.isArray(data.tags)
+      ? data.tags.map(tag => TAG_NAME_TO_ID[tag] || tag)
+      : [],
     title: data.title || '',
     type: data.type || 'events',
     ukWide: data.ukWide ?? false,
