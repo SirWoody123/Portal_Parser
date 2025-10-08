@@ -54,52 +54,49 @@ app.use(express.json());
  * @returns {Object} The transformed data for the master portal.
  */
 const transformData = (data) => {
-  const now = new Date();
   // Always use this companyID
   const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
-
-  // Common fields for all types
-  const commonData = {
-    id: data.id,
-    type: data.opportunityType?.toLowerCase() || 'events',
-    category: data.opportunityType?.toLowerCase() || 'events',
-    categoryTitle: data.opportunityType || 'Event',
-    title: data.title,
-    description: data.description || data.shortSummary || '',
-    anythingElseImportant: data.anythingElseImportant ?? '',
-    link: data.link ?? '',
+  return {
     address: data.address ?? '',
-    location: data.location ?? '',
-    companyID: fixedCompanyID,
-    companyVerify: true,
-    created: fixedCompanyID,
-    createdAt: data.createdAt || now.toISOString(),
-    editedAt: data.editedAt || now.toISOString(),
-    publishedAt: data.publishedAt || now.toISOString(),
-    author: data.author || fixedCompanyID,
-    editor: data.editor || 'scheduler',
-    status: data.status || 'expired',
+    anythingElseImportant: data.anythingElseImportant ?? '',
+    approvalFirst: data.approvalFirst ?? false,
+    author: data.author || '',
     bannerPic: data.bannerPic || null,
-    brandNotificated: data.brandNotificated ?? true,
-    notificated: data.notificated ?? false,
-    republish: data.republish ?? false,
-    expiredDate: data.expiredDate ? new Date(data.expiredDate) : null,
-    schedulePost: data.schedulePost ? new Date(data.schedulePost) : null,
+    bespokeOnly: data.bespokeOnly ?? false,
+    companyID: fixedCompanyID,
+    companyVerify: data.companyVerify ?? true,
+    created: fixedCompanyID,
+    createdAt: data.createdAt || '',
+    description: data.description || '',
+    editedAt: data.editedAt || '',
+    editor: data.editor || 'scheduler',
     eventDate: data.eventDate || '',
     eventName: data.eventName || '',
     eventTime: data.eventTime || '',
     eventTimeEnd: data.eventTimeEnd || '',
-    // Arrays
-    tags: Array.isArray(data.tags) ? data.tags : (data.tags?.industry ?? []),
-    keywords: Array.isArray(data.keywords) ? data.keywords : (data.tags?.keywords ?? []),
+    expiredDate: data.expiredDate || '',
+    id: data.id || '',
+    keywords: Array.isArray(data.keywords) ? data.keywords : [],
+    link: data.link || '',
+    location: data.location || '',
+    locationName: data.locationName || '',
+    notificated: data.notificated ?? false,
+    publishedAt: data.publishedAt || '',
+    regionLocation: data.regionLocation ?? null,
+    remote: data.remote ?? false,
+    republish: data.republish ?? false,
+    schedulePost: data.schedulePost || null,
+    status: data.status || 'expired',
+    supportSettings: Array.isArray(data.supportSettings) ? data.supportSettings : [],
+    tags: Array.isArray(data.tags) ? data.tags : [],
+    title: data.title || '',
+    type: data.type || 'events',
+    ukWide: data.ukWide ?? false,
     userClaps: Array.isArray(data.userClaps) ? data.userClaps : [],
     userContentView: Array.isArray(data.userContentView) ? data.userContentView : [],
     userLinkClick: Array.isArray(data.userLinkClick) ? data.userLinkClick : [],
     usersFavouriteContent: Array.isArray(data.usersFavouriteContent) ? data.usersFavouriteContent : [],
   };
-
-  // You can add more type-specific logic here if needed
-  return commonData;
 };
 
 /**
