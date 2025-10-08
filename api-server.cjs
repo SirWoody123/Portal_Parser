@@ -55,69 +55,51 @@ app.use(express.json());
  */
 const transformData = (data) => {
   const now = new Date();
-  
+  // Always use this companyID
+  const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
+
+  // Common fields for all types
   const commonData = {
-    // Core content fields
+    id: data.id,
+    type: data.opportunityType?.toLowerCase() || 'events',
+    category: data.opportunityType?.toLowerCase() || 'events',
+    categoryTitle: data.opportunityType || 'Event',
     title: data.title,
-    description: data.shortSummary,
+    description: data.description || data.shortSummary || '',
     anythingElseImportant: data.anythingElseImportant ?? '',
     link: data.link ?? '',
-    
-    // Firebase required fields that match the schema
-    id: data.id,
-    type: 'announcements',
-    category: data.opportunityType?.toLowerCase() ?? 'course',
-    categoryTitle: data.opportunityType ?? 'Course',
-    
-    // Metadata fields
-    author: 'document-parser-api',
-    created: 'document-parser-api',
-    editor: 'document-parser-api',
-    createdAt: now.toISOString(),
-    editedAt: now.toISOString(),
-    publishedAt: now.toISOString(),
-    
-    // Status and verification
-    status: 'draft',
-    companyVerify: false,
-    companyID: 'default-company-id',
-    
-    // Arrays (initialize empty)
-    tags: data.tags?.industry ?? [],
-    keywords: data.tags?.keywords ?? [],
-    userClaps: [],
-    userContentView: [],
-    userLinkClick: [],
-    usersFavouriteContent: [],
-    
-    // Timestamps
-    schedulePost: data.applicationDeadline ? new Date(data.applicationDeadline) : null,
-    applicationDeadline: data.applicationDeadline ? new Date(data.applicationDeadline) : null,
-    
-    // Optional fields
-    bannerPic: null,
+    address: data.address ?? '',
+    location: data.location ?? '',
+    companyID: fixedCompanyID,
+    companyVerify: true,
+    created: fixedCompanyID,
+    createdAt: data.createdAt || now.toISOString(),
+    editedAt: data.editedAt || now.toISOString(),
+    publishedAt: data.publishedAt || now.toISOString(),
+    author: data.author || fixedCompanyID,
+    editor: data.editor || 'scheduler',
+    status: data.status || 'expired',
+    bannerPic: data.bannerPic || null,
+    brandNotificated: data.brandNotificated ?? true,
+    notificated: data.notificated ?? false,
+    republish: data.republish ?? false,
+    expiredDate: data.expiredDate ? new Date(data.expiredDate) : null,
+    schedulePost: data.schedulePost ? new Date(data.schedulePost) : null,
+    eventDate: data.eventDate || '',
+    eventName: data.eventName || '',
+    eventTime: data.eventTime || '',
+    eventTimeEnd: data.eventTimeEnd || '',
+    // Arrays
+    tags: Array.isArray(data.tags) ? data.tags : (data.tags?.industry ?? []),
+    keywords: Array.isArray(data.keywords) ? data.keywords : (data.tags?.keywords ?? []),
+    userClaps: Array.isArray(data.userClaps) ? data.userClaps : [],
+    userContentView: Array.isArray(data.userContentView) ? data.userContentView : [],
+    userLinkClick: Array.isArray(data.userLinkClick) ? data.userLinkClick : [],
+    usersFavouriteContent: Array.isArray(data.usersFavouriteContent) ? data.usersFavouriteContent : [],
   };
 
-  switch (data.opportunityType) {
-    case 'Apprenticeship':
-      return {
-        ...commonData,
-        salary: data.salary ?? '',
-        lengthOfApprenticeship: data.lengthOfApprenticeship ?? '',
-        levelOfApprenticeship: data.levelOfApprenticeship ?? '',
-      };
-    case 'Course':
-      return {
-        ...commonData,
-        lengthOfCourse: data.lengthOfCourse ?? '',
-        paidOrFreeCourses: data.courseType ?? 'free',
-        courseLocation: data.location ?? '',
-      };
-    default:
-      return {
-        ...commonData,
-      };
-  }
+  // You can add more type-specific logic here if needed
+  return commonData;
 };
 
 /**
