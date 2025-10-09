@@ -172,19 +172,19 @@ app.post('/opportunities', async (req, res) => {
     const docId = transformedData.id || undefined;
     let docRef;
     if (docId) {
-      docRef = await db.collection('announcements').collection('list').doc(docId).set(transformedData);
+      docRef = await db.collection('announcements').doc('list').collection('list').doc(docId).set(transformedData);
     } else {
       // fallback: auto-generate ID if not present
-      docRef = await db.collection('announcements').collection('list').add(transformedData);
+      docRef = await db.collection('announcements').doc('list').collection('list').add(transformedData);
     }
 
-    console.log(`✅ Successfully saved to master portal: announcements/list/${docId || '[auto-id]'}`);
+    console.log(`✅ Successfully saved to master portal: announcements/list/list/${docId || '[auto-id]'}`);
     console.log('Transformed data:', transformedData);
 
     res.status(200).json({
       message: 'Data received and processed successfully.',
       masterPortalDocId: docId || '[auto-id]',
-      collectionPath: 'announcements/list',
+      collectionPath: 'announcements/list/list',
       data: transformedData,
     });
   } catch (error) {
