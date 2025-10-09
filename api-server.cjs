@@ -167,16 +167,24 @@ app.post('/opportunities', async (req, res) => {
     // 1. Transform the data
     const transformedData = transformData(opportunityData);
 
-    // 2. Save to master portal's Firebase
-    const collectionPath = `announcements/${opportunityData.opportunityType}/list`;
-    const docRef = await db.collection(collectionPath).add(transformedData);
-    
-    console.log(`✅ Successfully saved to master portal: ${collectionPath}/${docRef.id}`);
+    // 2. Save to master portal's Firebase in the correct structure
+    // announcements/list/{opportunityCode}
+    const collectionPath = `announcements/list`;
+    const docId = transformedData.id || undefined;
+    let docRef;
+    if (docId) {
+      docRef = await db.collection(collectionPath).doc(docId).set(transformedData);
+    } else {
+      // fallback: auto-generate ID if not present
+      docRef = await db.collection(collectionPath).add(transformedData);
+    }
+
+    console.log(`✅ Successfully saved to master portal: ${collectionPath}/${docId || '[auto-id]'}`);
     console.log('Transformed data:', transformedData);
 
     res.status(200).json({
       message: 'Data received and processed successfully.',
-      masterPortalDocId: docRef.id,
+      masterPortalDocId: docId || '[auto-id]',
       collectionPath: collectionPath,
       data: transformedData,
     });
