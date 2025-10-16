@@ -108,45 +108,52 @@ const transformData = (data) => {
   // Always use this companyID
   const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
   return {
-    address: data.address ?? '',
+    // Required fields from actual portal format
     anythingElseImportant: data.anythingElseImportant ?? '',
-    approvalFirst: data.approvalFirst ?? false,
+    applicationDeadline: data.applicationDeadline || '',
     author: data.author || '',
-    bannerPic: data.bannerPic || null,
-    bespokeOnly: data.bespokeOnly ?? false,
+    bannerPic: data.bannerPic || '',
+    category: data.category || '',
+    categoryTitle: data.categoryTitle || '',
     companyID: fixedCompanyID,
     companyVerify: data.companyVerify ?? true,
+    courseLocation: data.courseLocation || '',
     created: fixedCompanyID,
     createdAt: data.createdAt || '',
     description: data.description || '',
     editedAt: data.editedAt || '',
     editor: data.editor || 'scheduler',
+    id: data.id || '',
+    keywords: Array.isArray(data.keywords) ? data.keywords : [],
+    lengthOfCourse: data.lengthOfCourse || '',
+    link: data.link || '',
+    paidOrFreeCourses: data.paidOrFreeCourses || '',
+    publishedAt: data.publishedAt || '',
+    schedulePost: data.schedulePost || '',
+    status: data.status || 'expired',
+    tags: Array.isArray(data.tags)
+      ? data.tags.map(tag => TAG_NAME_TO_ID[tag] || tag)
+      : [],
+    title: data.title || '',
+    type: data.type || 'announcements',
+    userClaps: Array.isArray(data.userClaps) ? data.userClaps : [],
+    userContentView: Array.isArray(data.userContentView) ? data.userContentView : [],
+    // Optional/extra fields for compatibility
+    approvalFirst: data.approvalFirst ?? false,
+    bespokeOnly: data.bespokeOnly ?? false,
     eventDate: data.eventDate || '',
     eventName: data.eventName || '',
     eventTime: data.eventTime || '',
     eventTimeEnd: data.eventTimeEnd || '',
     expiredDate: data.expiredDate || '',
-    id: data.id || '',
-    keywords: Array.isArray(data.keywords) ? data.keywords : [],
-    link: data.link || '',
     location: data.location || '',
     locationName: data.locationName || '',
     notificated: data.notificated ?? false,
-    publishedAt: data.publishedAt || '',
     regionLocation: data.regionLocation ?? null,
     remote: data.remote ?? false,
     republish: data.republish ?? false,
-    schedulePost: data.schedulePost || null,
-    status: data.status || 'expired',
     supportSettings: Array.isArray(data.supportSettings) ? data.supportSettings : [],
-    tags: Array.isArray(data.tags)
-      ? data.tags.map(tag => TAG_NAME_TO_ID[tag] || tag)
-      : [],
-    title: data.title || '',
-    type: data.type || 'events',
     ukWide: data.ukWide ?? false,
-    userClaps: Array.isArray(data.userClaps) ? data.userClaps : [],
-    userContentView: Array.isArray(data.userContentView) ? data.userContentView : [],
     userLinkClick: Array.isArray(data.userLinkClick) ? data.userLinkClick : [],
     usersFavouriteContent: Array.isArray(data.usersFavouriteContent) ? data.usersFavouriteContent : [],
   };
@@ -214,3 +221,4 @@ app.listen(config.port, () => {
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
   console.log(`🔗 Master portal Firebase: ${config.firebaseProjectUrl}`);
 });
+
