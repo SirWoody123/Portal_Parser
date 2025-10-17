@@ -106,7 +106,7 @@ app.use(express.json());
  */
 const transformData = (data) => {
   // Always use this companyID
-  const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
+  const fixedCompanyID = 'tegOCEQzH8KsWiRO4hQQ';
   return {
     // Required fields from actual portal format
     anythingElseImportant: data.anythingElseImportant ?? '',
