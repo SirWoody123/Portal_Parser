@@ -221,4 +221,3 @@ app.listen(config.port, () => {
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
   console.log(`🔗 Master portal Firebase: ${config.firebaseProjectUrl}`);
 });
-
