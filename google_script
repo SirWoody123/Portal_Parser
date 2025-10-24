@@ -1,0 +1,451 @@
+/**
+ * ERIC API Bridge Integration - Complete Google Apps Script
+ * 
+ * SETUP INSTRUCTIONS:
+ * 1. Deploy your API bridge to Railway/Heroku
+ * 2. Update API_BRIDGE_URL below with your deployed URL
+ * 3. Run testApiBridgeIntegration() to test the connection
+ * 4. Once working, run installTrigg
+ * er() to set up automatic processing
+ */
+
+// --- CONFIGURATION ---
+var CONFIG = {
+  // UPDATE THIS WITH YOUR DEPLOYED API BRIDGE URL
+  API_BRIDGE_URL: 'https://apibridge-production.up.railway.app/opportunities',
+  
+  // Your existing parser API (if you have one)
+  PARSER_API_URL: 'https://karolyn-unmendacious-unsuccessively.ngrok-free.dev/api/parse',
+  
+  // Google Drive folder to monitor
+  FOLDER_ID: '1NSsJLDQMYRiz-tX8LlN-ToNKBYRWV84F',
+  
+  // Other settings
+  API_KEY: 'your-api-key-here',
+  ERIC_WEBHOOK_URL: 'https://meet-eric.co/api/opportunities/review'
+};
+
+/**
+ * 🧪 TEST FUNCTION - Run this first to test your deployment
+ */
+function testApiBridgeIntegration() {
+  Logger.log('🧪 Testing API Bridge Integration...');
+  
+  var testData = {
+    id: 'google-apps-script-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Software Developer Apprentice - Test',
+    shortSummary: 'This is a test opportunity sent from Google Apps Script to verify the integration is working.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/apply-test',
+    salary: '£18,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    anythingElseImportant: 'This is a test from Google Apps Script integration.',
+    tags: {
+      industry: ['Technology', 'Software Development'],
+      keywords: ['apprentice', 'coding', 'test', 'google-apps-script']
+    }
+  };
+
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('✅ SUCCESS! Integration is working!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📁 Collection Path: ' + result.collectionPath);
+    Logger.log('🎉 Your Google Apps Script → API Bridge → Firebase integration is live!');
+    
+    // Test different opportunity types
+    Logger.log('🔄 Testing Course opportunity type...');
+    testCourseOpportunity();
+  } else {
+    Logger.log('❌ FAILED! Check your API_BRIDGE_URL and deployment.');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+  }
+}
+
+/**
+ * 🚀 RAILWAY TEST FUNCTION - Specifically for testing Railway deployment
+ */
+function testRailwayIntegration() {
+  Logger.log('🚀 Testing Railway Integration...');
+  Logger.log('🔗 Railway URL: ' + CONFIG.API_BRIDGE_URL);
+  
+  var testData = {
+    id: 'railway-google-apps-script-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Railway Integration Test - Software Developer Apprentice',
+    shortSummary: 'Testing the complete Railway → API Bridge → Firebase integration from Google Apps Script.',
+    location: 'London, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/apply-railway-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '24 months',
+    levelOfApprenticeship: 'Level 4',
+    anythingElseImportant: 'This is a Railway deployment test from Google Apps Script.',
+    tags: {
+      industry: ['Technology', 'Software Development', 'Railway'],
+      keywords: ['apprentice', 'railway', 'deployment', 'integration', 'test']
+    }
+  };
+
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 RAILWAY SUCCESS! Integration is working perfectly!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📁 Collection Path: ' + result.collectionPath);
+    Logger.log('🚀 Railway URL: https://apibridge-production.up.railway.app');
+    Logger.log('✅ Your complete integration is live: Google Apps Script → Railway → Firebase!');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      railwayUrl: 'https://apibridge-production.up.railway.app'
+    };
+  } else {
+    Logger.log('❌ RAILWAY TEST FAILED!');
+    Logger.log('🔗 URL: ' + CONFIG.API_BRIDGE_URL);
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Course Opportunity Type
+ */
+function testCourseOpportunity() {
+  var courseData = {
+    id: 'google-apps-script-course-test-' + Date.now(),
+    opportunityType: 'Course',
+    title: 'Full Stack Web Development Bootcamp - Test',
+    shortSummary: 'Intensive bootcamp covering modern web development technologies.',
+    location: 'Online',
+    applicationDeadline: '2025-11-15T23:59:59Z',
+    link: 'https://example.com/bootcamp-test',
+    lengthOfCourse: '12 weeks',
+    courseType: 'Paid',
+    anythingElseImportant: 'Evening classes available. Portfolio projects included.',
+    tags: {
+      industry: ['Technology', 'Web Development', 'Education'],
+      keywords: ['bootcamp', 'javascript', 'react', 'nodejs', 'full-stack']
+    }
+  };
+
+  var result = sendToApiBridge(courseData);
+  
+  if (result && result.success) {
+    Logger.log('✅ Course test SUCCESS! Doc ID: ' + result.masterPortalDocId);
+  } else {
+    Logger.log('❌ Course test FAILED: ' + (result ? result.error : 'Unknown error'));
+  }
+}
+
+/**
+ * 📤 Send data to API Bridge (your deployed service)
+ */
+function sendToApiBridge(opportunityData) {
+  Logger.log('📤 Sending to API Bridge: ' + opportunityData.title);
+  
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(opportunityData),
+    muteHttpExceptions: true
+  };
+
+  try {
+    var response = UrlFetchApp.fetch(CONFIG.API_BRIDGE_URL, options);
+    var responseCode = response.getResponseCode();
+    var responseBody = response.getContentText();
+
+    Logger.log('📡 API Bridge Response Code: ' + responseCode);
+
+    if (responseCode === 200) {
+      var result = JSON.parse(responseBody);
+      Logger.log('✅ API Bridge Success: ' + JSON.stringify(result, null, 2));
+      return {
+        success: true,
+        masterPortalDocId: result.masterPortalDocId,
+        collectionPath: result.collectionPath,
+        data: result.data
+      };
+    } else {
+      Logger.log('❌ API Bridge Error: ' + responseBody);
+      return {
+        success: false,
+        error: 'HTTP ' + responseCode + ': ' + responseBody
+      };
+    }
+  } catch (error) {
+    Logger.log('❌ Network Error: ' + error.toString());
+    return {
+      success: false,
+      error: 'Network Error: ' + error.toString()
+    };
+  }
+}
+
+/**
+ * 🔧 PRODUCTION FUNCTIONS - Use these once testing works
+ */
+
+/**
+ * Install trigger to monitor Google Drive folder
+ */
+function installTrigger() {
+  // Delete any existing triggers
+  var triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === 'checkFilesAndProcess') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  // Create new trigger (runs every 12 Hours)
+  ScriptApp.newTrigger('checkFilesAndProcess')
+    .timeBased()
+    .everyHours(12)
+    .create();
+    
+  Logger.log('✅ Trigger installed! Will check for new files every 12 Hours.');
+}
+
+/**
+ * Main function that processes files from Google Drive
+ */
+function checkFilesAndProcess() {
+  try {
+    Logger.log('🔍 Checking for new files in Google Drive folder...');
+    
+    var folder = DriveApp.getFolderById(CONFIG.FOLDER_ID);
+    var files = folder.getFiles();
+    var processedCount = 0;
+    
+    while (files.hasNext()) {
+      var file = files.next();
+      
+      if (isFileProcessed(file.getId())) {
+        continue; // Skip already processed files
+      }
+
+      if (isSupportedFileType(file)) {
+        try {
+          Logger.log('📄 Processing: ' + file.getName());
+          processDocument(file);
+          markFileAsProcessed(file.getId(), 'success');
+          processedCount++;
+        } catch (e) {
+          Logger.log('❌ Error processing ' + file.getName() + ': ' + e.toString());
+          markFileAsProcessed(file.getId(), 'error');
+        }
+      } else {
+        markFileAsProcessed(file.getId(), 'unsupported');
+      }
+    }
+    
+    if (processedCount > 0) {
+      Logger.log('✅ Processed ' + processedCount + ' new files.');
+    } else {
+      Logger.log('ℹ️ No new files to process.');
+    }
+  } catch (e) {
+    Logger.log('❌ Fatal error in checkFilesAndProcess: ' + e.toString());
+  }
+}
+
+/**
+ * Process a single document file
+ */
+function processDocument(file) {
+  Logger.log('📋 Processing document: ' + file.getName());
+
+  // Extract text content from the file
+  var content = extractTextContent(file);
+  if (!content) {
+    throw new Error('Could not extract text content from ' + file.getName());
+  }
+
+  // Option 1: If you have a parser API, call it first
+  var parsedData = null;
+  if (CONFIG.PARSER_API_URL && CONFIG.PARSER_API_URL !== 'https://karolyn-unmendacious-unsuccessively.ngrok-free.dev/api/parse') {
+    parsedData = callDocumentParser(content, file.getName());
+  }
+
+  // Option 2: Create basic opportunity data if no parser
+  if (!parsedData || !parsedData.success) {
+    Logger.log('📝 Creating basic opportunity data from filename...');
+    parsedData = {
+      success: true,
+      id: 'google-drive-' + file.getId(),
+      opportunityType: guessOpportunityType(file.getName()),
+      title: file.getName().replace(/\.[^/.]+$/, ""), // Remove file extension
+      shortSummary: 'Opportunity extracted from: ' + file.getName(),
+      location: 'Location to be determined',
+      link: file.getUrl(),
+      tags: {
+        industry: ['General'],
+        keywords: ['google-drive', 'document', 'opportunity']
+      }
+    };
+  }
+
+  // Send to API Bridge
+  var bridgeResult = sendToApiBridge(parsedData);
+  
+  if (bridgeResult && bridgeResult.success) {
+    Logger.log('🎉 Successfully processed: ' + file.getName());
+    Logger.log('📄 Firebase Doc ID: ' + bridgeResult.masterPortalDocId);
+  } else {
+    throw new Error('Failed to send to API Bridge: ' + (bridgeResult ? bridgeResult.error : 'Unknown error'));
+  }
+}
+
+/**
+ * Extract text content from different file types
+ */
+function extractTextContent(file) {
+  var mimeType = file.getMimeType();
+  var fileName = file.getName().toLowerCase();
+
+  try {
+    if (mimeType === MimeType.PLAIN_TEXT) {
+      return file.getBlob().getDataAsString('UTF-8');
+    } else if (mimeType === MimeType.WORD || fileName.endsWith('.docx')) {
+      // Convert .docx to Google Docs temporarily
+      var tempDoc = Drive.Files.insert({
+        title: 'temp_conversion_' + file.getId(),
+        mimeType: MimeType.GOOGLE_DOCS
+      }, file.getBlob());
+      
+      var content = DocumentApp.openById(tempDoc.id).getBody().getText();
+      Drive.Files.remove(tempDoc.id); // Clean up
+      return content;
+    }
+    return null;
+  } catch (e) {
+    Logger.log('Error extracting text: ' + e.toString());
+    return null;
+  }
+}
+
+/**
+ * Guess opportunity type from filename
+ */
+function guessOpportunityType(fileName) {
+  var name = fileName.toLowerCase();
+  if (name.includes('apprentice')) return 'Apprenticeship';
+  if (name.includes('course') || name.includes('training')) return 'Course';
+  if (name.includes('job') || name.includes('role')) return 'Job';
+  if (name.includes('internship')) return 'Internship';
+  return 'Opportunity'; // Default
+}
+
+/**
+ * Call external document parser API (optional)
+ */
+function callDocumentParser(content, fileName) {
+  if (!CONFIG.PARSER_API_URL) return null;
+  
+  var payload = {
+    fileContent: content,
+    fileName: fileName,
+    source: 'google-drive'
+  };
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'Authorization': 'Bearer ' + CONFIG.API_KEY
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  try {
+    var response = UrlFetchApp.fetch(CONFIG.PARSER_API_URL, options);
+    var responseCode = response.getResponseCode();
+    
+    if (responseCode === 200) {
+      return JSON.parse(response.getContentText());
+    } else {
+      Logger.log('Parser API failed: ' + response.getContentText());
+      return null;
+    }
+  } catch (e) {
+    Logger.log('Parser API error: ' + e.toString());
+    return null;
+  }
+}
+
+/**
+ * UTILITY FUNCTIONS
+ */
+
+function isSupportedFileType(file) {
+  var mimeType = file.getMimeType();
+  var fileName = file.getName().toLowerCase();
+  return (mimeType === MimeType.PLAIN_TEXT || 
+          mimeType === MimeType.WORD || 
+          fileName.endsWith('.docx') ||
+          fileName.endsWith('.txt'));
+}
+
+function isFileProcessed(fileId) {
+  var properties = PropertiesService.getScriptProperties();
+  var processedFiles = properties.getProperty('PROCESSED_FILES');
+  var parsed = processedFiles ? JSON.parse(processedFiles) : {};
+  return fileId in parsed;
+}
+
+function markFileAsProcessed(fileId, status) {
+  var properties = PropertiesService.getScriptProperties();
+  var processedFiles = properties.getProperty('PROCESSED_FILES');
+  var parsed = processedFiles ? JSON.parse(processedFiles) : {};
+  parsed[fileId] = {
+    status: status,
+    processedAt: new Date().toISOString()
+  };
+  properties.setProperty('PROCESSED_FILES', JSON.stringify(parsed));
+}
+
+/**
+ * Clear all processed file markers (for testing)
+ */
+function clearAllProcessedMarkers() {
+  PropertiesService.getScriptProperties().deleteProperty('PROCESSED_FILES');
+  Logger.log('All processed file markers cleared.');
+}
+
+/**
+ * 📊 Get processing status
+ */
+function getProcessingStatus() {
+  var properties = PropertiesService.getScriptProperties();
+  var processedFiles = properties.getProperty('PROCESSED_FILES');
+  
+  if (!processedFiles) {
+    Logger.log('No files have been processed yet.');
+    return;
+  }
+  
+  var parsed = JSON.parse(processedFiles);
+  var stats = {success: 0, error: 0, unsupported: 0};
+  
+  Object.keys(parsed).forEach(function(fileId) {
+    stats[parsed[fileId].status]++;
+  });
+  
+  Logger.log('📊 Processing Status:');
+  Logger.log('✅ Success: ' + stats.success);
+  Logger.log('❌ Errors: ' + stats.error); 
+  Logger.log('🚫 Unsupported: ' + stats.unsupported);
+  Logger.log('📁 Total: ' + Object.keys(parsed).length);
+}
