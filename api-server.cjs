@@ -105,8 +105,8 @@ app.use(express.json());
  * @returns {Object} The transformed data for the master portal.
  */
 const transformData = (data) => {
-  // Always use this companyID
-  const fixedCompanyID = 'tegOCEQzH8KsWiRO4hQQ';
+  // Always use this companyID and created value
+  const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
   return {
     // Required fields from actual portal format
     anythingElseImportant: data.anythingElseImportant ?? '',
