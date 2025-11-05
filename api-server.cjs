@@ -107,6 +107,14 @@ app.use(express.json());
 const transformData = (data) => {
   // Always use this companyID and created value
   const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
+  // --- TAGS LOGIC ---
+  let tags = [];
+  if (Array.isArray(data.tags)) {
+    tags = data.tags;
+  } else if (data.tags && typeof data.tags === 'object' && Array.isArray(data.tags.tags)) {
+    tags = data.tags.tags;
+  }
+
   return {
     // Required fields from actual portal format
     anythingElseImportant: data.anythingElseImportant ?? '',
@@ -132,11 +140,10 @@ const transformData = (data) => {
     publishedAt: data.publishedAt || '',
     schedulePost: data.schedulePost || '',
     status: data.status || 'expired',
-    tags: (typeof data.tags === 'object' && !Array.isArray(data.tags))
-      ? data.tags
-      : (Array.isArray(data.tags)
-          ? data.tags.map(tag => TAG_NAME_TO_ID[tag] || tag)
-          : []),
+    tags: tags,
+    demographic: (typeof data.tags === 'object' && data.tags.demographic)
+      ? data.tags.demographic
+      : (data.demographic || {}),
     title: data.title || '',
     type: data.type || 'announcements',
     userClaps: Array.isArray(data.userClaps) ? data.userClaps : [],
