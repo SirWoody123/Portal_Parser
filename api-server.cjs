@@ -132,9 +132,11 @@ const transformData = (data) => {
     publishedAt: data.publishedAt || '',
     schedulePost: data.schedulePost || '',
     status: data.status || 'expired',
-    tags: Array.isArray(data.tags)
-      ? data.tags.map(tag => TAG_NAME_TO_ID[tag] || tag)
-      : [],
+    tags: (typeof data.tags === 'object' && !Array.isArray(data.tags))
+      ? data.tags
+      : (Array.isArray(data.tags)
+          ? data.tags.map(tag => TAG_NAME_TO_ID[tag] || tag)
+          : []),
     title: data.title || '',
     type: data.type || 'announcements',
     userClaps: Array.isArray(data.userClaps) ? data.userClaps : [],

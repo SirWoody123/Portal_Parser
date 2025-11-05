@@ -281,39 +281,78 @@ function checkFilesAndProcess() {
 function processDocument(file) {
   // --- NORMALIZATION FUNCTION ---
   function normalizeOpportunityData(data) {
+    // Extract keywords from data.tags.keywords or data.keywords
+    var keywordsArr = [];
+    if (data.tags && Array.isArray(data.tags.keywords)) {
+      keywordsArr = data.tags.keywords.map(function(k) { return String(k); });
+    } else if (Array.isArray(data.keywords)) {
+      keywordsArr = data.keywords.map(function(k) { return String(k); });
+    }
+    if (!keywordsArr) keywordsArr = [];
+
+    // Extract lowerSocioEconomicBackground string from keywordsArr if present and matches allowed options (by ID)
+    var allowedSocioEconomic = [
+      '20fXkU9RdlTlpfcS5K5D', // All backgrounds
+      'V9J6aDjeQc7hIePqgsCh' // Only those from lower socio-economic background
+    ];
+    var lowerSocioEconomicBackgroundString = '';
+    for (var l = 0; l < keywordsArr.length; l++) {
+      if (allowedSocioEconomic.includes(keywordsArr[l])) {
+        lowerSocioEconomicBackgroundString = keywordsArr[l];
+        break;
+      }
+    }
+    // Extract disability string from keywordsArr if present and matches allowed disability options
+    var allowedDisabilities = [
+      'All disability',
+      'Chronic illness',
+      'Mental health',
+      'Neurodiversity',
+      'Physical disability'
+    ];
+    var disabilityString = '';
+    for (var d = 0; d < keywordsArr.length; d++) {
+      if (allowedDisabilities.includes(keywordsArr[d])) {
+        disabilityString = keywordsArr[d];
+        break;
+      }
+    }
     function arr(val) { return Array.isArray(val) ? val : (val ? [val] : []); }
     function str(val) { return typeof val === 'string' ? val : ''; }
     function bool(val) { return typeof val === 'boolean' ? val : false; }
     function strOrNull(val) { return val === null ? null : str(val); }
     function id(val) { return typeof val === 'string' ? val : (val ? String(val) : ''); }
-    // Allowed opportunity types/categories
+    // Allowed categories: label and value (frontend expects value)
     var allowedCategories = [
-      'Apprenticeship',
-      'Competition/Grant',
-      'Course',
-      'Freelance role',
-      'Internship',
-      'Junior full-time role',
-      'Junior part-time role',
-      'Mentoring',
-      'Opportunity',
-      'Runner role',
-      'Training scheme',
-      'Work experience'
+      { label: 'Apprenticeship', name: 'apprenticeship' },
+      { label: 'Competition/Grant', name: 'competition-grant' },
+      { label: 'Course', name: 'course' },
+      { label: 'Freelance role', name: 'freelance-role' },
+      { label: 'Internship', name: 'internship' },
+      { label: 'Junior full-time role', name: 'junior-full-time-role' },
+      { label: 'Junior part-time role', name: 'junior-part-time-role' },
+      { label: 'Mentoring', name: 'mentoring' },
+      { label: 'Opportunity', name: 'opportunity' },
+      { label: 'Runner role', name: 'runner-role' },
+      { label: 'Training scheme', name: 'training-scheme' },
+      { label: 'Work experience', name: 'work-experience' }
     ];
-    // Find best match for category
+    // Find best match for category (label or value)
     function mapCategory(val) {
       var v = str(val).trim();
       if (!v) return '';
-      // Case-insensitive match
-      var found = allowedCategories.find(function(opt) { return opt.toLowerCase() === v.toLowerCase(); });
-      return found || '';
+      // Try label match (case-insensitive)
+      var found = allowedCategories.find(function(opt) { return opt.label.toLowerCase() === v.toLowerCase(); });
+      if (found) return found.name;
+      // Try value match (case-insensitive)
+      found = allowedCategories.find(function(opt) { return opt.name.toLowerCase() === v.toLowerCase(); });
+      if (found) return found.name;
+      return '';
     }
     var rawCat = str(data.category) || str(data.opportunityType);
     var mappedCat = mapCategory(rawCat);
-    // If not mapped, try to infer from filename or tags
+    // Only if not matched, try to infer from filename or tags
     if (!mappedCat) {
-      // Try to infer from title or id
       var title = str(data.title).toLowerCase();
       var idVal = str(data.id).toLowerCase();
       var keywords = [];
@@ -324,21 +363,100 @@ function processDocument(file) {
           }
         });
       }
-      // Check for keywords or title matches
-      if (title.includes('apprentice') || idVal.includes('apprentice') || keywords.includes('apprentice')) mappedCat = 'Apprenticeship';
-      else if (title.includes('intern') || idVal.includes('intern') || keywords.includes('intern')) mappedCat = 'Internship';
-      else if (title.includes('course') || idVal.includes('course') || keywords.includes('course')) mappedCat = 'Course';
-      else if (title.includes('training') || idVal.includes('training') || keywords.includes('training')) mappedCat = 'Training scheme';
-      else if (title.includes('runner') || idVal.includes('runner') || keywords.includes('runner')) mappedCat = 'Runner role';
-      else if (title.includes('freelance') || idVal.includes('freelance') || keywords.includes('freelance')) mappedCat = 'Freelance role';
-      else if (title.includes('competition') || idVal.includes('competition') || keywords.includes('competition') || title.includes('grant') || idVal.includes('grant') || keywords.includes('grant')) mappedCat = 'Competition/Grant';
-      else if (title.includes('junior') && title.includes('full') && title.includes('time')) mappedCat = 'Junior full-time role';
-      else if (title.includes('junior') && title.includes('part') && title.includes('time')) mappedCat = 'Junior part-time role';
-      else if (title.includes('mentor') || idVal.includes('mentor') || keywords.includes('mentor')) mappedCat = 'Mentoring';
-      else if (title.includes('work experience') || idVal.includes('work experience') || keywords.includes('work experience')) mappedCat = 'Work experience';
-      else if (title.includes('job') || idVal.includes('job') || keywords.includes('job')) mappedCat = 'Junior full-time role';
-      else mappedCat = 'Opportunity';
+      if (title.includes('apprentice') || idVal.includes('apprentice') || keywords.includes('apprentice')) mappedCat = allowedCategories.find(c => c.name === 'apprenticeship').name;
+      else if (title.includes('intern') || idVal.includes('intern') || keywords.includes('intern')) mappedCat = allowedCategories.find(c => c.name === 'internship').name;
+      else if (title.includes('course') || idVal.includes('course') || keywords.includes('course')) mappedCat = allowedCategories.find(c => c.name === 'course').name;
+      else if (title.includes('training') || idVal.includes('training') || keywords.includes('training')) mappedCat = allowedCategories.find(c => c.name === 'training-scheme').name;
+      else if (title.includes('runner') || idVal.includes('runner') || keywords.includes('runner')) mappedCat = allowedCategories.find(c => c.name === 'runner-role').name;
+      else if (title.includes('freelance') || idVal.includes('freelance') || keywords.includes('freelance')) mappedCat = allowedCategories.find(c => c.name === 'freelance-role').name;
+      else if (title.includes('competition') || idVal.includes('competition') || keywords.includes('competition') || title.includes('grant') || idVal.includes('grant') || keywords.includes('grant')) mappedCat = allowedCategories.find(c => c.name === 'competition-grant').name;
+      else if (title.includes('junior') && title.includes('full') && title.includes('time')) mappedCat = allowedCategories.find(c => c.name === 'junior-full-time-role').name;
+      else if (title.includes('junior') && title.includes('part') && title.includes('time')) mappedCat = allowedCategories.find(c => c.name === 'junior-part-time-role').name;
+      else if (title.includes('mentor') || idVal.includes('mentor') || keywords.includes('mentor')) mappedCat = allowedCategories.find(c => c.name === 'mentoring').name;
+      else if (title.includes('work experience') || idVal.includes('work experience') || keywords.includes('work experience')) mappedCat = allowedCategories.find(c => c.name === 'work-experience').name;
+      else if (title.includes('job') || idVal.includes('job') || keywords.includes('job')) mappedCat = allowedCategories.find(c => c.name === 'junior-full-time-role').name;
+      else mappedCat = allowedCategories.find(c => c.name === 'opportunity').name;
     }
+    // Allowed industries (case-insensitive match)
+    var allowedIndustries = [
+      'All Creative Industries', 'Acting', 'Advertising', 'Animation', 'Architecture', 'Arts', 'Audio', 'Comedy', 'Content Creation', 'Craft', 'Culture', 'Dance', 'Design', 'Digital', 'Directing', 'E-Sport', 'Fashion', 'Film', 'Gaming', 'Graphic Design', 'Heritage', 'Journalism', 'Marketing', 'Media', 'Museum', 'Music', 'Performing Arts', 'Photography', 'Podcasting', 'PR', 'Presenting', 'Publishing', 'Radio', 'Social Media', 'Theatre', 'TV', 'UX/UI Design', 'VFX', 'Videography', 'Visual Art', 'Writing'
+    ];
+    // Normalize industry tags: always array, only allowed values, case-insensitive
+    function normalizeIndustries(input) {
+      var arrInput = Array.isArray(input) ? input : (input ? [input] : []);
+      return arrInput
+        .map(function(val) { return String(val).trim(); })
+        .filter(function(val) {
+          return allowedIndustries.some(function(ai) { return ai.toLowerCase() === val.toLowerCase(); });
+        })
+        .map(function(val) {
+          // Return the canonical casing from allowedIndustries
+          var found = allowedIndustries.find(function(ai) { return ai.toLowerCase() === val.toLowerCase(); });
+          return found || val;
+        });
+    }
+
+    // Extract industry tags from data.tags.industry or data.industry
+    var industryTags = [];
+    if (data.tags && Array.isArray(data.tags.industry)) {
+      industryTags = normalizeIndustries(data.tags.industry);
+    } else if (Array.isArray(data.industry)) {
+      industryTags = normalizeIndustries(data.industry);
+    }
+    // Fallback: if still empty, set to empty array
+    if (!industryTags) industryTags = [];
+
+    // Extract keywords from data.tags.keywords or data.keywords
+    var keywordsArr = [];
+    if (data.tags && Array.isArray(data.tags.keywords)) {
+      keywordsArr = data.tags.keywords.map(function(k) { return String(k); });
+    } else if (Array.isArray(data.keywords)) {
+      keywordsArr = data.keywords.map(function(k) { return String(k); });
+    }
+    if (!keywordsArr) keywordsArr = [];
+
+    // Output tags as an object with 'tags' (array of strings) and 'demographic' (object with 'age' string)
+    var tagsArr = industryTags.concat(keywordsArr);
+    var demographicObj = data.demographic && typeof data.demographic === 'object' ? data.demographic : {};
+    demographicObj.industry = industryTags;
+
+    // Extract age string from keywordsArr if present and matches allowed age options
+    var allowedAges = [
+      '21','22','23','24','25','Over 18','Under 18','Over 25','16 and under'
+    ];
+    var ageString = '';
+    for (var i = 0; i < keywordsArr.length; i++) {
+      if (allowedAges.includes(keywordsArr[i])) {
+        ageString = keywordsArr[i];
+        break;
+      }
+    }
+
+
+    // Extract genderSexualPreference string from keywordsArr if present and matches allowed gender options
+    var allowedGenders = [
+      'All genders & preferences', 'Male', 'Female', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'
+    ];
+    var genderString = 'All genders & preferences';
+    for (var j = 0; j < keywordsArr.length; j++) {
+      if (allowedGenders.includes(keywordsArr[j])) {
+        genderString = keywordsArr[j];
+        break;
+      }
+    }
+
+    // Extract ethnicity string from keywordsArr if present and matches allowed ethnicity options
+    var allowedEthnicities = [
+      'All ethnicities', 'White', 'Black', 'Asian', 'Mixed', 'Other', 'Prefer not to say'
+    ];
+    var ethnicityString = 'All ethnicities';
+    for (var k = 0; k < keywordsArr.length; k++) {
+      if (allowedEthnicities.includes(keywordsArr[k])) {
+        ethnicityString = keywordsArr[k];
+        break;
+      }
+    }
+
     return {
       anythingElseImportant: str(data.anythingElseImportant),
       applicationDeadline: str(data.applicationDeadline),
@@ -346,7 +464,8 @@ function processDocument(file) {
       author: str(data.author),
       bannerPic: str(data.bannerPic),
       bespokeOnly: bool(data.bespokeOnly),
-      opportunityType: mappedCat, // Only send this field for dropdown
+      opportunityType: mappedCat, // Now sends the dropdown value (option.name)
+      category: mappedCat, // Also set category to mappedCat for frontend dropdown
       categoryTitle: str(data.categoryTitle),
       companyID: str(data.companyID) || 'S7IvlojyomcTNsUXlrqC',
       companyVerify: bool(data.companyVerify) || true,
@@ -376,7 +495,17 @@ function processDocument(file) {
       schedulePost: str(data.schedulePost),
       status: str(data.status),
       supportSettings: arr(data.supportSettings),
-      tags: arr(data.tags),
+      tags: {
+        tags: tagsArr,
+        demographic: {
+          age: ageString,
+          genderSexualPreference: genderString,
+          ethnicity: ethnicityString,
+          disability: disabilityString,
+          lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString,
+          keywords: keywordsArr
+        }
+      },
       title: str(data.title),
       type: str(data.type) || 'announcements',
       ukWide: bool(data.ukWide),
@@ -384,7 +513,7 @@ function processDocument(file) {
       userContentView: arr(data.userContentView),
       userLinkClick: arr(data.userLinkClick),
       usersFavouriteContent: arr(data.usersFavouriteContent),
-      demographic: data.demographic || {},
+      demographic: demographicObj,
       audienceLocation: str(data.audienceLocation)
     };
   }
@@ -435,16 +564,16 @@ function processDocument(file) {
 
   // --- ENHANCEMENTS BEGIN ---
   // 1. Ensure correct opportunity type
-  if (!parsedData.opportunityType || typeof parsedData.opportunityType !== 'string') {
+  if (parsedData && (!parsedData.opportunityType || typeof parsedData.opportunityType !== 'string')) {
     parsedData.opportunityType = guessOpportunityType(file.getName());
   }
 
   // 2. Append backlog date/time to title
   var now = new Date();
   var nowStr = now.toISOString().replace('T', ' ').substring(0, 16); // e.g. 2025-11-05 14:30
-  if (parsedData.title) {
+  if (parsedData && parsedData.title) {
     parsedData.title = parsedData.title + ' [Backlog: ' + nowStr + ']';
-  } else {
+  } else if (parsedData) {
     parsedData.title = file.getName().replace(/\.[^/.]+$/, "") + ' [Backlog: ' + nowStr + ']';
   }
 
@@ -475,6 +604,8 @@ function processDocument(file) {
 
   // Normalize just before sending
   parsedData = normalizeOpportunityData(parsedData);
+  // Debug: log the normalized data structure before sending
+  Logger.log('🟦 Normalized data to send: ' + JSON.stringify(parsedData, null, 2));
   // Send to API Bridge
   var bridgeResult = sendToApiBridge(parsedData);
   
