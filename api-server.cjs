@@ -115,6 +115,7 @@ const transformData = (data) => {
     bannerPic: data.bannerPic || '',
     category: data.category || '',
     categoryTitle: data.categoryTitle || '',
+    opportunityType: data.opportunityType || '',
     companyID: fixedCompanyID,
     companyVerify: data.companyVerify ?? true,
     courseLocation: data.courseLocation || '',
