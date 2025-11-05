@@ -108,11 +108,14 @@ const transformData = (data) => {
   // Always use this companyID and created value
   const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
   // --- TAGS LOGIC ---
+  function getTagCode(tag) {
+    return TAG_NAME_TO_ID[tag] || `UNMAPPED_${String(tag)}`;
+  }
   let tags = [];
   if (Array.isArray(data.tags)) {
-    tags = data.tags;
+    tags = data.tags.map(getTagCode);
   } else if (data.tags && typeof data.tags === 'object' && Array.isArray(data.tags.tags)) {
-    tags = data.tags.tags;
+    tags = data.tags.tags.map(getTagCode);
   }
 
   return {
