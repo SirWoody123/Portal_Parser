@@ -211,6 +211,9 @@ const transformData = (data) => {
   addTagValue(demo.disability);
   addTagValue(demo.lowerSocioEconomicBackground);
 
+  // Deduplicate tags array
+  tags = Array.from(new Set(tags));
+
   return {
     // Required fields from actual portal format
     anythingElseImportant: data.anythingElseImportant ?? '',
