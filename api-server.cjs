@@ -161,11 +161,29 @@ const transformData = (data) => {
     return TAG_NAME_TO_ID[tag] || `UNMAPPED_${String(tag)}`;
   }
   let tags = [];
+  // Collect tags from tags array or tags.tags
   if (Array.isArray(data.tags)) {
     tags = data.tags.map(getTagCode);
   } else if (data.tags && typeof data.tags === 'object' && Array.isArray(data.tags.tags)) {
     tags = data.tags.tags.map(getTagCode);
   }
+
+  // --- DEMOGRAPHIC FIELDS AS TAGS ---
+  // Helper to add a value if not empty/undefined/null
+  function addTagValue(val) {
+    if (Array.isArray(val)) {
+      val.forEach(v => { if (v) tags.push(getTagCode(v)); });
+    } else if (val) {
+      tags.push(getTagCode(val));
+    }
+  }
+  // Try to get demographic fields from tags.demographic or demographic
+  const demo = (data.tags && data.tags.demographic) ? data.tags.demographic : (data.demographic || {});
+  addTagValue(demo.age);
+  addTagValue(demo.genderSexualPreference);
+  addTagValue(demo.ethnicity);
+  addTagValue(demo.disability);
+  addTagValue(demo.lowerSocioEconomicBackground);
 
   return {
     // Required fields from actual portal format
