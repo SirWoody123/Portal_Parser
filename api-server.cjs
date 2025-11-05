@@ -239,7 +239,8 @@ const transformData = (data) => {
     publishedAt: data.publishedAt || '',
     schedulePost: data.schedulePost || '',
     status: data.status || 'expired',
-    tags: {
+    tags: tags, // flat array for legacy frontend
+    tagsObject: {
       tags: tags,
       demographic: (typeof data.tags === 'object' && data.tags.demographic)
         ? data.tags.demographic
