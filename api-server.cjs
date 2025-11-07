@@ -66,8 +66,9 @@ console.log('Script start');
 // Configuration
 const config = {
   port: process.env.PORT || 8080,
-  firebaseProjectUrl: process.env.FIREBASE_DATABASE_URL || 'https://eric-staging-portal.firebaseio.com',
-  serviceAccountPath: process.env.SERVICE_ACCOUNT_PATH || 'serviceAccountKey.json'
+  firebaseProjectUrl: process.env.FIREBASE_DATABASE_URL || 'https://eric-dev-c6144.firebaseio.com',
+  serviceAccountPath: process.env.SERVICE_ACCOUNT_PATH || 'serviceAccountKey.json',
+  targetCollectionPath: process.env.MASTER_COLLECTION_PATH || 'announcements/announcements/list'
 };
 
 
@@ -220,24 +221,24 @@ app.post('/opportunities', async (req, res) => {
     // 1. Transform the data
     const transformedData = transformData(opportunityData);
 
-    // 2. Save to master portal's Firebase in the new structure
-    // announcements_2 (collection) > list (collection) > {id} (document)
+    // 2. Save to master portal's Firebase using configured collection path
+    const [collection, subcollection, listCollection] = config.targetCollectionPath.split('/');
     const docId = transformedData.id || undefined;
     let docRef;
     if (docId) {
-      docRef = await db.collection('announcements_2').doc('list').collection('list').doc(docId).set(transformedData);
+      docRef = await db.collection(collection).doc(subcollection).collection(listCollection).doc(docId).set(transformedData);
     } else {
       // fallback: auto-generate ID if not present
-      docRef = await db.collection('announcements_2').doc('list').collection('list').add(transformedData);
+      docRef = await db.collection(collection).doc(subcollection).collection(listCollection).add(transformedData);
     }
 
-    console.log(`✅ Successfully saved to master portal: announcements_2/list/list/${docId || '[auto-id]'}`);
+    console.log(`✅ Successfully saved to master portal: ${config.targetCollectionPath}/${docId || '[auto-id]'}`);
     console.log('Transformed data:', transformedData);
 
     res.status(200).json({
       message: 'Data received and processed successfully.',
       masterPortalDocId: docId || '[auto-id]',
-      collectionPath: 'announcements_2/list/list',
+      collectionPath: config.targetCollectionPath,
       data: transformedData,
     });
   } catch (error) {
