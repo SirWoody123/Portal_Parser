@@ -239,14 +239,18 @@ const transformData = (data) => {
   // Convert Set to Array
   const tags = Array.from(allTags);
 
+  // Get the source demographic data
+  const sourceDemographic = data.tags?.demographic || {};
+  
   // Create the transformed demographic data structure
   const demographicData = {
-    age: data.demographic?.age || data.tags?.demographic?.age || '',
-    genderSexualPreference: data.demographic?.genderSexualPreference || data.tags?.demographic?.genderSexualPreference || '',
-    ethnicity: data.demographic?.ethnicity || data.tags?.demographic?.ethnicity || '',
-    disability: data.demographic?.disability || data.tags?.demographic?.disability || '',
-    lowerSocioEconomicBackground: data.demographic?.lowerSocioEconomicBackground || data.tags?.demographic?.lowerSocioEconomicBackground || '',
-    keywords: data.tags?.demographic?.keywords || []
+    age: sourceDemographic.age || '',
+    genderSexualPreference: sourceDemographic.genderSexualPreference || '',
+    ethnicity: sourceDemographic.ethnicity || '',
+    disability: sourceDemographic.disability || '',
+    lowerSocioEconomicBackground: sourceDemographic.lowerSocioEconomicBackground || '',
+    keywords: sourceDemographic.keywords || [],
+    industry: data.demographic?.industry || []
   };
 
   // Create the tagsObject structure
