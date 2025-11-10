@@ -223,21 +223,21 @@ app.post('/opportunities', async (req, res) => {
 
     // 2. Save to master portal's Firebase using configured collection path
     const [collection, subcollection, listCollection] = config.targetCollectionPath.split('/');
-    const docId = transformedData.id || undefined;
-    let docRef;
-    if (docId) {
-      docRef = await db.collection(collection).doc(subcollection).collection(listCollection).doc(docId).set(transformedData);
-    } else {
-      // fallback: auto-generate ID if not present
-      docRef = await db.collection(collection).doc(subcollection).collection(listCollection).add(transformedData);
-    }
+    
+    // Always use Firebase auto-generated ID
+    const docRef = await db.collection(collection).doc(subcollection).collection(listCollection).add(transformedData);
+    
+    // Update the ID in the document with Firebase's auto-generated ID
+    const generatedId = docRef.id;
+    transformedData.id = generatedId;
+    await docRef.update({ id: generatedId });
 
-    console.log(`✅ Successfully saved to master portal: ${config.targetCollectionPath}/${docId || '[auto-id]'}`);
+    console.log(`✅ Successfully saved to master portal: ${config.targetCollectionPath}/${generatedId}`);
     console.log('Transformed data:', transformedData);
 
     res.status(200).json({
       message: 'Data received and processed successfully.',
-      masterPortalDocId: docId || '[auto-id]',
+      masterPortalDocId: generatedId,
       collectionPath: config.targetCollectionPath,
       data: transformedData,
     });
