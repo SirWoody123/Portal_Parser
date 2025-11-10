@@ -239,6 +239,22 @@ const transformData = (data) => {
   // Convert Set to Array
   const tags = Array.from(allTags);
 
+  // Create the transformed demographic data structure
+  const demographicData = {
+    age: data.demographic?.age || data.tags?.demographic?.age || '',
+    genderSexualPreference: data.demographic?.genderSexualPreference || data.tags?.demographic?.genderSexualPreference || '',
+    ethnicity: data.demographic?.ethnicity || data.tags?.demographic?.ethnicity || '',
+    disability: data.demographic?.disability || data.tags?.demographic?.disability || '',
+    lowerSocioEconomicBackground: data.demographic?.lowerSocioEconomicBackground || data.tags?.demographic?.lowerSocioEconomicBackground || '',
+    keywords: data.tags?.demographic?.keywords || []
+  };
+
+  // Create the tagsObject structure
+  const tagsObject = {
+    tags: tags,
+    demographic: demographicData
+  };
+
   return {
     // Required fields from actual portal format
     anythingElseImportant: data.anythingElseImportant ?? '',
@@ -264,16 +280,9 @@ const transformData = (data) => {
     publishedAt: data.publishedAt || '',
     schedulePost: data.schedulePost || '',
     status: data.status || 'expired',
-    tags: tags, // flat array for legacy frontend
-    tagsObject: {
-      tags: tags,
-      demographic: (typeof data.tags === 'object' && data.tags.demographic)
-        ? data.tags.demographic
-        : (data.demographic || {})
-    },
-    demographic: (typeof data.tags === 'object' && data.tags.demographic)
-      ? data.tags.demographic
-      : (data.demographic || {}),
+    tags: tags,
+    tagsObject: tagsObject,
+    demographic: demographicData,
     title: data.title || '',
     type: data.type || 'announcements',
     userClaps: Array.isArray(data.userClaps) ? data.userClaps : [],
