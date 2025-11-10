@@ -195,37 +195,49 @@ app.use(express.json());
 const transformData = (data) => {
   // Always use this companyID and created value
   const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
+  
   // --- TAGS LOGIC ---
   function getTagCode(tag) {
-    return TAG_NAME_TO_ID[tag] || `UNMAPPED_${String(tag)}`;
+    // Remove '#' prefix if present
+    const cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
+    return TAG_NAME_TO_ID[cleanTag] || TAG_NAME_TO_ID[cleanTag.toLowerCase()] || null;
   }
-  let tags = [];
-  // Collect tags from tags array or tags.tags
-  if (Array.isArray(data.tags)) {
-    tags = data.tags.map(getTagCode);
-  } else if (data.tags && typeof data.tags === 'object' && Array.isArray(data.tags.tags)) {
-    tags = data.tags.tags.map(getTagCode);
-  }
+  
+  let allTags = new Set();
 
-  // --- DEMOGRAPHIC FIELDS AS TAGS ---
-  // Helper to add a value if not empty/undefined/null
-  function addTagValue(val) {
-    if (Array.isArray(val)) {
-      val.forEach(v => { if (v) tags.push(getTagCode(v)); });
-    } else if (val) {
-      tags.push(getTagCode(val));
+  // Helper to add a tag if it resolves to a valid ID
+  function addTag(tag) {
+    if (typeof tag === 'string') {
+      const tagId = getTagCode(tag);
+      if (tagId) {
+        allTags.add(tagId);
+      }
     }
   }
-  // Try to get demographic fields from tags.demographic or demographic
-  const demo = (data.tags && data.tags.demographic) ? data.tags.demographic : (data.demographic || {});
-  addTagValue(demo.age);
-  addTagValue(demo.genderSexualPreference);
-  addTagValue(demo.ethnicity);
-  addTagValue(demo.disability);
-  addTagValue(demo.lowerSocioEconomicBackground);
 
-  // Deduplicate tags array
-  tags = Array.from(new Set(tags));
+  // Process industry tags
+  if (data.demographic && Array.isArray(data.demographic.industry)) {
+    data.demographic.industry.forEach(addTag);
+  }
+
+  // Process demographic fields
+  const demo = (data.tags && data.tags.demographic) ? data.tags.demographic : (data.demographic || {});
+  const demographicFields = ['age', 'genderSexualPreference', 'ethnicity', 'disability', 'lowerSocioEconomicBackground'];
+  demographicFields.forEach(field => {
+    if (demo[field]) {
+      addTag(demo[field]);
+    }
+  });
+
+  // Process any additional tags
+  if (Array.isArray(data.tags)) {
+    data.tags.forEach(addTag);
+  } else if (data.tags && typeof data.tags === 'object' && Array.isArray(data.tags.tags)) {
+    data.tags.tags.forEach(addTag);
+  }
+
+  // Convert Set to Array
+  const tags = Array.from(allTags);
 
   return {
     // Required fields from actual portal format
