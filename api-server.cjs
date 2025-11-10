@@ -1,5 +1,46 @@
 // Tag name to unique ID mapping for tags
 const TAG_NAME_TO_ID = {
+  // --- DEMOGRAPHICS ---
+  // Ages
+  "16 and under": "Yfxp8QQJtghr4qQPmkx8",
+  "16": "PSPwCv5pAPk9kgHAXlbY",
+  "17": "yYpBd3kiH0UhUJtM0Ymf",
+  "18": "TYaWbgKh8ai492LRdp3n",
+  "19": "5PSzhQ2e4SC6YgC9Tq19",
+  "20": "VHmROHGeI7eM4D0xFT1H",
+  "21": "3RFE8LOp5gmRFKBnq3Y7",
+  "22": "Wk1k8kt8tZlALiVeW0Qq",
+  "23": "SjDtv9VjoKmpzKZvfXzp",
+  "24": "PIAq1kX4RW63lJ4jYZn0",
+  "25": "ypAb8alCEnbvDlS5ZqLu",
+  "Under 18": "cb70qB5JuW1SeTK7WmbY",
+  "Over 18": "6Bj2Xtzi0uIWc8ZrTVtY",
+  "Over 25": "sS3aP11L68igBoD7f0xe",
+
+  // Socioeconomic
+  "All backgrounds": "20fXkU9RdlTlpfcS5K5D",
+  "Only those from lower socio-economic background": "V9J6aDjeQc7hIePqgsCh",
+  "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG",
+
+  // Communities
+  "Physical disability": "09Q2FEVzWlOBc5AqoypO",
+  "Neurodiversity": "9RIS1UCc8jBeQY9lOpwf",
+  "LGBTQIA+": "92OxqHPOwpUDI765t62h",
+  "Mental health": "BqfXt7PgSC559RdiiT2w",
+  "Chronic illness": "S6BVkq9Z9rSfeAs1rR78",
+  "Carer": "EnzIhbSJi60VWwmFjq6F",
+
+  // Pronouns
+  "ForThem": "2Dhp3LeTBZqgTedOOPMT",
+  "He/Him": "BGHOxtT7mL635uaWX7Wd",
+  "They/Them": "D8TZCPwER6lzJV3p1fmA",
+  "She/Her": "Ljk28RD3LQJHXb1OXzz7",
+
+  // Experience
+  "Someone looking to get work": "8oVouULyPluxVdnb1DJD",
+  "Someone looking to explore": "Qjqkw3S9M7fyo4sE44kI",
+  "Someone looking to upskill": "iqtWnDQCz1nldxBiLCXy",
+
   // --- INDUSTRIES ---
   "All creative industries": "IG7yzsOdsZcE1IttKMe8",
   "Advertising": "JcM1sqyxbJeyZsvXislN",
