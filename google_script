@@ -182,7 +182,7 @@ function testDemographicsIntegration() {
     anythingElseImportant: 'CRITICAL: This test includes demographic keywords that should appear as Firebase tag IDs.',
     tags: {
       industry: ['Technology', 'Software Development'],
-      keywords: ['apprentice', 'coding', 'He/Him', 'Asian', 'Over 18', 'Neurodiversity']  // ← Fixed demographics!
+      keywords: ['apprentice', 'coding', 'He/Him', 'Asian or Asian British', 'Over 18', 'Neurodiversity']  // ← Fixed demographics!
     }
   };
 
@@ -194,7 +194,7 @@ function testDemographicsIntegration() {
   if (result && result.success) {
     Logger.log('🎉 DEMOGRAPHICS TEST SUCCESS!');
     Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
-    Logger.log('📋 Check Firebase - should contain tag IDs for: He/Him, Asian, Over 18, Neurodiversity');
+    Logger.log('📋 Check Firebase - should contain tag IDs for: He/Him, Asian or Asian British, Over 18, Neurodiversity');
     
     return {
       success: true,
@@ -447,7 +447,7 @@ function processDocument(file) {
     // Define allowed demographic values (updated based on UI feedback)
     var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under'];
     var allowedGenders = ['All genders & preferences', 'He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
-    var allowedEthnicities = ['All ethnicities', 'White', 'Black', 'Asian', 'Mixed', 'Other', 'Prefer not to say'];
+    var allowedEthnicities = ['All ethnicities', 'White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
     var allowedDisabilities = ['All disability', 'Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment'];
     var allowedSocioEconomic = ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh'];
 

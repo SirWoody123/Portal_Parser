@@ -106,10 +106,15 @@ const TAG_NAME_TO_ID = {
 
   // --- ETHNICITY ---
   "Mixed": "7NFcbDXSsKW4OJJboIN8",
+  "Mixed or Multiple Ethnic group": "7NFcbDXSsKW4OJJboIN8",
   "Other": "JNNkRh7GpLhmtNLhIBRZ",
+  "Other Ethnic Group": "JNNkRh7GpLhmtNLhIBRZ",
   "White": "Tfsft2clh6NQfBzBwVRm",
+  "White or White British": "Tfsft2clh6NQfBzBwVRm",
   "Asian": "ZqmWly9vdEbaBk1fXker",
+  "Asian or Asian British": "ZqmWly9vdEbaBk1fXker",
   "Black": "igXCnhhokWdi5FvqiDha",
+  "African, Caribbean or Black British": "igXCnhhokWdi5FvqiDha",
   "Arab": "x0WOQE0IZSuOTggNB3kE",
 
   // --- WORK LIFE ---

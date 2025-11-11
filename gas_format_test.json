@@ -7,14 +7,14 @@
   "applicationDeadline": "2025-12-31T23:59:59Z",
   "link": "https://example.com/gas-format-test",
   "tags": {
-    "tags": ["Technology", "Software Development", "apprentice", "coding", "He/Him", "Asian", "Over 18", "Neurodiversity"],
+    "tags": ["Technology", "Software Development", "apprentice", "coding", "He/Him", "Asian or Asian British", "Over 18", "Neurodiversity"],
     "demographic": {
       "age": "Over 18",
       "genderSexualPreference": "He/Him", 
-      "ethnicity": "Asian",
+      "ethnicity": "Asian or Asian British",
       "disability": "Neurodiversity",
       "lowerSocioEconomicBackground": "",
-      "keywords": ["apprentice", "coding", "He/Him", "Asian", "Over 18", "Neurodiversity"]
+      "keywords": ["apprentice", "coding", "He/Him", "Asian or Asian British", "Over 18", "Neurodiversity"]
     }
   },
   "demographic": {
