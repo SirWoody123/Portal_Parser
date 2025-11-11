@@ -197,10 +197,39 @@ const transformData = (data) => {
   const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
   
   // --- TAGS LOGIC ---
+  function normalizeKey(s) {
+    return String(s || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s\u00A0]+/g, ' ')
+      .replace(/["'`]/g, '')
+      .replace(/[&]/g, 'and');
+  }
+
+  function looksLikeId(s) {
+    if (!s) return false;
+    const t = String(s).trim();
+    // Firestore IDs are typically 20+ chars alphanumeric with -_ sometimes
+    return /^[A-Za-z0-9_-]{15,}$/.test(t);
+  }
+
   function getTagCode(tag) {
-    // Remove '#' prefix if present
-    const cleanTag = tag.startsWith('#') ? tag.substring(1) : tag;
-    return TAG_NAME_TO_ID[cleanTag] || TAG_NAME_TO_ID[cleanTag.toLowerCase()] || null;
+    if (!tag && tag !== 0) return null;
+    const raw = String(tag).trim();
+
+    // If input already looks like an ID, return it as-is
+    if (looksLikeId(raw)) return raw;
+
+    // Strip leading '#' and normalize
+    const stripped = raw.startsWith('#') ? raw.substring(1) : raw;
+    const key = normalizeKey(stripped);
+
+    // Try exact and normalized matches
+    if (TAG_NAME_TO_ID.hasOwnProperty(stripped)) return TAG_NAME_TO_ID[stripped];
+    for (const k of Object.keys(TAG_NAME_TO_ID)) {
+      if (normalizeKey(k) === key) return TAG_NAME_TO_ID[k];
+    }
+    return null;
   }
   
   let allTags = new Set();
