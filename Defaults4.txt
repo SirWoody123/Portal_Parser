@@ -1,0 +1,27 @@
+{
+  "id": "test-individual-demographics-verification",
+  "opportunityType": "Apprenticeship",
+  "title": "Test Individual Demographics Verification - Check Firebase Tag IDs", 
+  "shortSummary": "Testing individual demographic options to verify which have real Firebase tag IDs vs placeholder IDs after Railway deployment.",
+  "location": "Birmingham, UK",
+  "applicationDeadline": "2025-12-31T23:59:59Z",
+  "link": "https://example.com/individual-demographics-verification", 
+  "salary": "£21,000 per year",
+  "lengthOfApprenticeship": "18 months",
+  "levelOfApprenticeship": "Level 4",
+  "anythingElseImportant": "EXPECTED: Each demographic should map to a real Firebase tag ID. Check for placeholder IDs like 'defaultEthnicityUIId123' or 'defaultDisabilityUIId123'.",
+  "tags": {
+    "industry": ["Technology"],
+    "keywords": [
+      "apprentice",
+      "coding", 
+      "Non-binary",
+      "Transgender",
+      "Intersex", 
+      "Prefer not to say",
+      "Hearing impairment",
+      "Visual impairment",
+      "Chronic illness"
+    ]
+  }
+}
