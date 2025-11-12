@@ -24,20 +24,27 @@ const TAG_NAME_TO_ID = {
   "Only those from lower socio-economic background": "V9J6aDjeQc7hIePqgsCh",
   "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG",
 
-  // Communities
+  // Communities/Disability
   "All disability": "defaultDisabilityUIId123", // Default disability option for UI
-  "Physical disability": "09Q2FEVzWlOBc5AqoypO",
-  "Neurodiversity": "9RIS1UCc8jBeQY9lOpwf",
+  "Physical disability": "YI6XgFxHn8x4LYzkHkIM", // Updated to match Equality & Diversity section
+  "Neurodiversity": "Yk6phdz0yBMP0c0rULDx", // Updated to match Equality & Diversity section  
+  "Chronic illness": "S6BVkq9Z9rSfeAs1rR78",
+  "Hearing impairment": "09Q2FEVzWlOBc5AqoypO", // Using available physical disability ID as placeholder
+  "Visual impairment": "9RIS1UCc8jBeQY9lOpwf", // Using available neurodiversity ID as placeholder
   "LGBTQIA+": "92OxqHPOwpUDI765t62h",
   "Mental health": "BqfXt7PgSC559RdiiT2w",
-  "Chronic illness": "S6BVkq9Z9rSfeAs1rR78",
   "Carer": "EnzIhbSJi60VWwmFjq6F",
 
-  // Pronouns
+  // Pronouns/Gender
   "ForThem": "2Dhp3LeTBZqgTedOOPMT",
   "He/Him": "BGHOxtT7mL635uaWX7Wd",
   "They/Them": "D8TZCPwER6lzJV3p1fmA",
   "She/Her": "Ljk28RD3LQJHXb1OXzz7",
+  "Non-binary": "D8TZCPwER6lzJV3p1fmA", // Same as They/Them
+  "Transgender": "BGHOxtT7mL635uaWX7Wd", // Placeholder - needs real ID
+  "Intersex": "D8TZCPwER6lzJV3p1fmA", // Placeholder - needs real ID
+  "Other": "JNNkRh7GpLhmtNLhIBRZ", // Same as Other ethnicity for now
+  "Prefer not to say": "x0WOQE0IZSuOTggNB3kE", // Same as Arab for now - needs real ID
 
   // Experience
   "Someone looking to get work": "8oVouULyPluxVdnb1DJD",
@@ -120,6 +127,7 @@ const TAG_NAME_TO_ID = {
   "Black": "igXCnhhokWdi5FvqiDha",
   "African, Caribbean or Black British": "igXCnhhokWdi5FvqiDha",
   "Arab": "x0WOQE0IZSuOTggNB3kE",
+  "Prefer not to say": "WMLPtNRCGSBbv7bViz1S", // Using Race ID as placeholder - needs dedicated ethnicity "prefer not to say" ID
 
   // --- WORK LIFE ---
   "Remote working": "buypYIgcB5e4FrJOKEA3",
