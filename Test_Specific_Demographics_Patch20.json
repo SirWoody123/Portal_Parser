@@ -1,0 +1,15 @@
+{
+  "id": "specific-demographics-test-patch20",
+  "opportunityType": "Apprenticeship", 
+  "title": "Test Specific Demographics - Should Map to Firebase IDs",
+  "shortSummary": "Testing that specific demographics get properly mapped to Firebase tag IDs",
+  "location": "London, UK",
+  "applicationDeadline": "2025-12-31T23:59:59Z",
+  "link": "https://example.com/specific-demographics-test",
+  "salary": "£22,000 per year",
+  "anythingElseImportant": "Should map: He/Him, Asian or Asian British, Over 18, Neurodiversity to their Firebase IDs",
+  "tags": {
+    "industry": ["Technology", "Software Development"],
+    "keywords": ["apprentice", "coding", "He/Him", "Asian or Asian British", "Over 18", "Neurodiversity"]
+  }
+}

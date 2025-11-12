@@ -213,6 +213,57 @@ function testDemographicsIntegration() {
 }
 
 /**
+ * 🧪 Test Empty Demographics - PATCH20 FIX TEST!
+ */
+function testEmptyDemographics() {
+  Logger.log('🧪 Testing Empty Demographics (Patch20 Fix)...');
+  
+  var testData = {
+    id: 'empty-demographics-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Empty Demographics Test - Should Show Select Tags',
+    shortSummary: 'Testing that opportunities with no demographic keywords result in empty demographic arrays.',
+    location: 'Birmingham, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/empty-demographics-test',
+    salary: '£19,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 3',
+    anythingElseImportant: 'EXPECTED: All demographic fields should be empty arrays, UI should show "Select tags" placeholders.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'software'] // ← NO demographic keywords
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: No demographic values should be found, all demographic arrays should be empty');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 EMPTY DEMOGRAPHICS TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - demographic object should have empty arrays for all categories');
+    Logger.log('🎯 UI should show "Select tags" for: Age, Gender, Ethnicity, Disability, Socio-Economic');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Empty demographics test completed - check UI shows "Select tags" placeholders'
+    };
+  } else {
+    Logger.log('❌ EMPTY DEMOGRAPHICS TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
  * 📤 Send data to API Bridge (your deployed service)
  */
 function sendToApiBridge(opportunityData) {
@@ -444,17 +495,17 @@ function processDocument(file) {
     // Add keyword tags
     tagsArr = tagsArr.concat(keywordsArr);
 
-    // Define allowed demographic values (updated based on UI feedback)
+    // Define allowed demographic values (PATCH20: Removed "All" defaults - only specific values)
     var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under'];
-    var allowedGenders = ['All genders & preferences', 'He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
-    var allowedEthnicities = ['All ethnicities', 'White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
-    var allowedDisabilities = ['All disability', 'Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment'];
+    var allowedGenders = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
+    var allowedEthnicities = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
+    var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment'];
     var allowedSocioEconomic = ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh'];
 
     // Extract demographic values and add them to tagsArr
     var ageString = '';
-    var genderString = 'All genders & preferences';
-    var ethnicityString = 'All ethnicities';
+    var genderString = '';
+    var ethnicityString = '';
     var disabilityString = '';
     var lowerSocioEconomicBackgroundString = '';
 
@@ -503,14 +554,14 @@ function processDocument(file) {
       }
     }
 
-    // *** PATCH19 FIX: Create demographic object with default values for UI display ***
+    // *** PATCH20 FIX: Only include specific demographics in tags, no defaults ***
     var demographicObj = {
       industry: industryTags, // Keep as array for demographic.industry
-      age: ageString ? [ageString] : ['All ages'], // Default to 'All ages' if empty
-      genderSexualPreference: genderString !== 'All genders & preferences' ? [genderString] : ['All genders & preferences'],
-      ethnicity: ethnicityString !== 'All ethnicities' ? [ethnicityString] : ['All ethnicities'], // Default to 'All ethnicities'
-      disability: disabilityString ? [disabilityString] : ['All disability'], // Default to 'All disability'
-      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? [lowerSocioEconomicBackgroundString] : ['All backgrounds'] // Default to 'All backgrounds'
+      age: ageString ? [ageString] : [], // Empty if no specific age found
+      genderSexualPreference: genderString ? [genderString] : [], // Empty if no specific gender found
+      ethnicity: ethnicityString ? [ethnicityString] : [], // Empty if no specific ethnicity found
+      disability: disabilityString ? [disabilityString] : [], // Empty if no specific disability found
+      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? [lowerSocioEconomicBackgroundString] : [] // Empty if no specific background found
     }
 
     return {
