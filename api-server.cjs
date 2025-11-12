@@ -14,6 +14,8 @@ const TAG_NAME_TO_ID = {
   "24": "PIAq1kX4RW63lJ4jYZn0",
   "25": "ypAb8alCEnbvDlS5ZqLu",
   "Under 18": "cb70qB5JuW1SeTK7WmbY",
+    // --- AGE ---
+  "All ages": "defaultAgeId123456789", // Default age option for UI
   "Over 18": "6Bj2Xtzi0uIWc8ZrTVtY",
   "Over 25": "sS3aP11L68igBoD7f0xe",
 
@@ -23,6 +25,7 @@ const TAG_NAME_TO_ID = {
   "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG",
 
   // Communities
+  "All disability": "defaultDisabilityUIId123", // Default disability option for UI
   "Physical disability": "09Q2FEVzWlOBc5AqoypO",
   "Neurodiversity": "9RIS1UCc8jBeQY9lOpwf",
   "LGBTQIA+": "92OxqHPOwpUDI765t62h",
@@ -104,7 +107,8 @@ const TAG_NAME_TO_ID = {
   "Gender": "o4rMfwsP8UOAjvGwRhgP",
   "Disability": "sehUuVOIEKmsYNpQROHe",
 
-  // --- ETHNICITY ---
+    // --- ETHNICITY ---
+  "All ethnicities": "defaultEthnicityUIId123", // Default ethnicity option for UI
   "Mixed": "7NFcbDXSsKW4OJJboIN8",
   "Mixed or Multiple Ethnic group": "7NFcbDXSsKW4OJJboIN8",
   "Other": "JNNkRh7GpLhmtNLhIBRZ",

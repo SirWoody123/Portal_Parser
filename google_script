@@ -503,14 +503,14 @@ function processDocument(file) {
       }
     }
 
-    // *** FIX: Create the demographic object structure that matches our working sample ***
+    // *** PATCH19 FIX: Create demographic object with default values for UI display ***
     var demographicObj = {
       industry: industryTags, // Keep as array for demographic.industry
-      age: [], // Keep as empty arrays as shown in your logs
-      genderSexualPreference: [],
-      ethnicity: [],
-      disability: [],
-      lowerSocioEconomicBackground: []
+      age: ageString ? [ageString] : ['All ages'], // Default to 'All ages' if empty
+      genderSexualPreference: genderString !== 'All genders & preferences' ? [genderString] : ['All genders & preferences'],
+      ethnicity: ethnicityString !== 'All ethnicities' ? [ethnicityString] : ['All ethnicities'], // Default to 'All ethnicities'
+      disability: disabilityString ? [disabilityString] : ['All disability'], // Default to 'All disability'
+      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? [lowerSocioEconomicBackgroundString] : ['All backgrounds'] // Default to 'All backgrounds'
     }
 
     return {
