@@ -1,4 +1,4 @@
-// Tag name to unique ID mapping for tags
+// Tag name to unique ID mapping for tags - PATCH22 Applied
 const TAG_NAME_TO_ID = {
   // --- DEMOGRAPHICS ---
   // Ages
