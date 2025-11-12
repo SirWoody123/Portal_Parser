@@ -285,14 +285,16 @@ const transformData = (data) => {
   const sourceDemographic = data.tags?.demographic || {};
   
   // Create the transformed demographic data structure
+  // Use the main demographic object from Google Apps Script, fallback to tags.demographic
+  const mainDemographic = data.demographic || {};
   const demographicData = {
-    age: sourceDemographic.age || '',
-    genderSexualPreference: sourceDemographic.genderSexualPreference || '',
-    ethnicity: sourceDemographic.ethnicity || '',
-    disability: sourceDemographic.disability || '',
-    lowerSocioEconomicBackground: sourceDemographic.lowerSocioEconomicBackground || '',
+    age: mainDemographic.age || sourceDemographic.age || '',
+    genderSexualPreference: mainDemographic.genderSexualPreference || sourceDemographic.genderSexualPreference || '',
+    ethnicity: mainDemographic.ethnicity || sourceDemographic.ethnicity || '',
+    disability: mainDemographic.disability || sourceDemographic.disability || '',
+    lowerSocioEconomicBackground: mainDemographic.lowerSocioEconomicBackground || sourceDemographic.lowerSocioEconomicBackground || '',
     keywords: sourceDemographic.keywords || [],
-    industry: data.demographic?.industry || []
+    industry: mainDemographic.industry || []
   };
 
   // Create the tagsObject structure

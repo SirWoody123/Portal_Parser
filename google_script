@@ -3,25 +3,9 @@
  * 
  * SETUP INSTRUCTIONS:
  * 1. Deploy your API bridge to Railway/Heroku
-  Logger.log('📁 Total: ' + Object.keys(parsed).length);
-}
-  }
-  
-  var parsed = JSON.parse(processedFiles);
-  var stats = {success: 0, error: 0, unsupported: 0};
-  
-  Object.keys(parsed).forEach(function(fileId) {
-    stats[parsed[fileId].status]++;
-  });
-  
-  Logger.log('📊 Processing Status:');
-  Logger.log('✅ Success: ' + stats.success);
-  Logger.log('❌ Errors: ' + stats.error); 
-  Logger.log('🚫 Unsupported: ' + stats.unsupported);
-  Logger.log('📁 Total: ' + Object.keys(parsed).length);
-}
- * 4. Once working, run installTrigg
- * er() to set up automatic processing
+ * 2. Update CONFIG.API_BRIDGE_URL with your deployment URL
+ * 3. Test with testApiBridgeIntegration() or testRailwayIntegration()
+ * 4. Once working, run installTrigger() to set up automatic processing
  */
 
 // --- CONFIGURATION ---
@@ -648,31 +632,38 @@ function processDocument(file) {
       }
     }
 
-    // Add all demographic tags to main tags array
-    ageTagsToAdd.forEach(function(tag) {
+    // Add demographic tags to main tags array (or ALL if none specified)
+    var finalAgeTagsToAdd = ageTagsToAdd.length > 0 ? ageTagsToAdd : allAgeOptions;
+    var finalGenderTagsToAdd = genderTagsToAdd.length > 0 ? genderTagsToAdd : allGenderOptions;
+    var finalEthnicityTagsToAdd = ethnicityTagsToAdd.length > 0 ? ethnicityTagsToAdd : allEthnicityOptions;
+    var finalDisabilityTagsToAdd = disabilityTagsToAdd.length > 0 ? disabilityTagsToAdd : allDisabilityOptions;
+    var finalSocioEconomicTagsToAdd = socioEconomicTagsToAdd.length > 0 ? socioEconomicTagsToAdd : allSocioEconomicOptions;
+
+    finalAgeTagsToAdd.forEach(function(tag) {
       if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
     });
-    genderTagsToAdd.forEach(function(tag) {
+    finalGenderTagsToAdd.forEach(function(tag) {
       if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
     });
-    ethnicityTagsToAdd.forEach(function(tag) {
+    finalEthnicityTagsToAdd.forEach(function(tag) {
       if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
     });
-    disabilityTagsToAdd.forEach(function(tag) {
+    finalDisabilityTagsToAdd.forEach(function(tag) {
       if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
     });
-    socioEconomicTagsToAdd.forEach(function(tag) {
+    finalSocioEconomicTagsToAdd.forEach(function(tag) {
       if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
     });
 
-    // *** PATCH21 FIX: Handle both individual demographics and "All" expansions ***
+    // *** PATCH21 FIX + DEFAULT "ALL" BEHAVIOR: Handle both individual demographics and "All" expansions ***
+    // If no demographic keywords found, default to "All" options (expand to all individual values)
     var demographicObj = {
       industry: industryTags, // Keep as array for demographic.industry
-      age: ageString ? (ageString === 'All ages' ? allAgeOptions : [ageString]) : [], // Expand "All ages" or use specific age
-      genderSexualPreference: genderString ? (genderString === 'All genders & preferences' ? allGenderOptions : [genderString]) : [], // Expand "All genders" or use specific gender
-      ethnicity: ethnicityString ? (ethnicityString === 'All ethnicities' ? allEthnicityOptions : [ethnicityString]) : [], // Expand "All ethnicities" or use specific ethnicity
-      disability: disabilityString ? (disabilityString === 'All disability' ? allDisabilityOptions : [disabilityString]) : [], // Expand "All disability" or use specific disability
-      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? (lowerSocioEconomicBackgroundString === 'All backgrounds' ? allSocioEconomicOptions : [lowerSocioEconomicBackgroundString]) : [] // Expand "All backgrounds" or use specific background
+      age: ageString ? (ageString === 'All ages' ? allAgeOptions : [ageString]) : allAgeOptions, // Default to ALL ages if empty
+      genderSexualPreference: genderString ? (genderString === 'All genders & preferences' ? allGenderOptions : [genderString]) : allGenderOptions, // Default to ALL genders if empty
+      ethnicity: ethnicityString ? (ethnicityString === 'All ethnicities' ? allEthnicityOptions : [ethnicityString]) : allEthnicityOptions, // Default to ALL ethnicities if empty
+      disability: disabilityString ? (disabilityString === 'All disability' ? allDisabilityOptions : [disabilityString]) : allDisabilityOptions, // Default to ALL disabilities if empty
+      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? (lowerSocioEconomicBackgroundString === 'All backgrounds' ? allSocioEconomicOptions : [lowerSocioEconomicBackgroundString]) : allSocioEconomicOptions // Default to ALL backgrounds if empty
     }
 
     return {
@@ -745,8 +736,8 @@ function processDocument(file) {
 
   var parsedData = null;
   var fileName = file.getName().toLowerCase();
-  // Try to parse as JSON if file extension is .json or .txt, or if content looks like JSON
-  if (fileName.endsWith('.json') || fileName.endsWith('.txt')) {
+  // Try to parse as JSON if file extension is .json (but not .txt to avoid parsing errors)
+  if (fileName.endsWith('.json')) {
     try {
       var jsonCandidate = JSON.parse(content);
       if (typeof jsonCandidate === 'object' && jsonCandidate !== null) {
@@ -759,9 +750,10 @@ function processDocument(file) {
   }
 
   // Option 1: If you have a parser API, call it first (only if not already parsed as JSON)
-  if (!parsedData && CONFIG.PARSER_API_URL && CONFIG.PARSER_API_URL !== 'https://karolyn-unmendacious-unsuccessfully.ngrok-free.dev/api/parse') {
-    parsedData = callDocumentParser(content, file.getName());
-  }
+  // Disabled parser API for now - ngrok endpoint is offline
+  // if (!parsedData && CONFIG.PARSER_API_URL && CONFIG.PARSER_API_URL !== 'https://karolyn-unmendacious-unsuccessfully.ngrok-free.dev/api/parse') {
+  //   parsedData = callDocumentParser(content, file.getName());
+  // }
 
   // Option 2: Create basic opportunity data ONLY if no parser or JSON
   if (!parsedData) {

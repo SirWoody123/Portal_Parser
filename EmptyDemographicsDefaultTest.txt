@@ -1,0 +1,30 @@
+Software Developer Position - No Demographics Test
+
+This is a test document with NO demographic keywords to validate the default "All" behavior.
+
+Description:
+Looking for a talented software developer to join our team. You'll work on exciting projects using modern technologies.
+
+Requirements:
+- Experience with JavaScript
+- Knowledge of web development
+- Strong problem-solving skills
+- Team player
+
+Keywords:
+- developer
+- programming
+- javascript
+- web development
+- technology
+
+Expected Behavior:
+Since this file contains NO demographic keywords (no "He/Him", "All genders", "Asian", etc.), the system should DEFAULT to including ALL demographic options:
+
+- All ages: ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under']
+- All genders: ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say']
+- All ethnicities: ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say']
+- All disabilities: ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment']
+- All backgrounds: ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh']
+
+This ensures that when no specific demographics are mentioned, the opportunity is open to everyone by default.
