@@ -264,6 +264,58 @@ function testEmptyDemographics() {
 }
 
 /**
+ * 🧪 Test "All" Demographics Expansion - PATCH21 NEW TEST!
+ */
+function testAllDemographicsExpansion() {
+  Logger.log('🧪 Testing "All" Demographics Expansion (Patch21 Fix)...');
+  
+  var testData = {
+    id: 'all-demographics-expansion-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'All Demographics Expansion Test - Should Include All Individual Options',
+    shortSummary: 'Testing that "All genders & preferences", "All ethnicities", etc. expand to include all individual demographic options.',
+    location: 'London, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/all-demographics-expansion-test',
+    salary: '£25,000 per year',
+    lengthOfApprenticeship: '24 months',
+    levelOfApprenticeship: 'Level 4',
+    anythingElseImportant: 'EXPECTED: Should expand to ALL individual options in each demographic category and include all in tags array.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'All genders & preferences', 'All ethnicities', 'All ages', 'All disability', 'All backgrounds'] // ← ALL "All" options
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should expand each "All" option to include all individual demographic values in that category');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 ALL DEMOGRAPHICS EXPANSION TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should contain ALL individual demographic tag IDs for each category');
+    Logger.log('🎯 Expected in tags array: He/Him, She/Her, They/Them, All ethnicities expanded, All ages expanded, etc.');
+    Logger.log('🎯 UI should show all individual demographic options selected for each category');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'All demographics expansion test completed - check Firebase for all individual demographic IDs'
+    };
+  } else {
+    Logger.log('❌ ALL DEMOGRAPHICS EXPANSION TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
  * 📤 Send data to API Bridge (your deployed service)
  */
 function sendToApiBridge(opportunityData) {
@@ -495,25 +547,43 @@ function processDocument(file) {
     // Add keyword tags
     tagsArr = tagsArr.concat(keywordsArr);
 
-    // Define allowed demographic values (PATCH20: Removed "All" defaults - only specific values)
-    var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under'];
-    var allowedGenders = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
-    var allowedEthnicities = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
-    var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment'];
-    var allowedSocioEconomic = ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh'];
+    // Define allowed demographic values (PATCH21: Added "All" options that expand to include all individual values)
+    var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', 'All ages'];
+    var allowedGenders = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say', 'All genders & preferences'];
+    var allowedEthnicities = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say', 'All ethnicities'];
+    var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'All disability'];
+    var allowedSocioEconomic = ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh', 'All backgrounds'];
+    
+    // Define what "All" options expand to
+    var allAgeOptions = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under'];
+    var allGenderOptions = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
+    var allEthnicityOptions = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
+    var allDisabilityOptions = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment'];
+    var allSocioEconomicOptions = ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh'];
 
-    // Extract demographic values and add them to tagsArr
+    // Extract demographic values and add them to tagsArr (PATCH21: Handle "All" expansions)
     var ageString = '';
     var genderString = '';
     var ethnicityString = '';
     var disabilityString = '';
     var lowerSocioEconomicBackgroundString = '';
+    var ageTagsToAdd = [];
+    var genderTagsToAdd = [];
+    var ethnicityTagsToAdd = [];
+    var disabilityTagsToAdd = [];
+    var socioEconomicTagsToAdd = [];
 
     // Find age in keywords and add to tagsArr
     for (var i = 0; i < keywordsArr.length; i++) {
       if (allowedAges.includes(keywordsArr[i])) {
         ageString = keywordsArr[i];
-        if (tagsArr.indexOf(ageString) === -1) tagsArr.push(ageString);
+        if (ageString === 'All ages') {
+          // Add all individual age options to tags array
+          ageTagsToAdd = allAgeOptions.slice(); // Copy array
+          ageString = 'All ages'; // Keep for demographic object
+        } else {
+          ageTagsToAdd = [ageString];
+        }
         break;
       }
     }
@@ -522,7 +592,13 @@ function processDocument(file) {
     for (var j = 0; j < keywordsArr.length; j++) {
       if (allowedGenders.includes(keywordsArr[j])) {
         genderString = keywordsArr[j];
-        if (tagsArr.indexOf(genderString) === -1) tagsArr.push(genderString);
+        if (genderString === 'All genders & preferences') {
+          // Add all individual gender options to tags array
+          genderTagsToAdd = allGenderOptions.slice(); // Copy array
+          genderString = 'All genders & preferences'; // Keep for demographic object
+        } else {
+          genderTagsToAdd = [genderString];
+        }
         break;
       }
     }
@@ -531,7 +607,13 @@ function processDocument(file) {
     for (var k = 0; k < keywordsArr.length; k++) {
       if (allowedEthnicities.includes(keywordsArr[k])) {
         ethnicityString = keywordsArr[k];
-        if (tagsArr.indexOf(ethnicityString) === -1) tagsArr.push(ethnicityString);
+        if (ethnicityString === 'All ethnicities') {
+          // Add all individual ethnicity options to tags array
+          ethnicityTagsToAdd = allEthnicityOptions.slice(); // Copy array
+          ethnicityString = 'All ethnicities'; // Keep for demographic object
+        } else {
+          ethnicityTagsToAdd = [ethnicityString];
+        }
         break;
       }
     }
@@ -540,7 +622,13 @@ function processDocument(file) {
     for (var d = 0; d < keywordsArr.length; d++) {
       if (allowedDisabilities.includes(keywordsArr[d])) {
         disabilityString = keywordsArr[d];
-        if (tagsArr.indexOf(disabilityString) === -1) tagsArr.push(disabilityString);
+        if (disabilityString === 'All disability') {
+          // Add all individual disability options to tags array
+          disabilityTagsToAdd = allDisabilityOptions.slice(); // Copy array
+          disabilityString = 'All disability'; // Keep for demographic object
+        } else {
+          disabilityTagsToAdd = [disabilityString];
+        }
         break;
       }
     }
@@ -549,19 +637,42 @@ function processDocument(file) {
     for (var l = 0; l < keywordsArr.length; l++) {
       if (allowedSocioEconomic.includes(keywordsArr[l])) {
         lowerSocioEconomicBackgroundString = keywordsArr[l];
-        if (tagsArr.indexOf(lowerSocioEconomicBackgroundString) === -1) tagsArr.push(lowerSocioEconomicBackgroundString);
+        if (lowerSocioEconomicBackgroundString === 'All backgrounds') {
+          // Add all individual socioeconomic options to tags array
+          socioEconomicTagsToAdd = allSocioEconomicOptions.slice(); // Copy array
+          lowerSocioEconomicBackgroundString = 'All backgrounds'; // Keep for demographic object
+        } else {
+          socioEconomicTagsToAdd = [lowerSocioEconomicBackgroundString];
+        }
         break;
       }
     }
 
-    // *** PATCH20 FIX: Only include specific demographics in tags, no defaults ***
+    // Add all demographic tags to main tags array
+    ageTagsToAdd.forEach(function(tag) {
+      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
+    });
+    genderTagsToAdd.forEach(function(tag) {
+      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
+    });
+    ethnicityTagsToAdd.forEach(function(tag) {
+      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
+    });
+    disabilityTagsToAdd.forEach(function(tag) {
+      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
+    });
+    socioEconomicTagsToAdd.forEach(function(tag) {
+      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
+    });
+
+    // *** PATCH21 FIX: Handle both individual demographics and "All" expansions ***
     var demographicObj = {
       industry: industryTags, // Keep as array for demographic.industry
-      age: ageString ? [ageString] : [], // Empty if no specific age found
-      genderSexualPreference: genderString ? [genderString] : [], // Empty if no specific gender found
-      ethnicity: ethnicityString ? [ethnicityString] : [], // Empty if no specific ethnicity found
-      disability: disabilityString ? [disabilityString] : [], // Empty if no specific disability found
-      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? [lowerSocioEconomicBackgroundString] : [] // Empty if no specific background found
+      age: ageString ? (ageString === 'All ages' ? allAgeOptions : [ageString]) : [], // Expand "All ages" or use specific age
+      genderSexualPreference: genderString ? (genderString === 'All genders & preferences' ? allGenderOptions : [genderString]) : [], // Expand "All genders" or use specific gender
+      ethnicity: ethnicityString ? (ethnicityString === 'All ethnicities' ? allEthnicityOptions : [ethnicityString]) : [], // Expand "All ethnicities" or use specific ethnicity
+      disability: disabilityString ? (disabilityString === 'All disability' ? allDisabilityOptions : [disabilityString]) : [], // Expand "All disability" or use specific disability
+      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? (lowerSocioEconomicBackgroundString === 'All backgrounds' ? allSocioEconomicOptions : [lowerSocioEconomicBackgroundString]) : [] // Expand "All backgrounds" or use specific background
     }
 
     return {

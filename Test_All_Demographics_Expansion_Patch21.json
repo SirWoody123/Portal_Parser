@@ -1,0 +1,15 @@
+{
+  "id": "all-demographics-expansion-test-patch21",
+  "opportunityType": "Apprenticeship",
+  "title": "Test All Demographics Expansion - Should Include All Individual Options",
+  "shortSummary": "Testing that 'All genders & preferences', 'All ethnicities', etc. expand to include all individual demographic options in both tags array and demographic object",
+  "location": "London, UK",
+  "applicationDeadline": "2025-12-31T23:59:59Z",
+  "link": "https://example.com/all-demographics-expansion-test",
+  "salary": "£25,000 per year",
+  "anythingElseImportant": "EXPECTED RESULT: Tags array should contain ALL individual demographic options. UI should show all individual options selected for each category.",
+  "tags": {
+    "industry": ["Technology"],
+    "keywords": ["apprentice", "coding", "All genders & preferences", "All ethnicities", "All ages", "All disability", "All backgrounds"]
+  }
+}
