@@ -1137,6 +1137,10 @@ function testPhysicalDisabilityMultiTag() {
   Logger.log('🟦 Input keywords: ' + JSON.stringify(testData.tags.keywords));
   Logger.log('🔍 Expected: Physical disability should create 3 separate Firebase tag IDs');
   
+  // CRITICAL FIX: Normalize data before sending to API bridge
+  testData = normalizeOpportunityData(testData);
+  Logger.log('🟦 After normalization - tags.tags: ' + JSON.stringify(testData.tags.tags));
+  
   var result = sendToApiBridge(testData);
   
   if (result && result.success) {
