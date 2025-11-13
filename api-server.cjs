@@ -290,9 +290,45 @@ const transformData = (data) => {
   // Get the source demographic data
   const sourceDemographic = data.tags?.demographic || {};
   
-  // PATCH23 SIMPLIFIED: Remove complex demographic structures
-  // Portal only needs the simple tags array with Firebase tag IDs
-  // All demographic information is already encoded in the tags array
+  // PATCH27 FIX: Portal needs BOTH tags array AND demographic object
+  // Tags array: for hashtag section
+  // Demographic object: for demographic sections (Age, Gender, Ethnicity, Disability, Socio-Economic)
+  
+  // Build demographic object with text values for portal UI
+  function buildDemographicObject(demographicData) {
+    const result = {
+      industry: [],
+      age: [],
+      genderSexualPreference: [],
+      ethnicity: [],
+      disability: [],
+      lowerSocioEconomicBackground: []
+    };
+    
+    if (demographicData && typeof demographicData === 'object') {
+      // Map arrays to text values for portal display
+      if (Array.isArray(demographicData.age)) {
+        result.age = demographicData.age;
+      }
+      if (Array.isArray(demographicData.genderSexualPreference)) {
+        result.genderSexualPreference = demographicData.genderSexualPreference;
+      }
+      if (Array.isArray(demographicData.ethnicity)) {
+        result.ethnicity = demographicData.ethnicity;
+      }
+      if (Array.isArray(demographicData.disability)) {
+        result.disability = demographicData.disability;
+      }
+      if (Array.isArray(demographicData.lowerSocioEconomicBackground)) {
+        result.lowerSocioEconomicBackground = demographicData.lowerSocioEconomicBackground;
+      }
+      if (Array.isArray(demographicData.industry)) {
+        result.industry = demographicData.industry;
+      }
+    }
+    
+    return result;
+  }
 
   return {
     // Required fields from actual portal format
@@ -342,6 +378,9 @@ const transformData = (data) => {
     ukWide: data.ukWide ?? false,
     userLinkClick: Array.isArray(data.userLinkClick) ? data.userLinkClick : [],
     usersFavouriteContent: Array.isArray(data.usersFavouriteContent) ? data.usersFavouriteContent : [],
+    
+    // PATCH27 FIX: Add demographic object for portal UI demographic sections
+    demographic: buildDemographicObject(data.demographic)
   };
 };
 
