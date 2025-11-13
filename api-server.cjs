@@ -284,24 +284,9 @@ const transformData = (data) => {
   // Get the source demographic data
   const sourceDemographic = data.tags?.demographic || {};
   
-  // Create the transformed demographic data structure
-  // Use the main demographic object from Google Apps Script, fallback to tags.demographic
-  const mainDemographic = data.demographic || {};
-  const demographicData = {
-    age: mainDemographic.age || sourceDemographic.age || '',
-    genderSexualPreference: mainDemographic.genderSexualPreference || sourceDemographic.genderSexualPreference || '',
-    ethnicity: mainDemographic.ethnicity || sourceDemographic.ethnicity || '',
-    disability: mainDemographic.disability || sourceDemographic.disability || '',
-    lowerSocioEconomicBackground: mainDemographic.lowerSocioEconomicBackground || sourceDemographic.lowerSocioEconomicBackground || '',
-    keywords: sourceDemographic.keywords || [],
-    industry: mainDemographic.industry || []
-  };
-
-  // Create the tagsObject structure
-  const tagsObject = {
-    tags: tags,
-    demographic: demographicData
-  };
+  // PATCH23 SIMPLIFIED: Remove complex demographic structures
+  // Portal only needs the simple tags array with Firebase tag IDs
+  // All demographic information is already encoded in the tags array
 
   return {
     // Required fields from actual portal format
@@ -329,8 +314,6 @@ const transformData = (data) => {
     schedulePost: data.schedulePost || '',
     status: data.status || 'expired',
     tags: tags,
-    tagsObject: tagsObject,
-    demographic: demographicData,
     title: data.title || '',
     type: data.type || 'announcements',
     userClaps: Array.isArray(data.userClaps) ? data.userClaps : [],

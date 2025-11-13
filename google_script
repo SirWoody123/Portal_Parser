@@ -969,3 +969,55 @@ function getProcessingStatus() {
   Logger.log('🚫 Unsupported: ' + stats.unsupported);
   Logger.log('📁 Total: ' + Object.keys(parsed).length);
 }
+
+/**
+ * 🧪 Test Simplified Portal Structure - PATCH23 SIMPLIFIED
+ */
+function testSimplifiedPortalStructure() {
+  Logger.log('🧪 Testing Simplified Portal Structure (PATCH23)...');
+  
+  var testData = {
+    id: 'simplified-portal-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Simplified Portal Structure Test - Should Work in Portal',
+    shortSummary: 'Testing that the simplified structure (only tags array) works in the portal UI.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/simplified-test',
+    salary: '£20,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live', // ← Set to live instead of expired
+    anythingElseImportant: 'EXPECTED: Portal should show all demographics selected because tags array contains all demographic Firebase IDs.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding'] // ← NO demographic keywords = default to ALL
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should default to ALL demographics, simplified structure for portal');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 SIMPLIFIED PORTAL STRUCTURE TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should have simple structure with only tags array');
+    Logger.log('🎯 Portal should now show all demographics selected!');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Simplified structure test completed - check portal UI'
+    };
+  } else {
+    Logger.log('❌ SIMPLIFIED PORTAL STRUCTURE TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
