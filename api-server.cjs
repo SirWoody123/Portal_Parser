@@ -402,13 +402,25 @@ app.post('/opportunities', async (req, res) => {
     // 2. Save to master portal's Firebase using configured collection path
     const [collection, subcollection, listCollection] = config.targetCollectionPath.split('/');
     
+    console.log(`🔥 PATCH28: Attempting Firebase write to ${collection}/${subcollection}/${listCollection}`);
+    console.log('🔥 PATCH28: Firebase credentials check:', {
+      hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
+      hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+      hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+      projectId: process.env.FIREBASE_PROJECT_ID?.substring(0, 10) + '...'
+    });
+    
     // Always use Firebase auto-generated ID
+    console.log('🔥 PATCH28: Calling db.collection().add()...');
     const docRef = await db.collection(collection).doc(subcollection).collection(listCollection).add(transformedData);
+    console.log('🔥 PATCH28: Firebase add() successful, doc ID:', docRef.id);
     
     // Update the ID in the document with Firebase's auto-generated ID
     const generatedId = docRef.id;
     transformedData.id = generatedId;
+    console.log('🔥 PATCH28: Calling docRef.update()...');
     await docRef.update({ id: generatedId });
+    console.log('🔥 PATCH28: Firebase update() successful');
 
     console.log(`✅ Successfully saved to master portal: ${config.targetCollectionPath}/${generatedId}`);
     console.log('Transformed data:', transformedData);
@@ -420,10 +432,22 @@ app.post('/opportunities', async (req, res) => {
       data: transformedData,
     });
   } catch (error) {
-    console.error('❌ Error processing opportunity:', error);
+    console.error('❌ PATCH28: Error processing opportunity:', error);
+    console.error('❌ PATCH28: Error stack:', error.stack);
+    console.error('❌ PATCH28: Error details:', {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+      details: error.details
+    });
     res.status(500).json({
       error: 'Error processing request.',
-      details: error.message
+      details: error.message,
+      patch28Debug: {
+        errorCode: error.code,
+        errorName: error.name,
+        stackTrace: error.stack?.split('\n').slice(0, 3)
+      }
     });
   }
 });
