@@ -262,20 +262,48 @@ const transformData = (data) => {
     data.demographic.industry.forEach(addTag);
   }
 
-  // Process demographic fields
-  const demo = (data.tags && data.tags.demographic) ? data.tags.demographic : (data.demographic || {});
+  // Process demographic fields (handle both single values and arrays)
+  // Check both data.demographic and data.tags.demographic
+  const demo1 = data.demographic || {};
+  const demo2 = (data.tags && data.tags.demographic) ? data.tags.demographic : {};
   const demographicFields = ['age', 'genderSexualPreference', 'ethnicity', 'disability', 'lowerSocioEconomicBackground'];
-  demographicFields.forEach(field => {
-    if (demo[field]) {
-      addTag(demo[field]);
+  
+  // Process both demographic objects
+  [demo1, demo2].forEach(demo => {
+    demographicFields.forEach(field => {
+      if (demo[field]) {
+        if (Array.isArray(demo[field])) {
+          // Handle array of demographic values
+          demo[field].forEach(addTag);
+        } else {
+          // Handle single demographic value
+          addTag(demo[field]);
+        }
+      }
+    });
+    
+    // Also process industry from demographic object
+    if (demo.industry && Array.isArray(demo.industry)) {
+      demo.industry.forEach(addTag);
     }
   });
 
   // Process any additional tags
   if (Array.isArray(data.tags)) {
     data.tags.forEach(addTag);
-  } else if (data.tags && typeof data.tags === 'object' && Array.isArray(data.tags.tags)) {
-    data.tags.tags.forEach(addTag);
+  } else if (data.tags && typeof data.tags === 'object') {
+    // Process tags.tags array (main tags from Google Apps Script)
+    if (Array.isArray(data.tags.tags)) {
+      data.tags.tags.forEach(addTag);
+    }
+    // Process tags.industry array
+    if (Array.isArray(data.tags.industry)) {
+      data.tags.industry.forEach(addTag);
+    }
+    // Process tags.keywords array
+    if (Array.isArray(data.tags.keywords)) {
+      data.tags.keywords.forEach(addTag);
+    }
   }
 
   // Convert Set to Array
