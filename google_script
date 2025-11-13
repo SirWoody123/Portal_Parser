@@ -531,19 +531,19 @@ function processDocument(file) {
     // Add keyword tags
     tagsArr = tagsArr.concat(keywordsArr);
 
-    // Define allowed demographic values (PATCH21: Added "All" options that expand to include all individual values)
-    var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', 'All ages'];
+    // Define allowed demographic values (PATCH29: Fixed to match portal UI expectations exactly)
+    var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only', 'All ages'];
     var allowedGenders = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say', 'All genders & preferences'];
     var allowedEthnicities = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say', 'All ethnicities'];
-    var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'All disability'];
-    var allowedSocioEconomic = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals'];
+    var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health', 'All disability'];
+    var allowedSocioEconomic = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background'];
     
-    // Define what "All" options expand to
-    var allAgeOptions = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under'];
+    // Define what "All" options expand to (PATCH29: Added portal-compatible options)
+    var allAgeOptions = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only'];
     var allGenderOptions = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
     var allEthnicityOptions = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
-    var allDisabilityOptions = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment'];
-    var allSocioEconomicOptions = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals'];
+    var allDisabilityOptions = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health'];
+    var allSocioEconomicOptions = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background'];
 
     // Extract demographic values and add them to tagsArr (PATCH21: Handle "All" expansions)
     var ageString = '';
@@ -1004,6 +1004,59 @@ function testSimplifiedPortalStructure() {
 }
 
 /**
+ * 🧪 Test Portal UI Demographics Fix - PATCH29 NEW TEST!
+ */
+function testPortalUIDemographicsFix() {
+  Logger.log('🧪 Testing Portal UI Demographics Fix (PATCH29)...');
+  
+  var testData = {
+    id: 'portal-ui-demographics-fix-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Portal UI Demographics Fix Test - Should Show All Demographic Sections',
+    shortSummary: 'Testing that demographics appear in both hashtags AND demographic sections of portal UI.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/portal-ui-demographics-fix-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'PATCH29: Should create both hashtag tags AND demographic object with portal-compatible text values.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'He/Him', 'Arab', '18+ only', 'Physical disability', 'Lower socio-economic background'] // ← Demographic keywords that should become both tags AND demographic object
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should create hashtag tags AND populate demographic sections with portal-compatible text');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 PORTAL UI DEMOGRAPHICS FIX TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Portal UI - should show demographics in BOTH hashtag section AND demographic sections');
+    Logger.log('🎯 Expected in hashtag section: Multiple demographic tag IDs');
+    Logger.log('🎯 Expected in demographic sections: He/Him, Arab, 18+ only, Physical disability, Lower socio-economic');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Portal UI demographics fix test completed - check both hashtag and demographic sections'
+    };
+  } else {
+    Logger.log('❌ PORTAL UI DEMOGRAPHICS FIX TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
  * 🧪 Test Demographic Arrays Fix - PATCH25 NEW TEST!
  */
 function testDemographicArraysFix() {
@@ -1047,6 +1100,58 @@ function testDemographicArraysFix() {
     };
   } else {
     Logger.log('❌ DEMOGRAPHIC ARRAYS FIX TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Physical Disability Multi-Tag Fix - CRITICAL TEST!
+ */
+function testPhysicalDisabilityMultiTag() {
+  Logger.log('🧪 Testing Physical Disability Multi-Tag Fix...');
+  
+  var testData = {
+    id: 'physical-disability-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Physical Disability Test - Should Generate 3 Tag IDs',
+    shortSummary: 'Testing that Physical disability keyword generates all 3 required Firebase tag IDs.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/physical-disability-test',
+    salary: '£18,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'EXPECTED: Should generate 3 Firebase tag IDs for Physical disability: 09Q2FEVzWlOBc5AqoypO, QCMHvYz9oUPPPhOsXDek, YI6XgFxHn8x4LYzkHkIM',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'Physical disability'] // ← This should generate 3 tag IDs
+    }
+  };
+
+  Logger.log('🟦 Input keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Physical disability should create 3 separate Firebase tag IDs');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 PHYSICAL DISABILITY TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 NOW CHECK: Does Firebase document have all 3 Physical disability tag IDs?');
+    Logger.log('🎯 Expected IDs: 09Q2FEVzWlOBc5AqoypO, QCMHvYz9oUPPPhOsXDek, YI6XgFxHn8x4LYzkHkIM');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Physical disability test completed - check Firebase for 3 tag IDs'
+    };
+  } else {
+    Logger.log('❌ PHYSICAL DISABILITY TEST FAILED!');
     Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
     
     return {

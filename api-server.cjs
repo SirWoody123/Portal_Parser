@@ -22,8 +22,8 @@ const TAG_NAME_TO_ID = {
   "Only those from lower socio-economic background": "V9J6aDjeQc7hIePqgsCh",
   "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG",
 
-  // Communities/Disability (PATCH27: Fixed with correct CSV mappings)
-  "Physical disability": "09Q2FEVzWlOBc5AqoypO", // From CSV: communities section
+  // Communities/Disability (PATCH28C: ALL related tag IDs for each concept)
+  "Physical disability": ["09Q2FEVzWlOBc5AqoypO", "QCMHvYz9oUPPPhOsXDek", "YI6XgFxHn8x4LYzkHkIM"], // ALL 3 physical disability IDs from CSV
   "Neurodiversity": "Yk6phdz0yBMP0c0rULDx", // From CSV: equality section (most specific)
   "Chronic illness": "S6BVkq9Z9rSfeAs1rR78", // From CSV: communities section
   "Hearing impairment": "09Q2FEVzWlOBc5AqoypO", // Using Physical disability ID - no specific ID in CSV
@@ -237,23 +237,44 @@ const transformData = (data) => {
     const stripped = raw.startsWith('#') ? raw.substring(1) : raw;
     const key = normalizeKey(stripped);
 
-    // Try exact and normalized matches
-    if (TAG_NAME_TO_ID.hasOwnProperty(stripped)) return TAG_NAME_TO_ID[stripped];
+    // Try exact and normalized matches (PATCH28C: Handle array values)
+    if (TAG_NAME_TO_ID.hasOwnProperty(stripped)) {
+      const result = TAG_NAME_TO_ID[stripped];
+      return Array.isArray(result) ? result : result; // Return as-is (could be string or array)
+    }
     for (const k of Object.keys(TAG_NAME_TO_ID)) {
-      if (normalizeKey(k) === key) return TAG_NAME_TO_ID[k];
+      if (normalizeKey(k) === key) {
+        const result = TAG_NAME_TO_ID[k];
+        return Array.isArray(result) ? result : result; // Return as-is (could be string or array)
+      }
     }
     return null;
   }
   
   let allTags = new Set();
 
-  // Helper to add a tag if it resolves to a valid ID
+  // Helper to add a tag if it resolves to a valid ID (PATCH25: Enhanced debugging + Handle multiple IDs)
   function addTag(tag) {
     if (typeof tag === 'string') {
-      const tagId = getTagCode(tag);
-      if (tagId) {
-        allTags.add(tagId);
+      console.log(`🔍 PATCH25 DEBUG: Processing tag "${tag}"`);
+      const tagResult = getTagCode(tag);
+      console.log(`🔍 PATCH25 DEBUG: getTagCode("${tag}") returned:`, tagResult);
+      
+      if (tagResult) {
+        if (Array.isArray(tagResult)) {
+          // Add all IDs if it's an array (e.g., Physical disability has 3 IDs)
+          console.log(`✅ PATCH25 DEBUG: Adding ${tagResult.length} IDs for "${tag}":`, tagResult);
+          tagResult.forEach(id => allTags.add(id));
+        } else {
+          // Add single ID
+          console.log(`✅ PATCH25 DEBUG: Adding single ID for "${tag}":`, tagResult);
+          allTags.add(tagResult);
+        }
+      } else {
+        console.log(`❌ PATCH25 DEBUG: No tag ID found for "${tag}"`);
       }
+    } else {
+      console.log(`⚠️ PATCH25 DEBUG: Skipping non-string tag:`, tag);
     }
   }
 
@@ -277,11 +298,17 @@ const transformData = (data) => {
     }
   });
 
-  // Process any additional tags
+  // Process any additional tags (PATCH25: Enhanced debugging)
+  console.log('🔍 PATCH25 DEBUG: Processing tags. data.tags structure:', JSON.stringify(data.tags, null, 2));
+  
   if (Array.isArray(data.tags)) {
+    console.log('🔍 PATCH25 DEBUG: Processing data.tags as array:', data.tags);
     data.tags.forEach(addTag);
   } else if (data.tags && typeof data.tags === 'object' && Array.isArray(data.tags.tags)) {
+    console.log('🔍 PATCH25 DEBUG: Processing data.tags.tags as array:', data.tags.tags);
     data.tags.tags.forEach(addTag);
+  } else {
+    console.log('❌ PATCH25 DEBUG: No valid tags array found');
   }
 
   // Convert Set to Array
