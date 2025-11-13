@@ -1,0 +1,93 @@
+/**
+ * Check for duplicate tag IDs in our mappings
+ */
+
+// Test demographic arrays from Google Apps Script
+const demographicArrays = {
+  age: ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under'],
+  genderSexualPreference: ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'],
+  ethnicity: ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'],
+  disability: ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment'],
+  lowerSocioEconomicBackground: ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh']
+};
+
+// Updated TAG_NAME_TO_ID mapping from our API server
+const TAG_NAME_TO_ID = {
+  // Ages
+  "16 and under": "Yfxp8QQJtghr4qQPmkx8",
+  "21": "3RFE8LOp5gmRFKBnq3Y7",
+  "22": "Wk1k8kt8tZlALiVeW0Qq",
+  "23": "SjDtv9VjoKmpzKZvfXzp",
+  "24": "PIAq1kX4RW63lJ4jYZn0",
+  "25": "ypAb8alCEnbvDlS5ZqLu",
+  "Under 18": "cb70qB5JuW1SeTK7WmbY",
+  "Over 18": "6Bj2Xtzi0uIWc8ZrTVtY",
+  "Over 25": "sS3aP11L68igBoD7f0xe",
+
+  // Genders
+  "He/Him": "BGHOxtT7mL635uaWX7Wd",
+  "They/Them": "D8TZCPwER6lzJV3p1fmA",
+  "She/Her": "Ljk28RD3LQJHXb1OXzz7",
+  "Non-binary": "D8TZCPwER6lzJV3p1fmA", // DUPLICATE: same as They/Them
+  "Transgender": "D8TZCPwER6lzJV3p1fmA", // DUPLICATE: same as They/Them
+  "Intersex": "D8TZCPwER6lzJV3p1fmA", // DUPLICATE: same as They/Them
+  "Other": "JNNkRh7GpLhmtNLhIBRZ",
+  "Prefer not to say": "WMLPtNRCGSBbv7bViz1S",
+
+  // Ethnicities
+  "White or White British": "OzWIBHiSh2UmWvQAQpFd",
+  "African, Caribbean or Black British": "DUK2DyQTTnvJXp83Cuuw",
+  "Asian or Asian British": "RRPIGD8goCRgLEiCoTsi",
+  "Mixed or Multiple Ethnic group": "dtHf8HC9oZbwuuykzRrE",
+  "Other Ethnic Group": "ZBpKSjEz0oGXA7Ju6Rh1",
+  "Arab": "x0WOQE0IZSuOTggNB3kE",
+  "Prefer not to say": "WMLPtNRCGSBbv7bViz1S", // DUPLICATE: same as gender "Prefer not to say"
+
+  // Disabilities  
+  "Chronic illness": "S6BVkq9Z9rSfeAs1rR78",
+  "Hearing impairment": "09Q2FEVzWlOBc5AqoypO",
+  "Neurodiversity": "4Ed3aFDBvrMHL53yYN4Z",
+  "Physical disability": "09Q2FEVzWlOBc5AqoypO", // DUPLICATE: same as Hearing impairment
+  "Visual impairment": "4Ed3aFDBvrMHL53yYN4Z", // DUPLICATE: same as Neurodiversity
+
+  // Socio-economic
+  "20fXkU9RdlTlpfcS5K5D": "20fXkU9RdlTlpfcS5K5D",
+  "V9J6aDjeQc7hIePqgsCh": "V9J6aDjeQc7hIePqgsCh"
+};
+
+console.log('🔍 Checking for duplicate tag IDs...\n');
+
+const uniqueTagIds = new Set();
+let totalValues = 0;
+
+Object.keys(demographicArrays).forEach(category => {
+  console.log(`📋 ${category.toUpperCase()}:`);
+  
+  demographicArrays[category].forEach(value => {
+    totalValues++;
+    const tagId = TAG_NAME_TO_ID[value];
+    if (tagId) {
+      if (uniqueTagIds.has(tagId)) {
+        console.log(`  🔄 "${value}" → ${tagId} (DUPLICATE)`);
+      } else {
+        console.log(`  ✅ "${value}" → ${tagId} (UNIQUE)`);
+        uniqueTagIds.add(tagId);
+      }
+    } else {
+      console.log(`  ❌ "${value}" → NOT FOUND`);
+    }
+  });
+  console.log('');
+});
+
+console.log(`📊 Summary:`);
+console.log(`  Total demographic values: ${totalValues}`);
+console.log(`  Unique tag IDs: ${uniqueTagIds.size}`);
+console.log(`  Duplicates: ${totalValues - uniqueTagIds.size}`);
+console.log(`\n🎯 Expected Firebase tags array length: ${uniqueTagIds.size}`);
+
+console.log('\n🏷️ Unique tag IDs that should appear in Firebase:');
+const sortedTagIds = Array.from(uniqueTagIds).sort();
+sortedTagIds.forEach((tagId, index) => {
+  console.log(`${index + 1}. ${tagId}`);
+});

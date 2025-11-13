@@ -22,12 +22,12 @@ const TAG_NAME_TO_ID = {
   "Only those from lower socio-economic background": "V9J6aDjeQc7hIePqgsCh",
   "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG",
 
-  // Communities/Disability (from CSV)
-  "Physical disability": "09Q2FEVzWlOBc5AqoypO", // Fixed: correct CSV mapping
-  "Neurodiversity": "4Ed3aFDBvrMHL53yYN4Z", // Fixed: correct CSV mapping  
-  "Chronic illness": "S6BVkq9Z9rSfeAs1rR78",
-  "Hearing impairment": "09Q2FEVzWlOBc5AqoypO", // Using Physical disability ID - needs unique ID
-  "Visual impairment": "4Ed3aFDBvrMHL53yYN4Z", // Using Neurodiversity ID - needs unique ID
+  // Communities/Disability (PATCH27: Fixed with correct CSV mappings)
+  "Physical disability": "09Q2FEVzWlOBc5AqoypO", // From CSV: communities section
+  "Neurodiversity": "Yk6phdz0yBMP0c0rULDx", // From CSV: equality section (most specific)
+  "Chronic illness": "S6BVkq9Z9rSfeAs1rR78", // From CSV: communities section
+  "Hearing impairment": "09Q2FEVzWlOBc5AqoypO", // Using Physical disability ID - no specific ID in CSV
+  "Visual impairment": "Yk6phdz0yBMP0c0rULDx", // Using Neurodiversity ID - no specific ID in CSV
   "LGBTQIA+": "92OxqHPOwpUDI765t62h",
   "Mental health": "wxvBjYt6r8aXPo51j0nI", // Fixed: correct CSV mapping
   "Carer": "EnzIhbSJi60VWwmFjq6F",
@@ -59,7 +59,7 @@ const TAG_NAME_TO_ID = {
   "Asian or Asian British": "RRPIGD8goCRgLEiCoTsi", // Fixed: correct CSV mapping
   "Black": "igXCnhhokWdi5FvqiDha",
   "African, Caribbean or Black British": "DUK2DyQTTnvJXp83Cuuw", // Fixed: correct CSV mapping
-  "Arab": "x0WOQE0IZSuOTggNB3kE",
+  "Arab": "uoo9FHEqHrUFVGSc2McX", // Fixed: correct CSV mapping from ethnicity section
   "Prefer not to say": "WMLPtNRCGSBbv7bViz1S", // Using Race ID
 
   // --- INDUSTRIES (from CSV) ---

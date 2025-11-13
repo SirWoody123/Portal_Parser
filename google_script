@@ -536,14 +536,14 @@ function processDocument(file) {
     var allowedGenders = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say', 'All genders & preferences'];
     var allowedEthnicities = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say', 'All ethnicities'];
     var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'All disability'];
-    var allowedSocioEconomic = ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh', 'All backgrounds'];
+    var allowedSocioEconomic = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals'];
     
     // Define what "All" options expand to
     var allAgeOptions = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under'];
     var allGenderOptions = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
     var allEthnicityOptions = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
     var allDisabilityOptions = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment'];
-    var allSocioEconomicOptions = ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh'];
+    var allSocioEconomicOptions = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals'];
 
     // Extract demographic values and add them to tagsArr (PATCH21: Handle "All" expansions)
     var ageString = '';
