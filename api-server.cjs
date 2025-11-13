@@ -118,7 +118,7 @@ const TAG_NAME_TO_ID = {
 
   // --- EQUALITY & DIVERSITY (from CSV) ---
   "Accessibility": "9Z0KCkg1UndKEeGsGRWF",
-  "Physical disability": "YI6XgFxHn8x4LYzkHkIM", // From equality section
+  // "Physical disability" - REMOVED DUPLICATE! Already defined above with 3 IDs
   "Neurodiversity": "Yk6phdz0yBMP0c0rULDx", // From equality section
   "Race": "WMLPtNRCGSBbv7bViz1S",
   "LGBTQIA": "mzZKi6mwaVEwTeNkpAjb",

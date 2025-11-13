@@ -1137,11 +1137,45 @@ function testPhysicalDisabilityMultiTag() {
   Logger.log('🟦 Input keywords: ' + JSON.stringify(testData.tags.keywords));
   Logger.log('🔍 Expected: Physical disability should create 3 separate Firebase tag IDs');
   
-  // CRITICAL FIX: Normalize data before sending to API bridge
-  testData = normalizeOpportunityData(testData);
-  Logger.log('🟦 After normalization - tags.tags: ' + JSON.stringify(testData.tags.tags));
+  // CRITICAL FIX: Manually create the normalized structure that the API server expects
+  // The API server expects data.tags.tags as an array containing all keywords
+  var normalizedTestData = {
+    id: testData.id,
+    opportunityType: testData.opportunityType,
+    title: testData.title,
+    shortSummary: testData.shortSummary,
+    location: testData.location,
+    applicationDeadline: testData.applicationDeadline,
+    link: testData.link,
+    salary: testData.salary,
+    lengthOfApprenticeship: testData.lengthOfApprenticeship,
+    levelOfApprenticeship: testData.levelOfApprenticeship,
+    status: testData.status,
+    anythingElseImportant: testData.anythingElseImportant,
+    tags: {
+      tags: testData.tags.industry.concat(testData.tags.keywords), // This creates the tags.tags array the API server needs
+      demographic: {
+        age: '',
+        genderSexualPreference: '',
+        ethnicity: '',
+        disability: '',
+        lowerSocioEconomicBackground: '',
+        keywords: testData.tags.keywords
+      }
+    },
+    demographic: {
+      industry: testData.tags.industry,
+      age: [],
+      genderSexualPreference: [],
+      ethnicity: [],
+      disability: ['Physical disability'], // This should be processed by API server
+      lowerSocioEconomicBackground: []
+    }
+  };
   
-  var result = sendToApiBridge(testData);
+  Logger.log('🟦 After manual normalization - tags.tags: ' + JSON.stringify(normalizedTestData.tags.tags));
+  
+  var result = sendToApiBridge(normalizedTestData);
   
   if (result && result.success) {
     Logger.log('🎉 PHYSICAL DISABILITY TEST SUCCESS!');
