@@ -452,6 +452,41 @@ app.post('/opportunities', async (req, res) => {
   }
 });
 
+// PATCH28: Document verification endpoint
+app.get('/opportunities/:docId', async (req, res) => {
+  try {
+    const docId = req.params.docId;
+    const [collection, subcollection, listCollection] = config.targetCollectionPath.split('/');
+    
+    console.log(`🔍 PATCH28: Attempting to read document ${docId} from ${collection}/${subcollection}/${listCollection}`);
+    
+    const docRef = db.collection(collection).doc(subcollection).collection(listCollection).doc(docId);
+    const docSnap = await docRef.get();
+    
+    if (docSnap.exists) {
+      console.log(`✅ PATCH28: Document ${docId} exists!`);
+      res.status(200).json({
+        exists: true,
+        id: docId,
+        data: docSnap.data()
+      });
+    } else {
+      console.log(`❌ PATCH28: Document ${docId} does not exist`);
+      res.status(404).json({
+        exists: false,
+        id: docId,
+        message: 'Document not found'
+      });
+    }
+  } catch (error) {
+    console.error(`❌ PATCH28: Error reading document ${req.params.docId}:`, error);
+    res.status(500).json({
+      error: 'Error reading document',
+      details: error.message
+    });
+  }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
