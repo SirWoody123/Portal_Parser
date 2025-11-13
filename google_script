@@ -632,31 +632,12 @@ function processDocument(file) {
       }
     }
 
-    // Add demographic tags to main tags array (or ALL if none specified)
-    var finalAgeTagsToAdd = ageTagsToAdd.length > 0 ? ageTagsToAdd : allAgeOptions;
-    var finalGenderTagsToAdd = genderTagsToAdd.length > 0 ? genderTagsToAdd : allGenderOptions;
-    var finalEthnicityTagsToAdd = ethnicityTagsToAdd.length > 0 ? ethnicityTagsToAdd : allEthnicityOptions;
-    var finalDisabilityTagsToAdd = disabilityTagsToAdd.length > 0 ? disabilityTagsToAdd : allDisabilityOptions;
-    var finalSocioEconomicTagsToAdd = socioEconomicTagsToAdd.length > 0 ? socioEconomicTagsToAdd : allSocioEconomicOptions;
+    // DON'T add demographic tags to main tags array here!
+    // Let the API server handle the demographic -> tag ID conversion
+    // The demographic object below will be processed by the API server
 
-    finalAgeTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
-    finalGenderTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
-    finalEthnicityTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
-    finalDisabilityTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
-    finalSocioEconomicTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
-
-    // *** PATCH21 FIX + DEFAULT "ALL" BEHAVIOR: Handle both individual demographics and "All" expansions ***
-    // If no demographic keywords found, default to "All" options (expand to all individual values)
+    // *** PATCH25 FIX: Demographic object for API server processing ***
+    // The API server will convert these demographic arrays to Firebase tag IDs
     var demographicObj = {
       industry: industryTags, // Keep as array for demographic.industry
       age: ageString ? (ageString === 'All ages' ? allAgeOptions : [ageString]) : allAgeOptions, // Default to ALL ages if empty
@@ -1013,6 +994,59 @@ function testSimplifiedPortalStructure() {
     };
   } else {
     Logger.log('❌ SIMPLIFIED PORTAL STRUCTURE TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Demographic Arrays Fix - PATCH25 NEW TEST!
+ */
+function testDemographicArraysFix() {
+  Logger.log('🧪 Testing Demographic Arrays Fix (PATCH25)...');
+  
+  var testData = {
+    id: 'demographic-arrays-fix-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Demographic Arrays Fix Test - Should Include ALL Demographic Tag IDs',
+    shortSummary: 'Testing that the API server properly processes demographic arrays and includes ALL demographic tag IDs in Firebase.',
+    location: 'London, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/demographic-arrays-fix-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'EXPECTED: Firebase tags array should contain 60+ tag IDs covering ALL demographic categories (age, gender, ethnicity, disability, socio-economic).',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding'] // ← NO demographic keywords = default to ALL
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should default to ALL demographics and include ALL tag IDs (60+ tags)');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 DEMOGRAPHIC ARRAYS FIX TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should have 60+ tag IDs covering all demographics');
+    Logger.log('🎯 Expected tag categories: ages (14 tags), genders (8 tags), ethnicities (7 tags), disabilities (5 tags), socio-economic (2 tags)');
+    Logger.log('🎯 Portal should now show ALL demographics selected!');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Demographic arrays fix test completed - check Firebase for 60+ tag IDs'
+    };
+  } else {
+    Logger.log('❌ DEMOGRAPHIC ARRAYS FIX TEST FAILED!');
     Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
     
     return {
