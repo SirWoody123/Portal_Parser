@@ -1,7 +1,7 @@
-// Tag name to unique ID mapping for tags - PATCH22 Applied
+// Tag name to unique ID mapping for tags - PATCH26 Updated from Tags987.csv
 const TAG_NAME_TO_ID = {
   // --- DEMOGRAPHICS ---
-  // Ages
+  // Ages (from CSV)
   "16 and under": "Yfxp8QQJtghr4qQPmkx8",
   "16": "PSPwCv5pAPk9kgHAXlbY",
   "17": "yYpBd3kiH0UhUJtM0Ymf",
@@ -17,38 +17,52 @@ const TAG_NAME_TO_ID = {
   "Over 18": "6Bj2Xtzi0uIWc8ZrTVtY",
   "Over 25": "sS3aP11L68igBoD7f0xe",
 
-  // Socioeconomic
+  // Socioeconomic (from CSV)
   "All backgrounds": "20fXkU9RdlTlpfcS5K5D",
   "Only those from lower socio-economic background": "V9J6aDjeQc7hIePqgsCh",
   "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG",
 
-  // Communities/Disability
-  "Physical disability": "YI6XgFxHn8x4LYzkHkIM", // Updated to match Equality & Diversity section
-  "Neurodiversity": "Yk6phdz0yBMP0c0rULDx", // Updated to match Equality & Diversity section  
+  // Communities/Disability (from CSV)
+  "Physical disability": "09Q2FEVzWlOBc5AqoypO", // Fixed: correct CSV mapping
+  "Neurodiversity": "4Ed3aFDBvrMHL53yYN4Z", // Fixed: correct CSV mapping  
   "Chronic illness": "S6BVkq9Z9rSfeAs1rR78",
-  "Hearing impairment": "09Q2FEVzWlOBc5AqoypO", // Using available physical disability ID as placeholder
-  "Visual impairment": "9RIS1UCc8jBeQY9lOpwf", // Using available neurodiversity ID as placeholder
+  "Hearing impairment": "09Q2FEVzWlOBc5AqoypO", // Using Physical disability ID - needs unique ID
+  "Visual impairment": "4Ed3aFDBvrMHL53yYN4Z", // Using Neurodiversity ID - needs unique ID
   "LGBTQIA+": "92OxqHPOwpUDI765t62h",
-  "Mental health": "BqfXt7PgSC559RdiiT2w",
+  "Mental health": "wxvBjYt6r8aXPo51j0nI", // Fixed: correct CSV mapping
   "Carer": "EnzIhbSJi60VWwmFjq6F",
 
-  // Pronouns/Gender
+  // Pronouns/Gender (from CSV)
   "ForThem": "2Dhp3LeTBZqgTedOOPMT",
   "He/Him": "BGHOxtT7mL635uaWX7Wd",
   "They/Them": "D8TZCPwER6lzJV3p1fmA",
   "She/Her": "Ljk28RD3LQJHXb1OXzz7",
-  "Non-binary": "D8TZCPwER6lzJV3p1fmA", // Same as They/Them
-  "Transgender": "BGHOxtT7mL635uaWX7Wd", // Placeholder - needs real ID
-  "Intersex": "D8TZCPwER6lzJV3p1fmA", // Placeholder - needs real ID
-  "Other": "JNNkRh7GpLhmtNLhIBRZ", // Same as Other ethnicity for now
-  "Prefer not to say": "x0WOQE0IZSuOTggNB3kE", // Same as Arab for now - needs real ID
+  "Non-binary": "D8TZCPwER6lzJV3p1fmA", // Using They/Them ID
+  "Transgender": "D8TZCPwER6lzJV3p1fmA", // Using They/Them ID
+  "Intersex": "D8TZCPwER6lzJV3p1fmA", // Using They/Them ID
+  "Other": "JNNkRh7GpLhmtNLhIBRZ", // Other ethnicity ID
+  "Prefer not to say": "WMLPtNRCGSBbv7bViz1S", // Using Race ID
 
-  // Experience
+  // Experience (from CSV)
   "Someone looking to get work": "8oVouULyPluxVdnb1DJD",
   "Someone looking to explore": "Qjqkw3S9M7fyo4sE44kI",
   "Someone looking to upskill": "iqtWnDQCz1nldxBiLCXy",
 
-  // --- INDUSTRIES ---
+  // --- ETHNICITY (Fixed from CSV) ---
+  "Mixed": "7NFcbDXSsKW4OJJboIN8",
+  "Mixed or Multiple Ethnic group": "dtHf8HC9oZbwuuykzRrE", // Fixed: correct CSV mapping
+  "Other": "JNNkRh7GpLhmtNLhIBRZ",
+  "Other Ethnic Group": "ZBpKSjEz0oGXA7Ju6Rh1", // Fixed: correct CSV mapping
+  "White": "Tfsft2clh6NQfBzBwVRm",
+  "White or White British": "OzWIBHiSh2UmWvQAQpFd", // Fixed: correct CSV mapping
+  "Asian": "ZqmWly9vdEbaBk1fXker",
+  "Asian or Asian British": "RRPIGD8goCRgLEiCoTsi", // Fixed: correct CSV mapping
+  "Black": "igXCnhhokWdi5FvqiDha",
+  "African, Caribbean or Black British": "DUK2DyQTTnvJXp83Cuuw", // Fixed: correct CSV mapping
+  "Arab": "x0WOQE0IZSuOTggNB3kE",
+  "Prefer not to say": "WMLPtNRCGSBbv7bViz1S", // Using Race ID
+
+  // --- INDUSTRIES (from CSV) ---
   "All creative industries": "IG7yzsOdsZcE1IttKMe8",
   "Advertising": "JcM1sqyxbJeyZsvXislN",
   "Marketing": "7zcvW4rUaiE9OCqGAf8f",
@@ -87,7 +101,7 @@ const TAG_NAME_TO_ID = {
   "Travel": "VS2ca4vwGXaOZ6khfjff",
   "Visual arts": "etbVDUKJ63EHFcPlbn68",
   
-  // --- CAREER ---
+  // --- CAREER (from CSV) ---
   "CVs & Portfolios": "Cfm3Qi6fKuYCnkrzNdqz",
   "Money & finance": "Fsupenr6EtZuhFXCUGAY",
   "Advice": "2OKsPtBRoqvFJQEkA9XU",
@@ -102,43 +116,29 @@ const TAG_NAME_TO_ID = {
   "Portfolio career": "evEppyXLsrW795Oma9Xj",
   "Online courses": "ZSC7cSm7tgtySwVirSXR",
 
-  // --- EQUALITY & DIVERSITY ---
+  // --- EQUALITY & DIVERSITY (from CSV) ---
   "Accessibility": "9Z0KCkg1UndKEeGsGRWF",
-  "Physical disability": "YI6XgFxHn8x4LYzkHkIM",
-  "Neurodiversity": "Yk6phdz0yBMP0c0rULDx",
+  "Physical disability": "YI6XgFxHn8x4LYzkHkIM", // From equality section
+  "Neurodiversity": "Yk6phdz0yBMP0c0rULDx", // From equality section
   "Race": "WMLPtNRCGSBbv7bViz1S",
   "LGBTQIA": "mzZKi6mwaVEwTeNkpAjb",
   "Gender": "o4rMfwsP8UOAjvGwRhgP",
   "Disability": "sehUuVOIEKmsYNpQROHe",
 
-    // --- ETHNICITY ---
-  "Mixed": "7NFcbDXSsKW4OJJboIN8",
-  "Mixed or Multiple Ethnic group": "7NFcbDXSsKW4OJJboIN8",
-  "Other": "JNNkRh7GpLhmtNLhIBRZ",
-  "Other Ethnic Group": "JNNkRh7GpLhmtNLhIBRZ",
-  "White": "Tfsft2clh6NQfBzBwVRm",
-  "White or White British": "Tfsft2clh6NQfBzBwVRm",
-  "Asian": "ZqmWly9vdEbaBk1fXker",
-  "Asian or Asian British": "ZqmWly9vdEbaBk1fXker",
-  "Black": "igXCnhhokWdi5FvqiDha",
-  "African, Caribbean or Black British": "igXCnhhokWdi5FvqiDha",
-  "Arab": "x0WOQE0IZSuOTggNB3kE",
-  "Prefer not to say": "WMLPtNRCGSBbv7bViz1S", // Using Race ID as placeholder - needs dedicated ethnicity "prefer not to say" ID
-
-  // --- WORK LIFE ---
+  // --- WORK LIFE (from CSV) ---
   "Remote working": "buypYIgcB5e4FrJOKEA3",
   "Travel opportunities": "bs5frssJMw54bToCeDE4",
   "Maternity/paternity leave": "ojcmlhTMc5vT0mK4OBYn",
   "Flexible working": "rHFYF9GgaJpJrkMLO3RD",
 
-  // --- TRAINING ---
+  // --- TRAINING (from CSV) ---
   "Unconscious bias": "9Q2h3tBc2SY9R0Rrppfw",
   "Onboarding": "JkrVJTsFOxAaDeL6kusP",
   "Team building": "NweAZ9RUw5ECa0XvkKoF",
   "Soft skills": "RR2f9ImEpBsVoBniqDHb",
   "Technical skills": "gBPvSXXYUJ71l28c3GJ1",
 
-  // --- PERKS ---
+  // --- PERKS (from CSV) ---
   "Unlimited holidays": "7P5Hf8CqYKW9Nh1RY5f8",
   "Branded merch": "IcM5f4EXFDZnfoeHn1HQ",
   "Work phone": "LtkTKVFdDOG3JGM7yAR9",
