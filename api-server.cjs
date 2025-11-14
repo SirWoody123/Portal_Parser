@@ -284,16 +284,23 @@ const transformData = (data) => {
     data.demographic.industry.forEach(addTag);
   }
 
-  // Process demographic fields (PATCH25: Handle arrays of demographic values)
-  const demo = (data.tags && data.tags.demographic) ? data.tags.demographic : (data.demographic || {});
+  // Process demographic fields (PATCH26: Fixed demographic processing)
+  const demo = data.demographic || {};
+  console.log('🔍 PATCH26 DEBUG: Processing demographic data:', JSON.stringify(demo, null, 2));
+  
   const demographicFields = ['age', 'genderSexualPreference', 'ethnicity', 'disability', 'lowerSocioEconomicBackground'];
   demographicFields.forEach(field => {
     if (demo[field]) {
+      console.log(`🔍 PATCH26 DEBUG: Processing ${field}:`, demo[field]);
       if (Array.isArray(demo[field])) {
         // Handle array of demographic values
-        demo[field].forEach(addTag);
+        demo[field].forEach(value => {
+          console.log(`🔍 PATCH26 DEBUG: Processing demographic value "${value}" from ${field}`);
+          addTag(value);
+        });
       } else {
         // Handle single demographic value
+        console.log(`🔍 PATCH26 DEBUG: Processing single demographic value "${demo[field]}" from ${field}`);
         addTag(demo[field]);
       }
     }
@@ -324,6 +331,8 @@ const transformData = (data) => {
   
   // Build demographic object with text values for portal UI
   function buildDemographicObject(demographicData) {
+    console.log('🔍 PATCH26 DEBUG: Building demographic object from:', JSON.stringify(demographicData, null, 2));
+    
     const result = {
       industry: [],
       age: [],
@@ -355,6 +364,7 @@ const transformData = (data) => {
       }
     }
     
+    console.log('🔍 PATCH26 DEBUG: Built demographic object result:', JSON.stringify(result, null, 2));
     return result;
   }
 
