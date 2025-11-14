@@ -18,16 +18,16 @@ const TAG_NAME_TO_ID = {
   "Over 25": "sS3aP11L68igBoD7f0xe",
 
   // Socioeconomic (from CSV)
-  "All backgrounds": "20fXkU9RdlTlpfcS5K5D",
-  "Only those from lower socio-economic background": "V9J6aDjeQc7hIePqgsCh",
+  "All backgrounds": "bPayOs0b1R9a2jXC9Fkt", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
+  "Only those from lower socio-economic background": "5Z0Z1vg34KYVGFdwSrIz", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
   "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG",
 
   // Communities/Disability (PATCH28C: ALL related tag IDs for each concept)
-  "Physical disability": ["09Q2FEVzWlOBc5AqoypO", "QCMHvYz9oUPPPhOsXDek", "YI6XgFxHn8x4LYzkHkIM"], // ALL 3 physical disability IDs from CSV
-  "Neurodiversity": "Yk6phdz0yBMP0c0rULDx", // From CSV: equality section (most specific)
+  "Physical disability": "lFeNbarY7S9XYdQUS79F", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
+  "Neurodiversity": "rT4QGqejDAONg3PmA9Il", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
+  "Hearing impairment": "uLUtXEJ1od2dZrkmMGID", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
   "Chronic illness": "S6BVkq9Z9rSfeAs1rR78", // From CSV: communities section
-  "Hearing impairment": "09Q2FEVzWlOBc5AqoypO", // Using Physical disability ID - no specific ID in CSV
-  "Visual impairment": "Yk6phdz0yBMP0c0rULDx", // Using Neurodiversity ID - no specific ID in CSV
+  "Visual impairment": "t5BMlv7HEf09bHK5a9N0", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
   "LGBTQIA+": "92OxqHPOwpUDI765t62h",
   "Mental health": "wxvBjYt6r8aXPo51j0nI", // Fixed: correct CSV mapping
   "Carer": "EnzIhbSJi60VWwmFjq6F",
@@ -88,6 +88,7 @@ const TAG_NAME_TO_ID = {
   "Podcasting": "nHy5ygseyuQtNDUVxn0J",
   "Radio": "VxeP5CwyZNoKYK3hF8eC",
   "Audio": "Uq7j4jOln0DVzS5VQZIl",
+  "Social Media": "2Bhal1Eyn4bfN719dFdM", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
   "Videography": "GjC6ilPu74QiVYRvRvgg",
   "Publishing": "ybNc8iJxaoo7TjoJyl71",
   "Writing": "OWX5xMlENH8zEqL6ZJzI",

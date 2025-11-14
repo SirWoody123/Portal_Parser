@@ -1110,6 +1110,114 @@ function testDemographicArraysFix() {
 }
 
 /**
+ * 🧪 Test Portal Display Comprehensive - Check ALL demographic types
+ */
+function testPortalDisplayComprehensive() {
+  Logger.log('🧪 Testing Portal Display - ALL Demographics...');
+  
+  var testData = {
+    id: 'portal-display-comprehensive-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Portal Display Test - ALL Demographics Should Show in Portal',
+    shortSummary: 'Testing that ALL demographic types display correctly in the portal UI.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/portal-display-comprehensive-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'COMPREHENSIVE TEST: Should show ALL demographic types in portal UI - Age, Gender, Ethnicity, Disability, Socio-Economic',
+    tags: {
+      industry: ['Technology'],
+      keywords: [
+        'apprentice', 
+        'coding',
+        // Age
+        'Over 18',
+        // Gender  
+        'He/Him',
+        // Ethnicity
+        'Asian or Asian British',
+        // Disability
+        'Physical disability',
+        'Neurodiversity', 
+        // Socio-Economic
+        'All backgrounds'
+      ]
+    }
+  };
+
+  Logger.log('🟦 Input keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Portal should show ALL demographic sections populated');
+  
+  // Manual normalization for API server
+  var normalizedTestData = {
+    id: testData.id,
+    opportunityType: testData.opportunityType,
+    title: testData.title,
+    shortSummary: testData.shortSummary,
+    location: testData.location,
+    applicationDeadline: testData.applicationDeadline,
+    link: testData.link,
+    salary: testData.salary,
+    lengthOfApprenticeship: testData.lengthOfApprenticeship,
+    levelOfApprenticeship: testData.levelOfApprenticeship,
+    status: testData.status,
+    anythingElseImportant: testData.anythingElseImportant,
+    tags: {
+      tags: testData.tags.industry.concat(testData.tags.keywords),
+      demographic: {
+        age: '',
+        genderSexualPreference: '',
+        ethnicity: '',
+        disability: '',
+        lowerSocioEconomicBackground: '',
+        keywords: testData.tags.keywords
+      }
+    },
+    demographic: {
+      industry: testData.tags.industry,
+      age: ['Over 18'],
+      genderSexualPreference: ['He/Him'],
+      ethnicity: ['Asian or Asian British'],
+      disability: ['Physical disability', 'Neurodiversity'],
+      lowerSocioEconomicBackground: ['All backgrounds']
+    }
+  };
+  
+  Logger.log('🟦 After manual normalization - demographic object: ' + JSON.stringify(normalizedTestData.demographic));
+  
+  var result = sendToApiBridge(normalizedTestData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 COMPREHENSIVE PORTAL DISPLAY TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 NOW CHECK PORTAL UI FOR ALL SECTIONS:');
+    Logger.log('🎯 Age section should show: Over 18');
+    Logger.log('🎯 Gender section should show: He/Him');
+    Logger.log('🎯 Ethnicity section should show: Asian or Asian British');
+    Logger.log('🎯 Disability section should show: Physical disability, Neurodiversity');
+    Logger.log('🎯 Socio-Economic section should show: All backgrounds');
+    Logger.log('🎯 Tags/hashtag section should show multiple tag IDs');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Comprehensive portal display test - check ALL demographic sections in portal'
+    };
+  } else {
+    Logger.log('❌ COMPREHENSIVE PORTAL DISPLAY TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
  * 🧪 Test Physical Disability Multi-Tag Fix - CRITICAL TEST!
  */
 function testPhysicalDisabilityMultiTag() {
