@@ -1,0 +1,1308 @@
+/**
+ * ERIC API Bridge Integration - Complete Google Apps Script
+ * 
+ * SETUP INSTRUCTIONS:
+ * 1. Deploy your API bridge to Railway/Heroku
+ * 2. Update CONFIG.API_BRIDGE_URL with your deployment URL
+ * 3. Test with testApiBridgeIntegration() or testRailwayIntegration()
+ * 4. Once working, run installTrigger() to set up automatic processing
+ */
+
+// --- CONFIGURATION ---
+var CONFIG = {
+  // UPDATE THIS WITH YOUR DEPLOYED API BRIDGE URL
+  API_BRIDGE_URL: 'https://apibridge-production.up.railway.app/opportunities',
+  
+  // Your existing parser API (if you have one)
+  PARSER_API_URL: 'https://karolyn-unmendacious-unsuccessively.ngrok-free.dev/api/parse',
+  
+  // Google Drive folder to monitor
+  FOLDER_ID: '1NSsJLDQMYRiz-tX8LlN-ToNKBYRWV84F',
+  
+  // Other settings
+  API_KEY: 'your-api-key-here',
+  ERIC_WEBHOOK_URL: 'https://meet-eric.co/api/opportunities/review'
+};
+
+/**
+ * 🧪 TEST FUNCTION - Run this first to test your deployment
+ */
+function testApiBridgeIntegration() {
+  Logger.log('🧪 Testing API Bridge Integration...');
+  
+  var testData = {
+    id: 'google-apps-script-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Software Developer Apprentice - Test',
+    shortSummary: 'This is a test opportunity sent from Google Apps Script to verify the integration is working.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/apply-test',
+    salary: '£18,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    anythingElseImportant: 'This is a test from Google Apps Script integration.',
+    tags: {
+      industry: ['Technology', 'Software Development'],
+      keywords: ['apprentice', 'coding', 'test', 'google-apps-script']
+    }
+  };
+
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('✅ SUCCESS! Integration is working!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📁 Collection Path: ' + result.collectionPath);
+    Logger.log('🎉 Your Google Apps Script → API Bridge → Firebase integration is live!');
+    
+    // Test different opportunity types
+    Logger.log('🔄 Testing Course opportunity type...');
+    testCourseOpportunity();
+  } else {
+    Logger.log('❌ FAILED! Check your API_BRIDGE_URL and deployment.');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+  }
+}
+
+/**
+ * 🚀 RAILWAY TEST FUNCTION - Specifically for testing Railway deployment
+ */
+function testRailwayIntegration() {
+  Logger.log('🚀 Testing Railway Integration...');
+  Logger.log('🔗 Railway URL: ' + CONFIG.API_BRIDGE_URL);
+  
+  var testData = {
+    id: 'railway-google-apps-script-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Railway Integration Test - Software Developer Apprentice',
+    shortSummary: 'Testing the complete Railway → API Bridge → Firebase integration from Google Apps Script.',
+    location: 'London, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/apply-railway-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '24 months',
+    levelOfApprenticeship: 'Level 4',
+    anythingElseImportant: 'This is a Railway deployment test from Google Apps Script.',
+    tags: {
+      industry: ['Technology', 'Software Development', 'Railway'],
+      keywords: ['apprentice', 'railway', 'deployment', 'integration', 'test']
+    }
+  };
+
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 RAILWAY SUCCESS! Integration is working perfectly!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📁 Collection Path: ' + result.collectionPath);
+    Logger.log('🚀 Railway URL: https://apibridge-production.up.railway.app');
+    Logger.log('✅ Your complete integration is live: Google Apps Script → Railway → Firebase!');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      railwayUrl: 'https://apibridge-production.up.railway.app'
+    };
+  } else {
+    Logger.log('❌ RAILWAY TEST FAILED!');
+    Logger.log('🔗 URL: ' + CONFIG.API_BRIDGE_URL);
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Course Opportunity Type
+ */
+function testCourseOpportunity() {
+  var courseData = {
+    id: 'google-apps-script-course-test-' + Date.now(),
+    opportunityType: 'Course',
+    title: 'Full Stack Web Development Bootcamp - Test',
+    shortSummary: 'Intensive bootcamp covering modern web development technologies.',
+    location: 'Online',
+    applicationDeadline: '2025-11-15T23:59:59Z',
+    link: 'https://example.com/bootcamp-test',
+    lengthOfCourse: '12 weeks',
+    courseType: 'Paid',
+    anythingElseImportant: 'Evening classes available. Portfolio projects included.',
+    tags: {
+      industry: ['Technology', 'Web Development', 'Education'],
+      keywords: ['bootcamp', 'javascript', 'react', 'nodejs', 'full-stack']
+    }
+  };
+
+  var result = sendToApiBridge(courseData);
+  
+  if (result && result.success) {
+    Logger.log('✅ Course test SUCCESS! Doc ID: ' + result.masterPortalDocId);
+  } else {
+    Logger.log('❌ Course test FAILED: ' + (result ? result.error : 'Unknown error'));
+  }
+}
+
+/**
+ * 🧪 Test Demographics Integration - CRITICAL TEST!
+ */
+function testDemographicsIntegration() {
+  Logger.log('🧪 Testing Demographics Integration...');
+  
+  var testData = {
+    id: 'demographics-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Demographics Test - Software Developer Apprentice',
+    shortSummary: 'Testing demographic tag integration from Google Apps Script.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/apply-demographics-test',
+    salary: '£18,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    anythingElseImportant: 'CRITICAL: This test includes demographic keywords that should appear as Firebase tag IDs.',
+    tags: {
+      industry: ['Technology', 'Software Development'],
+      keywords: ['apprentice', 'coding', 'He/Him', 'Asian or Asian British', 'Over 18', 'Neurodiversity']  // ← Fixed demographics!
+    }
+  };
+
+  // This will go through normalizeOpportunityData and should populate tagsArr
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 DEMOGRAPHICS TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should contain tag IDs for: He/Him, Asian or Asian British, Over 18, Neurodiversity');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Demographics test completed - check Firebase for populated tags'
+    };
+  } else {
+    Logger.log('❌ DEMOGRAPHICS TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Empty Demographics - PATCH20 FIX TEST!
+ */
+function testEmptyDemographics() {
+  Logger.log('🧪 Testing Empty Demographics (Patch20 Fix)...');
+  
+  var testData = {
+    id: 'empty-demographics-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Empty Demographics Test - Should Show Select Tags',
+    shortSummary: 'Testing that opportunities with no demographic keywords result in empty demographic arrays.',
+    location: 'Birmingham, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/empty-demographics-test',
+    salary: '£19,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 3',
+    anythingElseImportant: 'EXPECTED: All demographic fields should be empty arrays, UI should show "Select tags" placeholders.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'software'] // ← NO demographic keywords
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: No demographic values should be found, all demographic arrays should be empty');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 EMPTY DEMOGRAPHICS TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - demographic object should have empty arrays for all categories');
+    Logger.log('🎯 UI should show "Select tags" for: Age, Gender, Ethnicity, Disability, Socio-Economic');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Empty demographics test completed - check UI shows "Select tags" placeholders'
+    };
+  } else {
+    Logger.log('❌ EMPTY DEMOGRAPHICS TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test "All" Demographics Expansion - PATCH21 NEW TEST!
+ */
+function testAllDemographicsExpansion() {
+  Logger.log('🧪 Testing "All" Demographics Expansion (Patch21 Fix)...');
+  
+  var testData = {
+    id: 'all-demographics-expansion-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'All Demographics Expansion Test - Should Include All Individual Options',
+    shortSummary: 'Testing that "All genders & preferences", "All ethnicities", etc. expand to include all individual demographic options.',
+    location: 'London, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/all-demographics-expansion-test',
+    salary: '£25,000 per year',
+    lengthOfApprenticeship: '24 months',
+    levelOfApprenticeship: 'Level 4',
+    anythingElseImportant: 'EXPECTED: Should expand to ALL individual options in each demographic category and include all in tags array.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'All genders & preferences', 'All ethnicities', 'All ages', 'All disability', 'All backgrounds'] // ← ALL "All" options
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should expand each "All" option to include all individual demographic values in that category');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 ALL DEMOGRAPHICS EXPANSION TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should contain ALL individual demographic tag IDs for each category');
+    Logger.log('🎯 Expected in tags array: He/Him, She/Her, They/Them, All ethnicities expanded, All ages expanded, etc.');
+    Logger.log('🎯 UI should show all individual demographic options selected for each category');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'All demographics expansion test completed - check Firebase for all individual demographic IDs'
+    };
+  } else {
+    Logger.log('❌ ALL DEMOGRAPHICS EXPANSION TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 📤 Send data to API Bridge (your deployed service)
+ */
+function sendToApiBridge(opportunityData) {
+  Logger.log('📤 Sending to API Bridge: ' + opportunityData.title);
+  
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(opportunityData),
+    muteHttpExceptions: true
+  };
+
+  try {
+    var response = UrlFetchApp.fetch(CONFIG.API_BRIDGE_URL, options);
+    var responseCode = response.getResponseCode();
+    var responseBody = response.getContentText();
+
+    Logger.log('📡 API Bridge Response Code: ' + responseCode);
+
+    if (responseCode === 200) {
+      var result = JSON.parse(responseBody);
+      Logger.log('✅ API Bridge Success: ' + JSON.stringify(result, null, 2));
+      return {
+        success: true,
+        masterPortalDocId: result.masterPortalDocId,
+        collectionPath: result.collectionPath,
+        data: result.data
+      };
+    } else {
+      Logger.log('❌ API Bridge Error: ' + responseBody);
+      return {
+        success: false,
+        error: 'HTTP ' + responseCode + ': ' + responseBody
+      };
+    }
+  } catch (error) {
+    Logger.log('❌ Network Error: ' + error.toString());
+    return {
+      success: false,
+      error: 'Network Error: ' + error.toString()
+    };
+  }
+}
+
+/**
+ * 🔧 PRODUCTION FUNCTIONS - Use these once testing works
+ */
+
+/**
+ * Install trigger to monitor Google Drive folder
+ */
+function installTrigger() {
+  // Delete any existing triggers
+  var triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === 'checkFilesAndProcess') {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
+  
+  // Create new trigger (runs every 12 Hours)
+  ScriptApp.newTrigger('checkFilesAndProcess')
+    .timeBased()
+    .everyHours(12)
+    .create();
+    
+  Logger.log('✅ Trigger installed! Will check for new files every 12 Hours.');
+}
+
+/**
+ * Main function that processes files from Google Drive
+ */
+function checkFilesAndProcess() {
+  try {
+    Logger.log('🔍 Checking for new files in Google Drive folder...');
+    
+    var folder = DriveApp.getFolderById(CONFIG.FOLDER_ID);
+    var files = folder.getFiles();
+    var processedCount = 0;
+    
+    while (files.hasNext()) {
+      var file = files.next();
+      
+      if (isFileProcessed(file.getId())) {
+        continue; // Skip already processed files
+      }
+
+      if (isSupportedFileType(file)) {
+        try {
+          Logger.log('📄 Processing: ' + file.getName());
+          processDocument(file);
+          markFileAsProcessed(file.getId(), 'success');
+          processedCount++;
+        } catch (e) {
+          Logger.log('❌ Error processing ' + file.getName() + ': ' + e.toString());
+          markFileAsProcessed(file.getId(), 'error');
+        }
+      } else {
+        markFileAsProcessed(file.getId(), 'unsupported');
+      }
+    }
+    
+    if (processedCount > 0) {
+      Logger.log('✅ Processed ' + processedCount + ' new files.');
+    } else {
+      Logger.log('ℹ️ No new files to process.');
+    }
+  } catch (e) {
+    Logger.log('❌ Fatal error in checkFilesAndProcess: ' + e.toString());
+  }
+}
+
+/**
+ * Process a single document file
+ */
+function processDocument(file) {
+  // --- NORMALIZATION FUNCTION ---
+  function normalizeOpportunityData(data) {
+    // Helper functions
+    function arr(val) { return Array.isArray(val) ? val : (val ? [val] : []); }
+    function str(val) { return typeof val === 'string' ? val : ''; }
+    function bool(val) { return typeof val === 'boolean' ? val : false; }
+    function strOrNull(val) { return val === null ? null : str(val); }
+    function id(val) { return typeof val === 'string' ? val : (val ? String(val) : ''); }
+
+    // Allowed categories: label and value (frontend expects value)
+    var allowedCategories = [
+      { label: 'Apprenticeship', name: 'apprenticeship' },
+      { label: 'Competition/Grant', name: 'competition-grant' },
+      { label: 'Course', name: 'course' },
+      { label: 'Freelance role', name: 'freelance-role' },
+      { label: 'Internship', name: 'internship' },
+      { label: 'Junior full-time role', name: 'junior-full-time-role' },
+      { label: 'Junior part-time role', name: 'junior-part-time-role' },
+      { label: 'Mentoring', name: 'mentoring' },
+      { label: 'Opportunity', name: 'opportunity' },
+      { label: 'Runner role', name: 'runner-role' },
+      { label: 'Training scheme', name: 'training-scheme' },
+      { label: 'Work experience', name: 'work-experience' }
+    ];
+
+    // Find best match for category (label or value)
+    function mapCategory(val) {
+      var v = str(val).trim();
+      if (!v) return '';
+      // Try label match (case-insensitive)
+      var found = allowedCategories.find(function(opt) { return opt.label.toLowerCase() === v.toLowerCase(); });
+      if (found) return found.name;
+      // Try value match (case-insensitive)
+      found = allowedCategories.find(function(opt) { return opt.name.toLowerCase() === v.toLowerCase(); });
+      if (found) return found.name;
+      return '';
+    }
+
+    var rawCat = str(data.category) || str(data.opportunityType);
+    var mappedCat = mapCategory(rawCat);
+    
+    // Only if not matched, try to infer from filename or tags
+    if (!mappedCat) {
+      var title = str(data.title).toLowerCase();
+      var idVal = str(data.id).toLowerCase();
+      var keywords = [];
+      if (Array.isArray(data.tags)) {
+        data.tags.forEach(function(tagObj) {
+          if (tagObj && Array.isArray(tagObj.keywords)) {
+            keywords = keywords.concat(tagObj.keywords.map(function(k){return String(k).toLowerCase();}));
+          }
+        });
+      }
+      if (title.includes('apprentice') || idVal.includes('apprentice') || keywords.includes('apprentice')) mappedCat = 'apprenticeship';
+      else if (title.includes('intern') || idVal.includes('intern') || keywords.includes('intern')) mappedCat = 'internship';
+      else if (title.includes('course') || idVal.includes('course') || keywords.includes('course')) mappedCat = 'course';
+      else if (title.includes('training') || idVal.includes('training') || keywords.includes('training')) mappedCat = 'training-scheme';
+      else if (title.includes('runner') || idVal.includes('runner') || keywords.includes('runner')) mappedCat = 'runner-role';
+      else if (title.includes('freelance') || idVal.includes('freelance') || keywords.includes('freelance')) mappedCat = 'freelance-role';
+      else if (title.includes('competition') || idVal.includes('competition') || keywords.includes('competition') || title.includes('grant') || idVal.includes('grant') || keywords.includes('grant')) mappedCat = 'competition-grant';
+      else if (title.includes('junior') && title.includes('full') && title.includes('time')) mappedCat = 'junior-full-time-role';
+      else if (title.includes('junior') && title.includes('part') && title.includes('time')) mappedCat = 'junior-part-time-role';
+      else if (title.includes('mentor') || idVal.includes('mentor') || keywords.includes('mentor')) mappedCat = 'mentoring';
+      else if (title.includes('work experience') || idVal.includes('work experience') || keywords.includes('work experience')) mappedCat = 'work-experience';
+      else if (title.includes('job') || idVal.includes('job') || keywords.includes('job')) mappedCat = 'junior-full-time-role';
+      else mappedCat = 'opportunity';
+    }
+
+    // Allowed industries (case-insensitive match)
+    var allowedIndustries = [
+      'All Creative Industries', 'Acting', 'Advertising', 'Animation', 'Architecture', 'Arts', 'Audio', 'Comedy', 'Content Creation', 'Craft', 'Culture', 'Dance', 'Design', 'Digital', 'Directing', 'E-Sport', 'Fashion', 'Film', 'Gaming', 'Graphic Design', 'Heritage', 'Journalism', 'Marketing', 'Media', 'Museum', 'Music', 'Performing Arts', 'Photography', 'Podcasting', 'PR', 'Presenting', 'Publishing', 'Radio', 'Social Media', 'Theatre', 'TV', 'UX/UI Design', 'VFX', 'Videography', 'Visual Art', 'Writing'
+    ];
+
+    // Normalize industry tags: always array, only allowed values, case-insensitive
+    function normalizeIndustries(input) {
+      var arrInput = Array.isArray(input) ? input : (input ? [input] : []);
+      return arrInput
+        .map(function(val) { return String(val).trim(); })
+        .filter(function(val) {
+          return allowedIndustries.some(function(ai) { return ai.toLowerCase() === val.toLowerCase(); });
+        })
+        .map(function(val) {
+          // Return the canonical casing from allowedIndustries
+          var found = allowedIndustries.find(function(ai) { return ai.toLowerCase() === val.toLowerCase(); });
+          return found || val;
+        });
+    }
+
+    // Extract industry tags from data.tags.industry or data.industry
+    var industryTags = [];
+    if (data.tags && Array.isArray(data.tags.industry)) {
+      industryTags = normalizeIndustries(data.tags.industry);
+    } else if (Array.isArray(data.industry)) {
+      industryTags = normalizeIndustries(data.industry);
+    }
+    if (!industryTags) industryTags = [];
+
+    // Extract keywords from data.tags.keywords or data.keywords
+    var keywordsArr = [];
+    if (data.tags && Array.isArray(data.tags.keywords)) {
+      keywordsArr = data.tags.keywords.map(function(k) { return String(k); });
+    } else if (Array.isArray(data.keywords)) {
+      keywordsArr = data.keywords.map(function(k) { return String(k); });
+    }
+    if (!keywordsArr) keywordsArr = [];
+
+    // *** FIX: Build tagsArr to include ALL tags (industry + keywords + demographic values) ***
+    var tagsArr = [];
+    
+    // Add industry tags
+    tagsArr = tagsArr.concat(industryTags);
+    
+    // Add keyword tags
+    tagsArr = tagsArr.concat(keywordsArr);
+
+    // Define allowed demographic values (PATCH29: Fixed to match portal UI expectations exactly)
+    var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only', 'All ages'];
+    var allowedGenders = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say', 'All genders & preferences'];
+    var allowedEthnicities = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say', 'All ethnicities'];
+    var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health', 'All disability'];
+    var allowedSocioEconomic = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background'];
+    
+    // Define what "All" options expand to (PATCH29: Added portal-compatible options)
+    var allAgeOptions = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only'];
+    var allGenderOptions = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
+    var allEthnicityOptions = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
+    var allDisabilityOptions = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health'];
+    var allSocioEconomicOptions = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background'];
+
+    // Extract demographic values and add them to tagsArr (PATCH21: Handle "All" expansions)
+    var ageString = '';
+    var genderString = '';
+    var ethnicityString = '';
+    var disabilityString = '';
+    var lowerSocioEconomicBackgroundString = '';
+    var ageTagsToAdd = [];
+    var genderTagsToAdd = [];
+    var ethnicityTagsToAdd = [];
+    var disabilityTagsToAdd = [];
+    var socioEconomicTagsToAdd = [];
+
+    // Find age in keywords and add to tagsArr
+    for (var i = 0; i < keywordsArr.length; i++) {
+      if (allowedAges.includes(keywordsArr[i])) {
+        ageString = keywordsArr[i];
+        if (ageString === 'All ages') {
+          // Add all individual age options to tags array
+          ageTagsToAdd = allAgeOptions.slice(); // Copy array
+          ageString = 'All ages'; // Keep for demographic object
+        } else {
+          ageTagsToAdd = [ageString];
+        }
+        break;
+      }
+    }
+
+    // Find gender in keywords and add to tagsArr
+    for (var j = 0; j < keywordsArr.length; j++) {
+      if (allowedGenders.includes(keywordsArr[j])) {
+        genderString = keywordsArr[j];
+        if (genderString === 'All genders & preferences') {
+          // Add all individual gender options to tags array
+          genderTagsToAdd = allGenderOptions.slice(); // Copy array
+          genderString = 'All genders & preferences'; // Keep for demographic object
+        } else {
+          genderTagsToAdd = [genderString];
+        }
+        break;
+      }
+    }
+
+    // Find ethnicity in keywords and add to tagsArr
+    for (var k = 0; k < keywordsArr.length; k++) {
+      if (allowedEthnicities.includes(keywordsArr[k])) {
+        ethnicityString = keywordsArr[k];
+        if (ethnicityString === 'All ethnicities') {
+          // Add all individual ethnicity options to tags array
+          ethnicityTagsToAdd = allEthnicityOptions.slice(); // Copy array
+          ethnicityString = 'All ethnicities'; // Keep for demographic object
+        } else {
+          ethnicityTagsToAdd = [ethnicityString];
+        }
+        break;
+      }
+    }
+
+    // Find disability in keywords and add to tagsArr
+    for (var d = 0; d < keywordsArr.length; d++) {
+      if (allowedDisabilities.includes(keywordsArr[d])) {
+        disabilityString = keywordsArr[d];
+        if (disabilityString === 'All disability') {
+          // Add all individual disability options to tags array
+          disabilityTagsToAdd = allDisabilityOptions.slice(); // Copy array
+          disabilityString = 'All disability'; // Keep for demographic object
+        } else {
+          disabilityTagsToAdd = [disabilityString];
+        }
+        break;
+      }
+    }
+
+    // Find socioeconomic in keywords and add to tagsArr
+    for (var l = 0; l < keywordsArr.length; l++) {
+      if (allowedSocioEconomic.includes(keywordsArr[l])) {
+        lowerSocioEconomicBackgroundString = keywordsArr[l];
+        if (lowerSocioEconomicBackgroundString === 'All backgrounds') {
+          // Add all individual socioeconomic options to tags array
+          socioEconomicTagsToAdd = allSocioEconomicOptions.slice(); // Copy array
+          lowerSocioEconomicBackgroundString = 'All backgrounds'; // Keep for demographic object
+        } else {
+          socioEconomicTagsToAdd = [lowerSocioEconomicBackgroundString];
+        }
+        break;
+      }
+    }
+
+    // DON'T add demographic tags to main tags array here!
+    // Let the API server handle the demographic -> tag ID conversion
+    // The demographic object below will be processed by the API server
+
+    // *** PATCH25 FIX: Demographic object for API server processing ***
+    // The API server will convert these demographic arrays to Firebase tag IDs
+    var demographicObj = {
+      industry: industryTags, // Keep as array for demographic.industry
+      age: ageString ? (ageString === 'All ages' ? allAgeOptions : [ageString]) : allAgeOptions, // Default to ALL ages if empty
+      genderSexualPreference: genderString ? (genderString === 'All genders & preferences' ? allGenderOptions : [genderString]) : allGenderOptions, // Default to ALL genders if empty
+      ethnicity: ethnicityString ? (ethnicityString === 'All ethnicities' ? allEthnicityOptions : [ethnicityString]) : allEthnicityOptions, // Default to ALL ethnicities if empty
+      disability: disabilityString ? (disabilityString === 'All disability' ? allDisabilityOptions : [disabilityString]) : allDisabilityOptions, // Default to ALL disabilities if empty
+      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? (lowerSocioEconomicBackgroundString === 'All backgrounds' ? allSocioEconomicOptions : [lowerSocioEconomicBackgroundString]) : allSocioEconomicOptions // Default to ALL backgrounds if empty
+    }
+
+    return {
+      anythingElseImportant: str(data.anythingElseImportant),
+      applicationDeadline: str(data.applicationDeadline),
+      approvalFirst: bool(data.approvalFirst),
+      author: str(data.author),
+      bannerPic: str(data.bannerPic),
+      bespokeOnly: bool(data.bespokeOnly),
+      opportunityType: mappedCat,
+      category: mappedCat,
+      categoryTitle: str(data.categoryTitle),
+      companyID: str(data.companyID) || 'S7IvlojyomcTNsUXlrqC',
+      companyVerify: bool(data.companyVerify) || true,
+      courseLocation: str(data.courseLocation),
+      created: str(data.created) || 'S7IvlojyomcTNsUXlrqC',
+      createdAt: str(data.createdAt),
+      description: str(data.description),
+      editedAt: str(data.editedAt),
+      editor: str(data.editor) || 'scheduler',
+      eventDate: str(data.eventDate),
+      eventName: str(data.eventName),
+      eventTime: str(data.eventTime),
+      eventTimeEnd: str(data.eventTimeEnd),
+      expiredDate: str(data.expiredDate),
+      id: id(data.id),
+      keywords: arr(data.keywords),
+      lengthOfCourse: str(data.lengthOfCourse),
+      link: str(data.link),
+      location: str(data.location),
+      locationName: str(data.locationName),
+      notificated: bool(data.notificated),
+      paidOrFreeCourses: str(data.paidOrFreeCourses),
+      publishedAt: str(data.publishedAt),
+      regionLocation: data.regionLocation === null ? null : str(data.regionLocation),
+      remote: bool(data.remote),
+      republish: bool(data.republish),
+      schedulePost: str(data.schedulePost),
+      status: str(data.status),
+      supportSettings: arr(data.supportSettings),
+      tags: {
+        tags: tagsArr, // This now includes industry + keywords + demographic values
+        demographic: {
+          age: ageString,
+          genderSexualPreference: genderString,
+          ethnicity: ethnicityString,
+          disability: disabilityString,
+          lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString,
+          keywords: keywordsArr
+        }
+      },
+      title: str(data.title),
+      type: str(data.type) || 'announcements',
+      ukWide: bool(data.ukWide),
+      userClaps: arr(data.userClaps),
+      userContentView: arr(data.userContentView),
+      userLinkClick: arr(data.userLinkClick),
+      usersFavouriteContent: arr(data.usersFavouriteContent),
+      demographic: demographicObj,
+      audienceLocation: str(data.audienceLocation)
+    };
+  }
+  Logger.log('📋 Processing document: ' + file.getName());
+
+  // Extract text content from the file
+  var content = extractTextContent(file);
+  if (!content) {
+    throw new Error('Could not extract text content from ' + file.getName());
+  }
+
+  var parsedData = null;
+  var fileName = file.getName().toLowerCase();
+  // Try to parse as JSON if file extension is .json (but not .txt to avoid parsing errors)
+  if (fileName.endsWith('.json')) {
+    try {
+      var jsonCandidate = JSON.parse(content);
+      if (typeof jsonCandidate === 'object' && jsonCandidate !== null) {
+        parsedData = jsonCandidate;
+        Logger.log('📦 Parsed JSON opportunity data from file.');
+      }
+    } catch (e) {
+      Logger.log('Not valid JSON, falling back to default: ' + e.toString());
+    }
+  }
+
+  // Option 1: If you have a parser API, call it first (only if not already parsed as JSON)
+  // Disabled parser API for now - ngrok endpoint is offline
+  // if (!parsedData && CONFIG.PARSER_API_URL && CONFIG.PARSER_API_URL !== 'https://karolyn-unmendacious-unsuccessfully.ngrok-free.dev/api/parse') {
+  //   parsedData = callDocumentParser(content, file.getName());
+  // }
+
+  // Option 2: Create basic opportunity data ONLY if no parser or JSON
+  if (!parsedData) {
+    Logger.log('📝 Creating basic opportunity data from filename...');
+    parsedData = {
+      id: 'google-drive-' + file.getId(),
+      opportunityType: guessOpportunityType(file.getName()),
+      title: file.getName().replace(/\.[^/.]+$/, ""), // Remove file extension
+      shortSummary: 'Opportunity extracted from: ' + file.getName(),
+      location: 'Location to be determined',
+      link: file.getUrl(),
+      tags: {
+        industry: ['General'],
+        keywords: ['google-drive', 'document', 'opportunity']
+      }
+    };
+  }
+
+  // --- ENHANCEMENTS BEGIN ---
+  // 1. Ensure correct opportunity type
+  if (parsedData && (!parsedData.opportunityType || typeof parsedData.opportunityType !== 'string')) {
+    parsedData.opportunityType = guessOpportunityType(file.getName());
+  }
+
+  // 2. Append backlog date/time to title
+  var now = new Date();
+  var nowStr = now.toISOString().replace('T', ' ').substring(0, 16); // e.g. 2025-11-05 14:30
+  if (parsedData && parsedData.title) {
+    parsedData.title = parsedData.title + ' [Backlog: ' + nowStr + ']';
+  } else if (parsedData) {
+    parsedData.title = file.getName().replace(/\.[^/.]+$/, "") + ' [Backlog: ' + nowStr + ']';
+  }
+
+  // 3. Add industry to demographic
+  if (!parsedData.demographic) parsedData.demographic = {};
+  parsedData.demographic.industry = parsedData.tags && parsedData.tags.industry ? parsedData.tags.industry : [];
+
+  // 4. Add demographic fields (all as arrays for select tags)
+  var demoFields = [
+    'age',
+    'genderSexualPreference',
+    'ethnicity',
+    'disability',
+    'lowerSocioEconomicBackground'
+  ];
+  demoFields.forEach(function(field) {
+    if (!parsedData.demographic[field]) parsedData.demographic[field] = [];
+  });
+
+  // 5. Add UK region to audienceLocation
+  if (parsedData.ukRegion) {
+    parsedData.audienceLocation = parsedData.ukRegion;
+  } else if (!parsedData.audienceLocation) {
+    parsedData.audienceLocation = '';
+  }
+
+  // --- ENHANCEMENTS END ---
+
+  // Normalize just before sending
+  parsedData = normalizeOpportunityData(parsedData);
+  // Debug: log the normalized data structure before sending
+  Logger.log('🟦 Normalized data to send: ' + JSON.stringify(parsedData, null, 2));
+  // Send to API Bridge
+  var bridgeResult = sendToApiBridge(parsedData);
+  
+  if (bridgeResult && bridgeResult.success) {
+    Logger.log('🎉 Successfully processed: ' + file.getName());
+    Logger.log('📄 Firebase Doc ID: ' + bridgeResult.masterPortalDocId);
+  } else {
+    throw new Error('Failed to send to API Bridge: ' + (bridgeResult ? bridgeResult.error : 'Unknown error'));
+  }
+}
+
+/**
+ * Extract text content from different file types
+ */
+function extractTextContent(file) {
+  var mimeType = file.getMimeType();
+  var fileName = file.getName().toLowerCase();
+
+  try {
+    if (mimeType === MimeType.PLAIN_TEXT) {
+      return file.getBlob().getDataAsString('UTF-8');
+    } else if (mimeType === MimeType.WORD || fileName.endsWith('.docx')) {
+      // Convert .docx to Google Docs temporarily
+      var tempDoc = Drive.Files.insert({
+        title: 'temp_conversion_' + file.getId(),
+        mimeType: MimeType.GOOGLE_DOCS
+      }, file.getBlob());
+      
+      var content = DocumentApp.openById(tempDoc.id).getBody().getText();
+      Drive.Files.remove(tempDoc.id); // Clean up
+      return content;
+    }
+    return null;
+  } catch (e) {
+    Logger.log('Error extracting text: ' + e.toString());
+    return null;
+  }
+}
+
+/**
+ * Guess opportunity type from filename
+ */
+function guessOpportunityType(fileName) {
+  var name = fileName.toLowerCase();
+  if (name.includes('apprentice')) return 'Apprenticeship';
+  if (name.includes('course') || name.includes('training')) return 'Course';
+  if (name.includes('job') || name.includes('role')) return 'Job';
+  if (name.includes('internship')) return 'Internship';
+  return 'Opportunity'; // Default
+}
+
+/**
+ * Call external document parser API (optional)
+ */
+function callDocumentParser(content, fileName) {
+  if (!CONFIG.PARSER_API_URL) return null;
+  
+  var payload = {
+    fileContent: content,
+    fileName: fileName,
+    source: 'google-drive'
+  };
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'Authorization': 'Bearer ' + CONFIG.API_KEY
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  try {
+    var response = UrlFetchApp.fetch(CONFIG.PARSER_API_URL, options);
+    var responseCode = response.getResponseCode();
+    
+    if (responseCode === 200) {
+      return JSON.parse(response.getContentText());
+    } else {
+      Logger.log('Parser API failed: ' + response.getContentText());
+      return null;
+    }
+  } catch (e) {
+    Logger.log('Parser API error: ' + e.toString());
+    return null;
+  }
+}
+
+/**
+ * UTILITY FUNCTIONS
+ */
+
+function isSupportedFileType(file) {
+  var mimeType = file.getMimeType();
+  var fileName = file.getName().toLowerCase();
+  return (mimeType === MimeType.PLAIN_TEXT || 
+          mimeType === MimeType.WORD || 
+          fileName.endsWith('.docx') ||
+          fileName.endsWith('.txt'));
+}
+
+function isFileProcessed(fileId) {
+  var properties = PropertiesService.getScriptProperties();
+  var processedFiles = properties.getProperty('PROCESSED_FILES');
+  var parsed = processedFiles ? JSON.parse(processedFiles) : {};
+  return fileId in parsed;
+}
+
+function markFileAsProcessed(fileId, status) {
+  var properties = PropertiesService.getScriptProperties();
+  var processedFiles = properties.getProperty('PROCESSED_FILES');
+  var parsed = processedFiles ? JSON.parse(processedFiles) : {};
+  parsed[fileId] = {
+    status: status,
+    processedAt: new Date().toISOString()
+  };
+  properties.setProperty('PROCESSED_FILES', JSON.stringify(parsed));
+}
+
+/**
+ * Clear all processed file markers (for testing)
+ */
+function clearAllProcessedMarkers() {
+  PropertiesService.getScriptProperties().deleteProperty('PROCESSED_FILES');
+  Logger.log('All processed file markers cleared.');
+}
+
+/**
+ * 📊 Get processing status
+ */
+function getProcessingStatus() {
+  var properties = PropertiesService.getScriptProperties();
+  var processedFiles = properties.getProperty('PROCESSED_FILES');
+  
+  if (!processedFiles) {
+    Logger.log('No files have been processed yet.');
+    return;
+  }
+  
+  var parsed = JSON.parse(processedFiles);
+  var stats = {success: 0, error: 0, unsupported: 0};
+  
+  Object.keys(parsed).forEach(function(fileId) {
+    stats[parsed[fileId].status]++;
+  });
+  
+  Logger.log('📊 Processing Status:');
+  Logger.log('✅ Success: ' + stats.success);
+  Logger.log('❌ Errors: ' + stats.error); 
+  Logger.log('🚫 Unsupported: ' + stats.unsupported);
+  Logger.log('📁 Total: ' + Object.keys(parsed).length);
+}
+
+/**
+ * 🧪 Test Simplified Portal Structure - PATCH23 SIMPLIFIED
+ */
+function testSimplifiedPortalStructure() {
+  Logger.log('🧪 Testing Simplified Portal Structure (PATCH23)...');
+  
+  var testData = {
+    id: 'simplified-portal-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Simplified Portal Structure Test - Should Work in Portal',
+    shortSummary: 'Testing that the simplified structure (only tags array) works in the portal UI.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/simplified-test',
+    salary: '£20,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live', // ← Set to live instead of expired
+    anythingElseImportant: 'EXPECTED: Portal should show all demographics selected because tags array contains all demographic Firebase IDs.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding'] // ← NO demographic keywords = default to ALL
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should default to ALL demographics, simplified structure for portal');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 SIMPLIFIED PORTAL STRUCTURE TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should have simple structure with only tags array');
+    Logger.log('🎯 Portal should now show all demographics selected!');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Simplified structure test completed - check portal UI'
+    };
+  } else {
+    Logger.log('❌ SIMPLIFIED PORTAL STRUCTURE TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Portal UI Demographics Fix - PATCH29 NEW TEST!
+ */
+function testPortalUIDemographicsFix() {
+  Logger.log('🧪 Testing Portal UI Demographics Fix (PATCH29)...');
+  
+  var testData = {
+    id: 'portal-ui-demographics-fix-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Portal UI Demographics Fix Test - Should Show All Demographic Sections',
+    shortSummary: 'Testing that demographics appear in both hashtags AND demographic sections of portal UI.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/portal-ui-demographics-fix-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'PATCH29: Should create both hashtag tags AND demographic object with portal-compatible text values.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'He/Him', 'Arab', '18+ only', 'Physical disability', 'Lower socio-economic background'] // ← Demographic keywords that should become both tags AND demographic object
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should create hashtag tags AND populate demographic sections with portal-compatible text');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 PORTAL UI DEMOGRAPHICS FIX TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Portal UI - should show demographics in BOTH hashtag section AND demographic sections');
+    Logger.log('🎯 Expected in hashtag section: Multiple demographic tag IDs');
+    Logger.log('🎯 Expected in demographic sections: He/Him, Arab, 18+ only, Physical disability, Lower socio-economic');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Portal UI demographics fix test completed - check both hashtag and demographic sections'
+    };
+  } else {
+    Logger.log('❌ PORTAL UI DEMOGRAPHICS FIX TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Demographic Arrays Fix - PATCH25 NEW TEST!
+ */
+function testDemographicArraysFix() {
+  Logger.log('🧪 Testing Demographic Arrays Fix (PATCH25)...');
+  
+  var testData = {
+    id: 'demographic-arrays-fix-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Demographic Arrays Fix Test - Should Include ALL Demographic Tag IDs',
+    shortSummary: 'Testing that the API server properly processes demographic arrays and includes ALL demographic tag IDs in Firebase.',
+    location: 'London, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/demographic-arrays-fix-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'EXPECTED: Firebase tags array should contain 60+ tag IDs covering ALL demographic categories (age, gender, ethnicity, disability, socio-economic).',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding'] // ← NO demographic keywords = default to ALL
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should default to ALL demographics and include ALL tag IDs (60+ tags)');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 DEMOGRAPHIC ARRAYS FIX TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should have 60+ tag IDs covering all demographics');
+    Logger.log('🎯 Expected tag categories: ages (14 tags), genders (8 tags), ethnicities (7 tags), disabilities (5 tags), socio-economic (2 tags)');
+    Logger.log('🎯 Portal should now show ALL demographics selected!');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Demographic arrays fix test completed - check Firebase for 60+ tag IDs'
+    };
+  } else {
+    Logger.log('❌ DEMOGRAPHIC ARRAYS FIX TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Portal Display Comprehensive - Check ALL demographic types
+ */
+function testPortalDisplayComprehensive() {
+  Logger.log('🧪 Testing Portal Display - ALL Demographics...');
+  
+  var testData = {
+    id: 'portal-display-comprehensive-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Portal Display Test - ALL Demographics Should Show in Portal',
+    shortSummary: 'Testing that ALL demographic types display correctly in the portal UI.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/portal-display-comprehensive-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'COMPREHENSIVE TEST: Should show ALL demographic types in portal UI - Age, Gender, Ethnicity, Disability, Socio-Economic',
+    tags: {
+      industry: ['Technology'],
+      keywords: [
+        'apprentice', 
+        'coding',
+        // Age
+        'Over 18',
+        // Gender  
+        'He/Him',
+        // Ethnicity
+        'Asian or Asian British',
+        // Disability
+        'Physical disability',
+        'Neurodiversity', 
+        // Socio-Economic
+        'All backgrounds'
+      ]
+    }
+  };
+
+  Logger.log('🟦 Input keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Portal should show ALL demographic sections populated');
+  
+  // Manual normalization for API server
+  var normalizedTestData = {
+    id: testData.id,
+    opportunityType: testData.opportunityType,
+    title: testData.title,
+    shortSummary: testData.shortSummary,
+    location: testData.location,
+    applicationDeadline: testData.applicationDeadline,
+    link: testData.link,
+    salary: testData.salary,
+    lengthOfApprenticeship: testData.lengthOfApprenticeship,
+    levelOfApprenticeship: testData.levelOfApprenticeship,
+    status: testData.status,
+    anythingElseImportant: testData.anythingElseImportant,
+    tags: {
+      tags: testData.tags.industry.concat(testData.tags.keywords),
+      demographic: {
+        age: '',
+        genderSexualPreference: '',
+        ethnicity: '',
+        disability: '',
+        lowerSocioEconomicBackground: '',
+        keywords: testData.tags.keywords
+      }
+    },
+    demographic: {
+      industry: testData.tags.industry,
+      age: ['Over 18'],
+      genderSexualPreference: ['He/Him'],
+      ethnicity: ['Asian or Asian British'],
+      disability: ['Physical disability', 'Neurodiversity'],
+      lowerSocioEconomicBackground: ['All backgrounds']
+    }
+  };
+  
+  Logger.log('🟦 After manual normalization - demographic object: ' + JSON.stringify(normalizedTestData.demographic));
+  
+  var result = sendToApiBridge(normalizedTestData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 COMPREHENSIVE PORTAL DISPLAY TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 NOW CHECK PORTAL UI FOR ALL SECTIONS:');
+    Logger.log('🎯 Age section should show: Over 18');
+    Logger.log('🎯 Gender section should show: He/Him');
+    Logger.log('🎯 Ethnicity section should show: Asian or Asian British');
+    Logger.log('🎯 Disability section should show: Physical disability, Neurodiversity');
+    Logger.log('🎯 Socio-Economic section should show: All backgrounds');
+    Logger.log('🎯 Tags/hashtag section should show multiple tag IDs');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Comprehensive portal display test - check ALL demographic sections in portal'
+    };
+  } else {
+    Logger.log('❌ COMPREHENSIVE PORTAL DISPLAY TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Physical Disability Multi-Tag Fix - CRITICAL TEST!
+ */
+function testPhysicalDisabilityMultiTag() {
+  Logger.log('🧪 Testing Physical Disability Multi-Tag Fix...');
+  
+  var testData = {
+    id: 'physical-disability-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Physical Disability Test - Should Generate 3 Tag IDs',
+    shortSummary: 'Testing that Physical disability keyword generates all 3 required Firebase tag IDs.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/physical-disability-test',
+    salary: '£18,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'EXPECTED: Should generate 3 Firebase tag IDs for Physical disability: 09Q2FEVzWlOBc5AqoypO, QCMHvYz9oUPPPhOsXDek, YI6XgFxHn8x4LYzkHkIM',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'Physical disability'] // ← This should generate 3 tag IDs
+    }
+  };
+
+  Logger.log('🟦 Input keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Physical disability should create 3 separate Firebase tag IDs');
+  
+  // CRITICAL FIX: Manually create the normalized structure that the API server expects
+  // The API server expects data.tags.tags as an array containing all keywords
+  var normalizedTestData = {
+    id: testData.id,
+    opportunityType: testData.opportunityType,
+    title: testData.title,
+    shortSummary: testData.shortSummary,
+    location: testData.location,
+    applicationDeadline: testData.applicationDeadline,
+    link: testData.link,
+    salary: testData.salary,
+    lengthOfApprenticeship: testData.lengthOfApprenticeship,
+    levelOfApprenticeship: testData.levelOfApprenticeship,
+    status: testData.status,
+    anythingElseImportant: testData.anythingElseImportant,
+    tags: {
+      tags: testData.tags.industry.concat(testData.tags.keywords), // This creates the tags.tags array the API server needs
+      demographic: {
+        age: '',
+        genderSexualPreference: '',
+        ethnicity: '',
+        disability: '',
+        lowerSocioEconomicBackground: '',
+        keywords: testData.tags.keywords
+      }
+    },
+    demographic: {
+      industry: testData.tags.industry,
+      age: [],
+      genderSexualPreference: [],
+      ethnicity: [],
+      disability: ['Physical disability'], // This should be processed by API server
+      lowerSocioEconomicBackground: []
+    }
+  };
+  
+  Logger.log('🟦 After manual normalization - tags.tags: ' + JSON.stringify(normalizedTestData.tags.tags));
+  
+  var result = sendToApiBridge(normalizedTestData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 PHYSICAL DISABILITY TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 NOW CHECK: Does Firebase document have all 3 Physical disability tag IDs?');
+    Logger.log('🎯 Expected IDs: 09Q2FEVzWlOBc5AqoypO, QCMHvYz9oUPPPhOsXDek, YI6XgFxHn8x4LYzkHkIM');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Physical disability test completed - check Firebase for 3 tag IDs'
+    };
+  } else {
+    Logger.log('❌ PHYSICAL DISABILITY TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
