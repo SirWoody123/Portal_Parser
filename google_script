@@ -413,6 +413,78 @@ function checkFilesAndProcess() {
 }
 
 /**
+ * Parse application deadline from human-readable format to ISO string.
+ * @param {string} dateString The human-readable date string.
+ * @returns {string} ISO formatted date string.
+ */
+function parseApplicationDeadline(dateString) {
+  if (!dateString || dateString.trim() === '') {
+    return '';
+  }
+  
+  var cleanDate = dateString.trim();
+  
+  try {
+    // Handle common patterns
+    // "5th December 2025" -> "2025-12-05T23:59:59Z"
+    // "December 5, 2025" -> "2025-12-05T23:59:59Z"
+    // "5/12/25" -> "2025-12-05T23:59:59Z"
+    // "2025-12-05" -> "2025-12-05T23:59:59Z"
+    
+    var date = null;
+    
+    // Pattern 1: "5th December 2025", "1st January 2024", etc.
+    var ordinalPattern = /(\d{1,2})(st|nd|rd|th)\s+(\w+)\s+(\d{4})/i;
+    var ordinalMatch = cleanDate.match(ordinalPattern);
+    if (ordinalMatch) {
+      var day = parseInt(ordinalMatch[1]);
+      var monthName = ordinalMatch[3];
+      var year = parseInt(ordinalMatch[4]);
+      
+      var months = {
+        'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
+        'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
+      };
+      
+      var monthIndex = months[monthName.toLowerCase()];
+      if (monthIndex !== undefined) {
+        date = new Date(year, monthIndex, day, 23, 59, 59);
+      }
+    }
+    
+    // Pattern 2: Try standard JavaScript Date parsing
+    if (!date) {
+      date = new Date(cleanDate);
+      if (isNaN(date.getTime())) {
+        date = null;
+      }
+    }
+    
+    // Pattern 3: Try with added time if no time specified
+    if (!date && !cleanDate.includes('T') && !cleanDate.includes(':')) {
+      date = new Date(cleanDate + ' 23:59:59');
+      if (isNaN(date.getTime())) {
+        date = null;
+      }
+    }
+    
+    if (date && !isNaN(date.getTime())) {
+      // Set to end of day (23:59:59) for deadlines
+      date.setHours(23, 59, 59, 999);
+      return date.toISOString();
+    }
+    
+    // If all parsing fails, return the original string
+    Logger.log('⚠️ Could not parse date: ' + dateString + ', returning original');
+    return dateString;
+    
+  } catch (e) {
+    Logger.log('⚠️ Date parsing error for "' + dateString + '": ' + e.toString());
+    return dateString;
+  }
+}
+
+/**
  * Parse text file format into JSON structure (Google Apps Script version).
  * Handles key: value pairs and converts demographic text values into proper arrays.
  * @param {string} textContent The raw text content from the file.
@@ -462,7 +534,9 @@ function parseTextFileInGoogleScript(textContent) {
         break;
         
       case 'Application deadline':
-        result.applicationDeadline = value;
+        // Parse human-readable date formats into ISO format
+        result.applicationDeadline = parseApplicationDeadline(value);
+        Logger.log('🔍 TEXT PARSER: Parsed deadline "' + value + '" to "' + result.applicationDeadline + '"');
         break;
         
       case 'Location':
