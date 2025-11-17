@@ -413,6 +413,144 @@ function checkFilesAndProcess() {
 }
 
 /**
+ * Parse text file format into JSON structure (Google Apps Script version).
+ * Handles key: value pairs and converts demographic text values into proper arrays.
+ * @param {string} textContent The raw text content from the file.
+ * @returns {Object} The parsed JSON structure.
+ */
+function parseTextFileInGoogleScript(textContent) {
+  Logger.log('🔍 TEXT PARSER (Google Script): Starting text file parsing...');
+  
+  var lines = textContent.split('\n').map(function(line) { return line.trim(); }).filter(function(line) { return line; });
+  var result = {
+    title: '',
+    description: '',
+    shortSummary: '',
+    link: '',
+    applicationDeadline: '',
+    location: '',
+    remote: false,
+    ukWide: false,
+    opportunityType: 'Internship', // Default for this type of content
+    salary: '',
+    lengthOfApprenticeship: '',
+    lengthOfInternship: '',
+    anythingElseImportant: '',
+    tags: {
+      industry: [],
+      keywords: []
+    }
+  };
+
+  lines.forEach(function(line) {
+    if (!line.includes(':')) return;
+    
+    var parts = line.split(':');
+    var key = parts[0].trim();
+    var value = parts.slice(1).join(':').trim();
+    
+    Logger.log('🔍 TEXT PARSER: Processing "' + key + '" = "' + value + '"');
+    
+    switch (key) {
+      case 'Salary':
+        result.salary = value;
+        break;
+        
+      case 'Length of internship & start date/ month':
+      case 'Length of internship':
+        result.lengthOfInternship = value;
+        break;
+        
+      case 'Application deadline':
+        result.applicationDeadline = value;
+        break;
+        
+      case 'Location':
+        result.location = value;
+        break;
+        
+      case 'Anything else important':
+        result.anythingElseImportant = value;
+        result.shortSummary = value.length > 200 ? value.substring(0, 200) + '...' : value;
+        break;
+        
+      case 'Link':
+        result.link = value;
+        break;
+        
+      case 'Remote':
+        result.remote = value.toLowerCase() === 'yes' || value.toLowerCase() === 'true';
+        break;
+        
+      case 'UK Wide':
+        result.ukWide = value.toLowerCase() === 'yes' || value.toLowerCase() === 'true';
+        break;
+        
+      case 'Industry':
+        // Split comma-separated values and clean them
+        result.tags.industry = value.split(',')
+          .map(function(item) { return item.trim(); })
+          .filter(function(item) { return item; });
+        Logger.log('🔍 TEXT PARSER: Parsed industries: ' + JSON.stringify(result.tags.industry));
+        break;
+        
+      case 'Age':
+        // Add age to keywords for demographic processing
+        result.tags.keywords.push(value);
+        Logger.log('🔍 TEXT PARSER: Added age to keywords: ' + value);
+        break;
+        
+      case 'Gender & Sexual Preference':
+        // Add gender to keywords for demographic processing
+        result.tags.keywords.push(value);
+        Logger.log('🔍 TEXT PARSER: Added gender to keywords: ' + value);
+        break;
+        
+      case 'Ethnicity':
+        // Add ethnicity to keywords for demographic processing
+        result.tags.keywords.push(value);
+        Logger.log('🔍 TEXT PARSER: Added ethnicity to keywords: ' + value);
+        break;
+        
+      case 'Disability':
+        // Add disability to keywords for demographic processing
+        result.tags.keywords.push(value);
+        Logger.log('🔍 TEXT PARSER: Added disability to keywords: ' + value);
+        break;
+        
+      case 'Economic Background':
+        // Add economic background to keywords for demographic processing
+        result.tags.keywords.push(value);
+        Logger.log('🔍 TEXT PARSER: Added economic background to keywords: ' + value);
+        break;
+        
+      case 'Region':
+        // Use region info if no specific location
+        if (!result.location || result.location === '') {
+          result.location = value;
+        }
+        break;
+        
+      default:
+        Logger.log('🔍 TEXT PARSER: Unhandled field "' + key + '" = "' + value + '"');
+        break;
+    }
+  });
+
+  // Generate title if not set
+  if (!result.title) {
+    var industryText = result.tags.industry.length > 0 ? result.tags.industry[0] : 'Opportunity';
+    result.title = industryText + ' Internship';
+  }
+  
+  // Add some basic keywords
+  result.tags.keywords = result.tags.keywords.concat(['internship', 'opportunity']);
+
+  Logger.log('🔍 TEXT PARSER (Google Script): Final parsed result: ' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+/**
  * Process a single document file
  */
 function processDocument(file) {
@@ -717,6 +855,7 @@ function processDocument(file) {
 
   var parsedData = null;
   var fileName = file.getName().toLowerCase();
+  
   // Try to parse as JSON if file extension is .json (but not .txt to avoid parsing errors)
   if (fileName.endsWith('.json')) {
     try {
@@ -726,7 +865,17 @@ function processDocument(file) {
         Logger.log('📦 Parsed JSON opportunity data from file.');
       }
     } catch (e) {
-      Logger.log('Not valid JSON, falling back to default: ' + e.toString());
+      Logger.log('Not valid JSON, falling back to text parsing: ' + e.toString());
+    }
+  }
+  
+  // NEW: Try to parse as text file with key-value format
+  if (!parsedData && fileName.endsWith('.txt')) {
+    try {
+      parsedData = parseTextFileInGoogleScript(content);
+      Logger.log('📝 Parsed text file opportunity data from file.');
+    } catch (e) {
+      Logger.log('Text parsing failed, falling back to default: ' + e.toString());
     }
   }
 
