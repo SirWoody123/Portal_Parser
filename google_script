@@ -428,18 +428,19 @@ function parseApplicationDeadline(dateString) {
     // Handle common patterns
     // "5th December 2025" -> "2025-12-05T23:59:59Z"
     // "December 5, 2025" -> "2025-12-05T23:59:59Z"
+    // "14 December 2025 for Term 2" -> "2025-12-14T23:59:59Z"
     // "5/12/25" -> "2025-12-05T23:59:59Z"
     // "2025-12-05" -> "2025-12-05T23:59:59Z"
     
     var date = null;
     
-    // Pattern 1: "5th December 2025", "1st January 2024", etc.
-    var ordinalPattern = /(\d{1,2})(st|nd|rd|th)\s+(\w+)\s+(\d{4})/i;
-    var ordinalMatch = cleanDate.match(ordinalPattern);
-    if (ordinalMatch) {
-      var day = parseInt(ordinalMatch[1]);
-      var monthName = ordinalMatch[3];
-      var year = parseInt(ordinalMatch[4]);
+    // Pattern 1: Extract first date from complex strings like "14 December 2025 for Term 2"
+    var complexDatePattern = /(\d{1,2})\s+(\w+)\s+(\d{4})/i;
+    var complexMatch = cleanDate.match(complexDatePattern);
+    if (complexMatch) {
+      var day = parseInt(complexMatch[1]);
+      var monthName = complexMatch[2];
+      var year = parseInt(complexMatch[3]);
       
       var months = {
         'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
@@ -449,10 +450,61 @@ function parseApplicationDeadline(dateString) {
       var monthIndex = months[monthName.toLowerCase()];
       if (monthIndex !== undefined) {
         date = new Date(year, monthIndex, day, 23, 59, 59);
+        Logger.log('🔍 DATE PARSER: Extracted date from complex string: ' + day + ' ' + monthName + ' ' + year);
       }
     }
     
-    // Pattern 2: Try standard JavaScript Date parsing
+    // Pattern 1B: Handle dates without year like "14 December" - assume current year or next year
+    if (!date) {
+      var noYearPattern = /(\d{1,2})\s+(\w+)/i;
+      var noYearMatch = cleanDate.match(noYearPattern);
+      if (noYearMatch) {
+        var day = parseInt(noYearMatch[1]);
+        var monthName = noYearMatch[2];
+        var currentYear = new Date().getFullYear();
+        
+        var months = {
+          'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
+          'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
+        };
+        
+        var monthIndex = months[monthName.toLowerCase()];
+        if (monthIndex !== undefined) {
+          // Try current year first
+          var testDate = new Date(currentYear, monthIndex, day);
+          var now = new Date();
+          
+          // If the date is in the past, use next year
+          var year = (testDate < now) ? currentYear + 1 : currentYear;
+          
+          date = new Date(year, monthIndex, day, 23, 59, 59);
+          Logger.log('🔍 DATE PARSER: Extracted date without year: ' + day + ' ' + monthName + ' -> ' + year);
+        }
+      }
+    }
+    
+    // Pattern 2: "5th December 2025", "1st January 2024", etc.
+    if (!date) {
+      var ordinalPattern = /(\d{1,2})(st|nd|rd|th)\s+(\w+)\s+(\d{4})/i;
+      var ordinalMatch = cleanDate.match(ordinalPattern);
+      if (ordinalMatch) {
+        var day = parseInt(ordinalMatch[1]);
+        var monthName = ordinalMatch[3];
+        var year = parseInt(ordinalMatch[4]);
+        
+        var months = {
+          'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
+          'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
+        };
+        
+        var monthIndex = months[monthName.toLowerCase()];
+        if (monthIndex !== undefined) {
+          date = new Date(year, monthIndex, day, 23, 59, 59);
+        }
+      }
+    }
+    
+    // Pattern 3: Try standard JavaScript Date parsing
     if (!date) {
       date = new Date(cleanDate);
       if (isNaN(date.getTime())) {
@@ -460,7 +512,7 @@ function parseApplicationDeadline(dateString) {
       }
     }
     
-    // Pattern 3: Try with added time if no time specified
+    // Pattern 4: Try with added time if no time specified
     if (!date && !cleanDate.includes('T') && !cleanDate.includes(':')) {
       date = new Date(cleanDate + ' 23:59:59');
       if (isNaN(date.getTime())) {
@@ -471,6 +523,7 @@ function parseApplicationDeadline(dateString) {
     if (date && !isNaN(date.getTime())) {
       // Set to end of day (23:59:59) for deadlines
       date.setHours(23, 59, 59, 999);
+      Logger.log('🔍 DATE PARSER: Successfully parsed to ISO: ' + date.toISOString());
       return date.toISOString();
     }
     
@@ -503,10 +556,13 @@ function parseTextFileInGoogleScript(textContent) {
     location: '',
     remote: false,
     ukWide: false,
-    opportunityType: 'Internship', // Default for this type of content
+    opportunityType: 'Course', // Default for this type of content - FIXED
+    status: 'live', // Set status to live by default - FIXED
     salary: '',
     lengthOfApprenticeship: '',
     lengthOfInternship: '',
+    lengthOfCourse: '', // Added for course support
+    courseType: '', // Added for course support
     anythingElseImportant: '',
     tags: {
       industry: [],
@@ -533,6 +589,19 @@ function parseTextFileInGoogleScript(textContent) {
         result.lengthOfInternship = value;
         break;
         
+      case 'Length of course':
+        result.lengthOfCourse = value;
+        // Also set opportunityType to Course if we see course-related fields
+        result.opportunityType = 'Course';
+        Logger.log('🔍 TEXT PARSER: Set opportunityType to Course, lengthOfCourse: ' + value);
+        break;
+        
+      case 'Course type':
+        result.courseType = value;
+        result.opportunityType = 'Course';
+        Logger.log('🔍 TEXT PARSER: Set opportunityType to Course, courseType: ' + value);
+        break;
+        
       case 'Application deadline':
         // Parse human-readable date formats into ISO format
         result.applicationDeadline = parseApplicationDeadline(value);
@@ -552,6 +621,45 @@ function parseTextFileInGoogleScript(textContent) {
         result.link = value;
         break;
         
+      case '- Website':
+      case 'Website':
+      case 'Company Website':
+      case 'Apply Link':
+      case 'Application Link':
+        // Capture website/application links
+        if (!result.link && value) {
+          result.link = value;
+          Logger.log('🔍 TEXT PARSER: Set link from ' + key + ': ' + value);
+        }
+        break;
+        
+      case 'Title':
+        // Use title from file if provided
+        if (value && value.trim()) {
+          result.title = value.trim();
+          Logger.log('🔍 TEXT PARSER: Set title from file: ' + value);
+        }
+        break;
+        
+      case 'Type':
+        // Handle opportunity type from file
+        if (value && value.trim()) {
+          var typeValue = value.trim();
+          if (typeValue.toLowerCase().includes('part-time')) {
+            result.opportunityType = 'Junior part-time role';
+          } else if (typeValue.toLowerCase().includes('full-time')) {
+            result.opportunityType = 'Junior full-time role';
+          } else if (typeValue.toLowerCase().includes('apprentice')) {
+            result.opportunityType = 'Apprenticeship';
+          } else if (typeValue.toLowerCase().includes('internship')) {
+            result.opportunityType = 'Internship';
+          } else if (typeValue.toLowerCase().includes('course')) {
+            result.opportunityType = 'Course';
+          }
+          Logger.log('🔍 TEXT PARSER: Set opportunityType from Type field: ' + result.opportunityType);
+        }
+        break;
+        
       case 'Remote':
         result.remote = value.toLowerCase() === 'yes' || value.toLowerCase() === 'true';
         break;
@@ -569,9 +677,15 @@ function parseTextFileInGoogleScript(textContent) {
         break;
         
       case 'Age':
-        // Add age to keywords for demographic processing
-        result.tags.keywords.push(value);
-        Logger.log('🔍 TEXT PARSER: Added age to keywords: ' + value);
+        // Handle complex age strings like "16, 17, 18, 19, 20, 21, 22, 23, 24, 25, Over 18"
+        // Just use "Over 18" as the main demographic since it covers most of the range
+        if (value.includes('Over 18')) {
+          result.tags.keywords.push('Over 18');
+          Logger.log('🔍 TEXT PARSER: Added simplified age to keywords: Over 18');
+        } else {
+          result.tags.keywords.push(value);
+          Logger.log('🔍 TEXT PARSER: Added age to keywords: ' + value);
+        }
         break;
         
       case 'Gender & Sexual Preference':
@@ -605,6 +719,28 @@ function parseTextFileInGoogleScript(textContent) {
         }
         break;
         
+      case 'Key Responsibilities':
+      case 'Skills & Experience':
+      case 'Essential':
+      case 'Desirable':
+      case 'How to Apply':
+      case 'Description':
+      case 'Job Description':
+        // Add important details to anythingElseImportant
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\n\n' + key + ': ' + value;
+          } else {
+            result.anythingElseImportant = key + ': ' + value;
+          }
+          // Also update shortSummary if it's empty
+          if (!result.shortSummary) {
+            result.shortSummary = value.length > 200 ? value.substring(0, 200) + '...' : value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added ' + key + ' to anythingElseImportant');
+        }
+        break;
+        
       default:
         Logger.log('🔍 TEXT PARSER: Unhandled field "' + key + '" = "' + value + '"');
         break;
@@ -612,13 +748,30 @@ function parseTextFileInGoogleScript(textContent) {
   });
 
   // Generate title if not set
-  if (!result.title) {
+  if (!result.title || result.title.trim() === '') {
     var industryText = result.tags.industry.length > 0 ? result.tags.industry[0] : 'Opportunity';
-    result.title = industryText + ' Internship';
+    // Use opportunityType to determine title
+    if (result.opportunityType === 'Course') {
+      result.title = industryText + ' Course';
+    } else if (result.opportunityType === 'Junior part-time role') {
+      result.title = industryText + ' Part-Time Role';
+    } else if (result.opportunityType === 'Junior full-time role') {
+      result.title = industryText + ' Full-Time Role';
+    } else if (result.opportunityType === 'Apprenticeship') {
+      result.title = industryText + ' Apprenticeship';
+    } else if (result.opportunityType === 'Internship') {
+      result.title = industryText + ' Internship';
+    } else {
+      result.title = industryText + ' Opportunity';
+    }
   }
   
-  // Add some basic keywords
-  result.tags.keywords = result.tags.keywords.concat(['internship', 'opportunity']);
+  // Add some basic keywords based on opportunity type
+  if (result.opportunityType === 'Course') {
+    result.tags.keywords = result.tags.keywords.concat(['course', 'opportunity']);
+  } else {
+    result.tags.keywords = result.tags.keywords.concat(['internship', 'opportunity']);
+  }
 
   Logger.log('🔍 TEXT PARSER (Google Script): Final parsed result: ' + JSON.stringify(result, null, 2));
   return result;
@@ -1431,6 +1584,64 @@ function testPortalDisplayComprehensive() {
     };
   } else {
     Logger.log('❌ COMPREHENSIVE PORTAL DISPLAY TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Neurodiversity Tag ID Fix - CRITICAL TEST!
+ */
+function testNeurodiversityTagIdFix() {
+  Logger.log('🧪 Testing Neurodiversity Tag ID Fix...');
+  
+  // FIXED: Send the proper demographic structure that the API server expects
+  var testData = {
+    id: 'neurodiversity-tag-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Neurodiversity Tag ID Test - Should Include rT4QGqejDAONg3PmA9Il',
+    shortSummary: 'Testing that Neurodiversity from demographic.disability array gets converted to tag ID rT4QGqejDAONg3PmA9Il.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/neurodiversity-tag-test',
+    salary: '£20,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'EXPECTED: Firebase should include Neurodiversity tag ID rT4QGqejDAONg3PmA9Il that was missing from the original marketing-assistant-bristol.txt file.',
+    // CRITICAL FIX: Send demographic object that API server processes
+    demographic: {
+      industry: ['Marketing', 'All Creative Industries'],
+      age: ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only'],
+      genderSexualPreference: ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'],
+      ethnicity: ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'],
+      disability: ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health'], // ← This should include Neurodiversity!
+      lowerSocioEconomicBackground: ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background']
+    }
+  };
+
+  Logger.log('🟦 Input demographic.disability: ' + JSON.stringify(testData.demographic.disability));
+  Logger.log('🔍 Expected: API server should convert "Neurodiversity" to tag ID rT4QGqejDAONg3PmA9Il');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 NEURODIVERSITY TAG ID TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 NOW CHECK: Does Firebase tags array include rT4QGqejDAONg3PmA9Il?');
+    Logger.log('🎯 Expected: Should have 32+ tags, with rT4QGqejDAONg3PmA9Il included');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Neurodiversity tag ID test completed - check Firebase for rT4QGqejDAONg3PmA9Il'
+    };
+  } else {
+    Logger.log('❌ NEURODIVERSITY TAG ID TEST FAILED!');
     Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
     
     return {

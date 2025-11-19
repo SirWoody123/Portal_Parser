@@ -120,7 +120,7 @@ const TAG_NAME_TO_ID = {
   // --- EQUALITY & DIVERSITY (from CSV) ---
   "Accessibility": "9Z0KCkg1UndKEeGsGRWF",
   // "Physical disability" - REMOVED DUPLICATE! Already defined above with 3 IDs
-  "Neurodiversity": "Yk6phdz0yBMP0c0rULDx", // From equality section
+  // "Neurodiversity" - REMOVED DUPLICATE! Already defined above with correct portal ID
   "Race": "WMLPtNRCGSBbv7bViz1S",
   "LGBTQIA": "mzZKi6mwaVEwTeNkpAjb",
   "Gender": "o4rMfwsP8UOAjvGwRhgP",
