@@ -1441,15 +1441,68 @@ function processDocument(file) {
     // Let the API server handle the demographic -> tag ID conversion
     // The demographic object below will be processed by the API server
 
-    // *** PATCH27 FIX: Demographic object using collected matches ***
+    // *** PATCH28 FIX: Handle "All" demographic expansions ***
+    // Expand "All" keywords to include all individual options
+    
+    // Handle age expansion
+    var finalAgeOptions = [];
+    if (ageMatches.includes('All ages')) {
+      finalAgeOptions = allAgeOptions; // Expand to all individual age options
+    } else if (ageMatches.length > 0) {
+      finalAgeOptions = ageMatches; // Use specific matches
+    } else {
+      finalAgeOptions = allAgeOptions; // Default to all
+    }
+    
+    // Handle gender expansion  
+    var finalGenderOptions = [];
+    if (genderMatches.includes('All genders & preferences')) {
+      finalGenderOptions = allGenderOptions; // Expand to all individual gender options
+    } else if (genderMatches.length > 0) {
+      finalGenderOptions = genderMatches; // Use specific matches
+    } else {
+      finalGenderOptions = allGenderOptions; // Default to all
+    }
+    
+    // Handle ethnicity expansion
+    var finalEthnicityOptions = [];
+    if (ethnicityMatches.includes('All ethnicities')) {
+      finalEthnicityOptions = allEthnicityOptions; // Expand to all individual ethnicity options
+    } else if (ethnicityMatches.length > 0) {
+      finalEthnicityOptions = ethnicityMatches; // Use specific matches
+    } else {
+      finalEthnicityOptions = allEthnicityOptions; // Default to all
+    }
+    
+    // Handle disability expansion
+    var finalDisabilityOptions = [];
+    if (disabilityMatches.includes('All disability')) {
+      finalDisabilityOptions = allDisabilityOptions; // Expand to all individual disability options
+    } else if (disabilityMatches.length > 0) {
+      finalDisabilityOptions = disabilityMatches; // Use specific matches
+    } else {
+      finalDisabilityOptions = allDisabilityOptions; // Default to all
+    }
+    
+    // Handle socioeconomic expansion
+    var finalSocioEconomicOptions = [];
+    if (socioEconomicMatches.includes('All backgrounds')) {
+      finalSocioEconomicOptions = allSocioEconomicOptions; // Expand to all individual background options
+    } else if (socioEconomicMatches.length > 0) {
+      finalSocioEconomicOptions = socioEconomicMatches; // Use specific matches
+    } else {
+      finalSocioEconomicOptions = allSocioEconomicOptions; // Default to all
+    }
+
+    // *** PATCH27 FIX: Demographic object using expanded matches ***
     // The API server will convert these demographic arrays to Firebase tag IDs
     var demographicObj = {
       industry: industryTags, // Keep as array for demographic.industry
-      age: ageMatches.length > 0 ? ageMatches : allAgeOptions, // Use specific matches if found, otherwise default to ALL
-      genderSexualPreference: genderMatches.length > 0 ? genderMatches : allGenderOptions, // Use specific matches if found, otherwise default to ALL
-      ethnicity: ethnicityMatches.length > 0 ? ethnicityMatches : allEthnicityOptions, // Use specific matches if found, otherwise default to ALL
-      disability: disabilityMatches.length > 0 ? disabilityMatches : allDisabilityOptions, // Use specific matches if found, otherwise default to ALL
-      lowerSocioEconomicBackground: socioEconomicMatches.length > 0 ? socioEconomicMatches : allSocioEconomicOptions // Use specific matches if found, otherwise default to ALL
+      age: finalAgeOptions,
+      genderSexualPreference: finalGenderOptions,
+      ethnicity: finalEthnicityOptions,
+      disability: finalDisabilityOptions,
+      lowerSocioEconomicBackground: finalSocioEconomicOptions
     }
 
     var result = {
@@ -2347,6 +2400,64 @@ function testMilngavieGeocoding() {
   } else {
     Logger.log('❌ GEOCODING FIX FAILED! Need to investigate further.');
     return { success: false, message: 'Geocoding still not working properly' };
+  }
+}
+
+/**
+ * 🧪 Test Demographics Expansion Fix - CRITICAL TEST
+ */
+function testDemographicsExpansionFix() {
+  Logger.log('🧪 Testing Demographics Expansion Fix...');
+  Logger.log('🎯 This tests that "All" demographics expand to individual options');
+  
+  // Create test content with "All" demographics
+  var testContent = 'Title: Test Arts Course\n' +
+                    'Location: London\n' +
+                    'Industry: Arts\n' +
+                    'Age: All ages\n' +
+                    'Gender & Sexual Preference: All genders & preferences\n' +
+                    'Ethnicity: All ethnicities\n' +
+                    'Disability: All disability\n' +
+                    'Economic Background: All backgrounds';
+  
+  Logger.log('🚀 Step 1: Testing parseTextFileInGoogleScript...');  
+  var parsedData = parseTextFileInGoogleScript(testContent);
+  
+  Logger.log('🔍 Parsed keywords: ' + JSON.stringify(parsedData.tags.keywords));
+  
+  // Check if "All" keywords are present
+  var hasAllKeywords = parsedData.tags.keywords.includes('All ages') &&
+                       parsedData.tags.keywords.includes('All genders & preferences') &&
+                       parsedData.tags.keywords.includes('All ethnicities') &&
+                       parsedData.tags.keywords.includes('All disability') &&
+                       parsedData.tags.keywords.includes('All backgrounds');
+  
+  if (hasAllKeywords) {
+    Logger.log('✅ Step 1 SUCCESS: All "All" keywords found in parsed data');
+  } else {
+    Logger.log('❌ Step 1 FAILED: Missing "All" keywords in parsed data');
+    return { success: false, error: 'Missing All keywords in parsed data' };
+  }
+  
+  Logger.log('🚀 Step 2: Testing complete pipeline with API Bridge...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 DEMOGRAPHICS EXPANSION FIX SUCCESS!');
+    Logger.log('🔥 Firebase Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - demographic arrays should contain individual options');
+    Logger.log('🎯 Expected: age array with multiple individual age values');
+    Logger.log('🎯 Expected: genderSexualPreference array with He/Him, She/Her, They/Them, etc.');
+    
+    return {
+      success: true,
+      firebaseDocId: result.masterPortalDocId,
+      message: 'Demographics expansion fix working - check Firebase demographic arrays'
+    };
+  } else {
+    Logger.log('❌ API BRIDGE FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    return { success: false, error: 'API Bridge failed' };
   }
 }
 
