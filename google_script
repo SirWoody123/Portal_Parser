@@ -2227,3 +2227,69 @@ function testMultipleLocationGeocoding() {
     message: 'Multiple location geocoding test completed'
   };
 }
+
+/**
+ * 🧪 Test Geolocation Fix - End-to-End Validation
+ */
+function testGeolocationFix() {
+  Logger.log('🧪 Testing Geolocation Fix - End-to-End Validation...');
+  
+  var testData = {
+    id: 'geolocation-fix-test-' + Date.now(),
+    opportunityType: 'Course',
+    title: 'Geolocation Fix Test - London Music Course',
+    shortSummary: 'Testing that _geoloc field is preserved through the entire processing pipeline.',
+    location: 'London',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/geolocation-fix-test',
+    anythingElseImportant: 'CRITICAL: This test should include _geoloc field in Firebase document.',
+    tags: {
+      industry: ['Music'],
+      keywords: ['test', 'geolocation', 'fix', 'london']
+    }
+  };
+
+  Logger.log('🚀 Step 1: Testing parseTextFileInGoogleScript with location...');
+  
+  // Simulate the text parsing that would include geolocation
+  var mockContent = 'Title: ' + testData.title + '\n' +
+                    'Location: ' + testData.location + '\n' +
+                    'Industry: ' + testData.tags.industry.join(', ') + '\n' +
+                    'Link: ' + testData.link + '\n' +
+                    'Anything else important: ' + testData.anythingElseImportant;
+  
+  var parsedData = parseTextFileInGoogleScript(mockContent);
+  
+  Logger.log('🔍 Step 2: Checking parsed data _geoloc field...');
+  if (parsedData._geoloc) {
+    Logger.log('✅ parseTextFileInGoogleScript preserved _geoloc: lat=' + parsedData._geoloc.lat + ', lng=' + parsedData._geoloc.lng);
+  } else {
+    Logger.log('❌ parseTextFileInGoogleScript missing _geoloc field');
+    return { success: false, error: 'Missing _geoloc in parseTextFileInGoogleScript' };
+  }
+  
+  Logger.log('🚀 Step 3: Sending through API Bridge...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 GEOLOCATION FIX TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Next step: Check Firebase document for _geoloc field');
+    Logger.log('🎯 Expected in Firebase: _geoloc.lat ≈ 51.507, _geoloc.lng ≈ -0.127');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Geolocation fix test completed - check Firebase for _geoloc field',
+      expectedCoordinates: { lat: 51.5074456, lng: -0.1277653 }
+    };
+  } else {
+    Logger.log('❌ GEOLOCATION FIX TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
