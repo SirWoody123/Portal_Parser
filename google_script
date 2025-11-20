@@ -2351,6 +2351,64 @@ function testMilngavieGeocoding() {
 }
 
 /**
+ * 🧪 Test Complete Geolocation Pipeline - FINAL TEST
+ */
+function testCompleteGeolocationPipeline() {
+  Logger.log('🧪 Testing Complete Geolocation Pipeline...');
+  Logger.log('🎯 This test simulates the exact Milngavie scenario from your logs');
+  
+  // Step 1: Test the exact text content that failed
+  var mockTextContent = 'Event Title: Shelved Stories with Creative Spark at Milngavie Library\n' +
+                        'Event Description: Creative writing workshop\n' +
+                        'Location: Milngavie Library, Allander Road, Milngavie, G62 8PN, East Dunbartonshire, United Kingdom\n' +
+                        'Industry: Writing, Literary Arts, Arts\n' +
+                        'Age Tags: 18, Over 18\n' +
+                        'Gender & Sexual Preference: All genders & preferences\n' +
+                        'Ethnicity: All ethnicities\n' +
+                        'Disability: All disability\n' +
+                        'Economic Background: All backgrounds\n' +
+                        'Link: https://www.eventbrite.co.uk/test';
+  
+  Logger.log('🚀 Step 1: Testing parseTextFileInGoogleScript...');
+  var parsedData = parseTextFileInGoogleScript(mockTextContent);
+  
+  Logger.log('🔍 Step 2: Checking parsed _geoloc field...');
+  if (parsedData._geoloc && parsedData._geoloc.lat && parsedData._geoloc.lng) {
+    Logger.log('✅ parseTextFileInGoogleScript SUCCESS: _geoloc = {lat: ' + parsedData._geoloc.lat + ', lng: ' + parsedData._geoloc.lng + '}');
+  } else {
+    Logger.log('❌ parseTextFileInGoogleScript FAILED: _geoloc field missing or null');
+    Logger.log('🔍 Parsed _geoloc value: ' + JSON.stringify(parsedData._geoloc));
+    return { success: false, error: 'parseTextFileInGoogleScript not adding _geoloc field' };
+  }
+  
+  Logger.log('🚀 Step 3: Testing API Bridge integration...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 COMPLETE PIPELINE SUCCESS!');
+    Logger.log('🔥 Firebase Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Expected in Firebase: _geoloc field with Milngavie coordinates');
+    Logger.log('🎯 Coordinates: lat≈55.9423, lng≈-4.3177');
+    Logger.log('📝 CHECK FIREBASE: Document ' + result.masterPortalDocId + ' should contain _geoloc field');
+    
+    return {
+      success: true,
+      firebaseDocId: result.masterPortalDocId,
+      coordinates: parsedData._geoloc,
+      message: 'Complete geolocation pipeline working - check Firebase for _geoloc field'
+    };
+  } else {
+    Logger.log('❌ API BRIDGE FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'API Bridge failed'
+    };
+  }
+}
+
+/**
  * 🧪 Test Geolocation Fix - End-to-End Validation
  */
 function testGeolocationFix() {
