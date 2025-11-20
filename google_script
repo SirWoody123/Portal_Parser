@@ -2351,6 +2351,49 @@ function testMilngavieGeocoding() {
 }
 
 /**
+ * 🧪 Test Geolocation Normalization Fix - CRITICAL TEST
+ */
+function testGeolocationNormalizationFix() {
+  Logger.log('🧪 Testing Geolocation Normalization Fix...');
+  Logger.log('🎯 This tests that _geoloc passes through normalizeOpportunityData');
+  
+  // Create simple test content with London location
+  var testContent = 'Title: Test London Course\n' +
+                    'Location: London\n' +
+                    'Industry: Marketing\n' +
+                    'Link: https://example.com/test';
+  
+  Logger.log('🚀 Step 1: Testing parseTextFileInGoogleScript...');  
+  var parsedData = parseTextFileInGoogleScript(testContent);
+  
+  if (parsedData._geoloc) {
+    Logger.log('✅ parseTextFileInGoogleScript works: _geoloc = {lat: ' + parsedData._geoloc.lat + ', lng: ' + parsedData._geoloc.lng + '}');
+  } else {
+    Logger.log('❌ parseTextFileInGoogleScript failed: no _geoloc field');
+    return { success: false, error: 'No _geoloc from parseTextFileInGoogleScript' };
+  }
+  
+  Logger.log('🚀 Step 2: Testing complete pipeline with API Bridge...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 GEOLOCATION FIX SUCCESS!');
+    Logger.log('🔥 Firebase Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase document - should contain _geoloc field');
+    
+    return {
+      success: true,
+      firebaseDocId: result.masterPortalDocId,
+      message: 'Geolocation fix working - check Firebase for _geoloc field'
+    };
+  } else {
+    Logger.log('❌ API BRIDGE FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    return { success: false, error: 'API Bridge failed' };
+  }
+}
+
+/**
  * 🧪 Test Complete Geolocation Pipeline - FINAL TEST
  */
 function testCompleteGeolocationPipeline() {
