@@ -117,25 +117,87 @@ function geocodeLocationFallback(locationName) {
     'derby': { lat: 52.9225301, lng: -1.4746186 },
     'wolverhampton': { lat: 52.5855681, lng: -2.1282226 },
     'salford': { lat: 53.4873218, lng: -2.2906621 },
+    
+    // PATCH28: Additional Scottish locations
+    'milngavie': { lat: 55.9423, lng: -4.3177 },
+    'east dunbartonshire': { lat: 55.9423, lng: -4.3177 }, // Use Milngavie coords for East Dunbartonshire
+    'dunbartonshire': { lat: 55.9423, lng: -4.3177 },
+    'stirling': { lat: 56.1165, lng: -3.9369 },
+    'dundee': { lat: 56.4620, lng: -2.9707 },
+    'aberdeen': { lat: 57.1497, lng: -2.0943 },
+    'inverness': { lat: 57.4778, lng: -4.2247 },
+    'perth': { lat: 56.3952, lng: -3.4304 },
+    'falkirk': { lat: 56.0019, lng: -3.7841 },
+    'ayr': { lat: 55.4639, lng: -4.6289 },
+    'paisley': { lat: 55.8456, lng: -4.4337 },
+    'hamilton': { lat: 55.7781, lng: -4.0589 },
+    'kilmarnock': { lat: 55.6144, lng: -4.4985 },
+    'cumbernauld': { lat: 55.9468, lng: -3.9963 },
+    'greenock': { lat: 55.9485, lng: -4.7692 },
+    
+    // Additional English locations
+    'reading': { lat: 51.4543, lng: -0.9781 },
+    'oxford': { lat: 51.7520, lng: -1.2577 },
+    'cambridge': { lat: 52.2053, lng: 0.1218 },
+    'york': { lat: 53.9600, lng: -1.0873 },
+    'bath': { lat: 51.3811, lng: -2.3590 },
+    'chester': { lat: 53.1906, lng: -2.8837 },
+    'preston': { lat: 53.7632, lng: -2.7031 },
+    'blackpool': { lat: 53.8175, lng: -3.0357 },
+    'bournemouth': { lat: 50.7192, lng: -1.8808 },
+    'brighton': { lat: 50.8225, lng: -0.1372 },
+    'portsmouth': { lat: 50.8058, lng: -1.0872 },
+    'southampton': { lat: 50.9097, lng: -1.4044 },
+    'exeter': { lat: 50.7236, lng: -3.5269 },
+    'norwich': { lat: 52.6309, lng: 1.2974 },
+    'ipswich': { lat: 52.0595, lng: 1.1550 },
+    'canterbury': { lat: 51.2802, lng: 1.0789 },
+    
+    // Welsh locations
+    'swansea': { lat: 51.6214, lng: -3.9436 },
+    'newport': { lat: 51.5842, lng: -2.9977 },
+    'wrexham': { lat: 53.0478, lng: -2.9916 },
+    'bangor': { lat: 53.2280, lng: -4.1287 },
+    
+    // Northern Ireland locations
+    'derry': { lat: 54.9966, lng: -7.3086 },
+    'londonderry': { lat: 54.9966, lng: -7.3086 },
+    'armagh': { lat: 54.3503, lng: -6.6528 },
+    'newry': { lat: 54.1751, lng: -6.3402 },
+    'lisburn': { lat: 54.5162, lng: -6.0581 },
+    
+    // Virtual locations
     'online': null, // No coordinates for online locations
     'remote': null, // No coordinates for remote locations
     'uk wide': null, // No specific coordinates for UK-wide opportunities
-    'nationwide': null // No specific coordinates for nationwide opportunities
+    'nationwide': null, // No specific coordinates for nationwide opportunities
+    'virtual': null // No coordinates for virtual events
   };
   
+  // First try exact match
   var key = locationName.toLowerCase().trim();
   var result = ukLocations[key];
   
   if (result) {
-    Logger.log('🌍 GEOCODING (Fallback): Found coordinates for "' + locationName + '" - lat: ' + result.lat + ', lng: ' + result.lng);
+    Logger.log('🌍 GEOCODING (Fallback): Found exact match for "' + locationName + '" - lat: ' + result.lat + ', lng: ' + result.lng);
     return result;
   } else if (result === null) {
     Logger.log('🌍 GEOCODING (Fallback): "' + locationName + '" is a virtual location (no coordinates)');
     return null;
-  } else {
-    Logger.log('⚠️ GEOCODING (Fallback): No coordinates found for "' + locationName + '"');
-    return null;
   }
+  
+  // PATCH28: Try partial matching for complex addresses
+  Logger.log('🔍 GEOCODING (Fallback): Trying partial match for "' + locationName + '"');
+  
+  for (var cityName in ukLocations) {
+    if (ukLocations[cityName] !== null && key.includes(cityName)) {
+      Logger.log('🌍 GEOCODING (Fallback): Found partial match "' + cityName + '" in "' + locationName + '" - lat: ' + ukLocations[cityName].lat + ', lng: ' + ukLocations[cityName].lng);
+      return ukLocations[cityName];
+    }
+  }
+  
+  Logger.log('⚠️ GEOCODING (Fallback): No coordinates found for "' + locationName + '"');
+  return null;
 }
 
 /**
