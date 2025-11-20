@@ -598,7 +598,17 @@ const transformData = (data) => {
     usersFavouriteContent: Array.isArray(data.usersFavouriteContent) ? data.usersFavouriteContent : [],
     
     // PATCH27 FIX: Add demographic object for portal UI demographic sections
-    demographic: buildDemographicObject(data.demographic)
+    demographic: buildDemographicObject(data.demographic),
+    
+    // GEOLOCATION FEATURE: Add _geoloc field for location-based filtering
+    ...(data._geoloc && typeof data._geoloc === 'object' && 
+        typeof data._geoloc.lat === 'number' && 
+        typeof data._geoloc.lng === 'number' ? {
+      _geoloc: {
+        lat: data._geoloc.lat,
+        lng: data._geoloc.lng
+      }
+    } : {})
   };
 };
 

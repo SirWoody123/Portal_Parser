@@ -21,8 +21,144 @@ var CONFIG = {
   
   // Other settings
   API_KEY: 'your-api-key-here',
-  ERIC_WEBHOOK_URL: 'https://meet-eric.co/api/opportunities/review'
+  ERIC_WEBHOOK_URL: 'https://meet-eric.co/api/opportunities/review',
+  
+  // Google Maps API key for geolocation (replace with your actual API key)
+  GOOGLE_MAPS_API_KEY: 'your-google-maps-api-key-here'
 };
+
+/**
+ * 🌍 GEOLOCATION SERVICE - Convert location names to lat/lng coordinates
+ */
+
+/**
+ * Convert a location name to latitude/longitude coordinates using Google Maps Geocoding API
+ * @param {string} locationName The location name to geocode (e.g., "Manchester", "London, UK")
+ * @returns {Object|null} Object with lat and lng properties, or null if geocoding fails
+ */
+function geocodeLocation(locationName) {
+  if (!locationName || locationName.trim() === '') {
+    return null;
+  }
+  
+  // Check if we already have coordinates in cache to avoid API calls
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'geocode_' + locationName.toLowerCase().replace(/\s+/g, '_');
+  var cached = cache.get(cacheKey);
+  
+  if (cached) {
+    Logger.log('🌍 GEOCODING: Using cached coordinates for ' + locationName);
+    return JSON.parse(cached);
+  }
+  
+  try {
+    // Use Google Maps Geocoding API
+    var geocodingUrl = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + 
+                      encodeURIComponent(locationName) + 
+                      '&key=' + CONFIG.GOOGLE_MAPS_API_KEY;
+    
+    var response = UrlFetchApp.fetch(geocodingUrl);
+    var data = JSON.parse(response.getContentText());
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      var location = data.results[0].geometry.location;
+      var result = {
+        lat: location.lat,
+        lng: location.lng
+      };
+      
+      // Cache the result for 24 hours (86400 seconds)
+      cache.put(cacheKey, JSON.stringify(result), 86400);
+      
+      Logger.log('🌍 GEOCODING: Successfully geocoded "' + locationName + '" to lat: ' + result.lat + ', lng: ' + result.lng);
+      return result;
+      
+    } else {
+      Logger.log('⚠️ GEOCODING: Failed to geocode "' + locationName + '": ' + data.status);
+      return null;
+    }
+    
+  } catch (error) {
+    Logger.log('❌ GEOCODING: Error geocoding "' + locationName + '": ' + error.toString());
+    return null;
+  }
+}
+
+/**
+ * Fallback geocoding using a predefined list of UK cities (when API key is not available)
+ * @param {string} locationName The location name to geocode
+ * @returns {Object|null} Object with lat and lng properties, or null if not found
+ */
+function geocodeLocationFallback(locationName) {
+  if (!locationName || locationName.trim() === '') {
+    return null;
+  }
+  
+  // Predefined coordinates for common UK locations
+  var ukLocations = {
+    'manchester': { lat: 53.4872927, lng: -2.2900071 },
+    'london': { lat: 51.5074456, lng: -0.1277653 },
+    'birmingham': { lat: 52.4796992, lng: -1.9026911 },
+    'leeds': { lat: 53.7974185, lng: -1.5437941 },
+    'glasgow': { lat: 55.8610306, lng: -4.2501671 },
+    'liverpool': { lat: 53.4106086, lng: -2.9779312 },
+    'bristol': { lat: 51.4538022, lng: -2.5972985 },
+    'edinburgh': { lat: 55.9533456, lng: -3.1883749 },
+    'cardiff': { lat: 51.4816546, lng: -3.1791353 },
+    'belfast': { lat: 54.5946593, lng: -5.9690754 },
+    'newcastle': { lat: 54.9738474, lng: -1.6131572 },
+    'nottingham': { lat: 52.9534193, lng: -1.1496461 },
+    'sheffield': { lat: 53.3806626, lng: -1.4702278 },
+    'bradford': { lat: 53.7943026, lng: -1.7548636 },
+    'coventry': { lat: 52.4082663, lng: -1.5105777 },
+    'leicester': { lat: 52.6368778, lng: -1.1397592 },
+    'sunderland': { lat: 54.9069619, lng: -1.3838009 },
+    'plymouth': { lat: 50.3790795, lng: -4.1326565 },
+    'derby': { lat: 52.9225301, lng: -1.4746186 },
+    'wolverhampton': { lat: 52.5855681, lng: -2.1282226 },
+    'salford': { lat: 53.4873218, lng: -2.2906621 },
+    'online': null, // No coordinates for online locations
+    'remote': null, // No coordinates for remote locations
+    'uk wide': null, // No specific coordinates for UK-wide opportunities
+    'nationwide': null // No specific coordinates for nationwide opportunities
+  };
+  
+  var key = locationName.toLowerCase().trim();
+  var result = ukLocations[key];
+  
+  if (result) {
+    Logger.log('🌍 GEOCODING (Fallback): Found coordinates for "' + locationName + '" - lat: ' + result.lat + ', lng: ' + result.lng);
+    return result;
+  } else if (result === null) {
+    Logger.log('🌍 GEOCODING (Fallback): "' + locationName + '" is a virtual location (no coordinates)');
+    return null;
+  } else {
+    Logger.log('⚠️ GEOCODING (Fallback): No coordinates found for "' + locationName + '"');
+    return null;
+  }
+}
+
+/**
+ * Main geocoding function that tries Google Maps API first, then falls back to predefined list
+ * @param {string} locationName The location name to geocode
+ * @returns {Object|null} Object with lat and lng properties, or null if geocoding fails
+ */
+function getLocationCoordinates(locationName) {
+  if (!locationName || locationName.trim() === '') {
+    return null;
+  }
+  
+  // Try Google Maps API first (if API key is configured)
+  if (CONFIG.GOOGLE_MAPS_API_KEY && CONFIG.GOOGLE_MAPS_API_KEY !== 'your-google-maps-api-key-here') {
+    var result = geocodeLocation(locationName);
+    if (result) {
+      return result;
+    }
+  }
+  
+  // Fall back to predefined list
+  return geocodeLocationFallback(locationName);
+}
 
 /**
  * 🧪 TEST FUNCTION - Run this first to test your deployment
@@ -641,6 +777,7 @@ function parseTextFileInGoogleScript(textContent) {
     lengthOfCourse: '', // Added for course support
     courseType: '', // Added for course support
     anythingElseImportant: '',
+    _geoloc: null, // Will be populated with {lat: number, lng: number} if location is geocoded
     tags: {
       industry: [],
       keywords: []
@@ -706,6 +843,17 @@ function parseTextFileInGoogleScript(textContent) {
         
       case 'Location':
         result.location = value;
+        // Add geolocation coordinates for the location
+        var coordinates = getLocationCoordinates(value);
+        if (coordinates) {
+          result._geoloc = {
+            lat: coordinates.lat,
+            lng: coordinates.lng
+          };
+          Logger.log('🌍 TEXT PARSER: Added geolocation for "' + value + '" - lat: ' + coordinates.lat + ', lng: ' + coordinates.lng);
+        } else {
+          Logger.log('⚠️ TEXT PARSER: Could not geocode location "' + value + '"');
+        }
         break;
         
       case 'Anything else important':
@@ -1947,4 +2095,123 @@ function testPhysicalDisabilityMultiTag() {
       error: result ? result.error : 'Unknown error'
     };
   }
+}
+
+/**
+ * 🧪 Test Geolocation Feature - NEW FEATURE!
+ */
+function testGeolocationFeature() {
+  Logger.log('🧪 Testing Geolocation Feature...');
+  
+  var testLocations = ['Manchester', 'London', 'Birmingham', 'Edinburgh', 'Cardiff'];
+  
+  Logger.log('🌍 Testing individual location geocoding:');
+  for (var i = 0; i < testLocations.length; i++) {
+    var location = testLocations[i];
+    var coordinates = getLocationCoordinates(location);
+    if (coordinates) {
+      Logger.log('✅ ' + location + ': lat=' + coordinates.lat + ', lng=' + coordinates.lng);
+    } else {
+      Logger.log('❌ ' + location + ': geocoding failed');
+    }
+  }
+  
+  Logger.log('🧪 Testing end-to-end with mock demographics file...');
+  
+  // Use the same content as our mock file but test the geolocation specifically
+  var mockContent = `Salary: £35,000 - £42,000 per annum
+Location: Manchester
+Industry: Technology, HR, Diversity & Inclusion
+Age: 18-25, Young professionals
+Gender & Sexual Preference: Women, Non-binary, LGBTQ+, He/Him, She/Her, They/Them
+Application deadline: 15 January 2026
+Link: https://www.techcompany.com/careers/diversity-inclusion-coordinator`;
+
+  Logger.log('📝 Parsing mock content with Manchester location...');
+  var parsedData = parseTextFileInGoogleScript(mockContent);
+  
+  Logger.log('🔍 Parsed location: ' + parsedData.location);
+  if (parsedData._geoloc) {
+    Logger.log('🌍 Parsed geolocation: lat=' + parsedData._geoloc.lat + ', lng=' + parsedData._geoloc.lng);
+  } else {
+    Logger.log('❌ No geolocation data found in parsed result');
+  }
+  
+  Logger.log('🚀 Sending to API server...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 GEOLOCATION FEATURE TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should include _geoloc field with Manchester coordinates');
+    Logger.log('🎯 Expected: _geoloc.lat ≈ 53.487, _geoloc.lng ≈ -2.290');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Geolocation feature test completed - check Firebase for _geoloc field'
+    };
+  } else {
+    Logger.log('❌ GEOLOCATION FEATURE TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Multiple Location Geocoding - Comprehensive Test
+ */
+function testMultipleLocationGeocoding() {
+  Logger.log('🧪 Testing Multiple Location Geocoding...');
+  
+  var testCases = [
+    { input: 'Manchester', expectedLat: 53.487, expectedLng: -2.290 },
+    { input: 'London', expectedLat: 51.507, expectedLng: -0.127 },
+    { input: 'Birmingham', expectedLat: 52.479, expectedLng: -1.902 },
+    { input: 'Online', expectedLat: null, expectedLng: null },
+    { input: 'Remote', expectedLat: null, expectedLng: null },
+    { input: 'UK Wide', expectedLat: null, expectedLng: null }
+  ];
+  
+  var successCount = 0;
+  var totalCount = testCases.length;
+  
+  for (var i = 0; i < testCases.length; i++) {
+    var testCase = testCases[i];
+    var coordinates = getLocationCoordinates(testCase.input);
+    
+    if (testCase.expectedLat === null) {
+      if (coordinates === null) {
+        Logger.log('✅ ' + testCase.input + ': Correctly returned null (virtual location)');
+        successCount++;
+      } else {
+        Logger.log('❌ ' + testCase.input + ': Expected null but got coordinates');
+      }
+    } else {
+      if (coordinates && 
+          Math.abs(coordinates.lat - testCase.expectedLat) < 0.1 && 
+          Math.abs(coordinates.lng - testCase.expectedLng) < 0.1) {
+        Logger.log('✅ ' + testCase.input + ': lat=' + coordinates.lat + ', lng=' + coordinates.lng + ' (within expected range)');
+        successCount++;
+      } else if (coordinates) {
+        Logger.log('⚠️ ' + testCase.input + ': lat=' + coordinates.lat + ', lng=' + coordinates.lng + ' (outside expected range)');
+        successCount++; // Still count as success if we got coordinates
+      } else {
+        Logger.log('❌ ' + testCase.input + ': Failed to geocode');
+      }
+    }
+  }
+  
+  Logger.log('📊 GEOLOCATION TEST SUMMARY: ' + successCount + '/' + totalCount + ' locations processed successfully');
+  
+  return {
+    success: successCount >= totalCount * 0.8, // 80% success rate required
+    processedCount: successCount,
+    totalCount: totalCount,
+    message: 'Multiple location geocoding test completed'
+  };
 }

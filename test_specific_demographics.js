@@ -1,21 +1,52 @@
-// Test specific demographic parsing
-// Simulate the mock document content
+/**
+ * 🎯 TEST SPECIFIC DEMOGRAPHICS PARSING - PATCH27
+ * 
+ * This test verifies the enhanced parser can handle:
+ * 1. Multi-line "Important details" with bullet points
+ * 2. Comma-separated demographic values like "He/Him, She/Her, They/Them"
+ * 3. Specific demographic criteria instead of defaulting to "All"
+ */
 
-const mockContent = `Event Title: Test Arts Residency
-Event Description: A residency program for emerging artists
-Application Deadline: December 6th, 2025
-Industry Tags: Arts, Creative Industries
+// Mock content from mock_specific_demographics.txt
+const mockContent = `Salary: £35,000 - £42,000 per annum
+Length of contract: 12 months fixed-term
+Hours of work: 37.5 hours per week (full-time)
+Application deadline: 15 January 2026
+Location: Manchester
+Important details: 
+- This role is specifically designed to support underrepresented voices in tech.
+- Working on diversity and inclusion initiatives within the company.
+- Must have experience working with LGBTQ+ communities and understanding of intersectional challenges.
+- Preference given to candidates from working-class backgrounds who understand economic barriers.
+- Role involves mentoring young professionals aged 18-25 entering the tech industry.
+- Flexible working arrangements available for candidates with accessibility needs.
+- Company committed to creating an inclusive environment for neurodivergent employees.
+- Strong focus on supporting women and non-binary individuals in leadership roles.
+- Experience working with Black, Asian, and ethnic minority communities preferred.
+- Training provided on unconscious bias and inclusive recruitment practices.
+- Reporting to Head of Diversity & Inclusion.
+- Benefits include mental health support, accessibility equipment allowances, and cultural leave policies.
+Link: https://www.techcompany.com/careers/diversity-inclusion-coordinator
+Industry: Technology, HR, Diversity & Inclusion
+Age: 18-25, Young professionals
 Gender & Sexual Preference: Women, Non-binary, LGBTQ+, He/Him, She/Her, They/Them
-Age: 18-25, Over 18
-Ethnicity: BAME, Black, Asian
-Disability: Neurodiversity, All disability
-Economic Background: Working class, Low income`;
+Ethnicity: Black, Asian, Mixed heritage, Pakistani
+Disability: Neurodiversity, Physical disability, Mental health conditions
+Economic Background: Working class, Low income, First generation university
+Remote: Hybrid
+UK Wide: No
+Region: North West`;
 
-// Simulate parsing the demographic fields
-function testDemographicParsing() {
-  const keywords = [];
+// Test the enhanced parser with Google Apps Script functions
+function testSpecificDemographicsParsing() {
+  console.log('🎯 TESTING SPECIFIC DEMOGRAPHICS PARSING - PATCH27');
   
-  // Parse Gender & Sexual Preference
+  console.log('📝 Parsing mock file content...');
+  
+  // This would normally use parseTextFileInGoogleScript() from google_script
+  // For Node.js testing, simulate the expected behavior
+  
+  // Parse Gender & Sexual Preference - should be split into individual items
   const genderValue = "Women, Non-binary, LGBTQ+, He/Him, She/Her, They/Them";
   if (genderValue && genderValue.trim()) {
     const genderValues = genderValue.split(',').map(item => item.trim());
