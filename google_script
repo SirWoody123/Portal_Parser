@@ -1452,7 +1452,7 @@ function processDocument(file) {
       lowerSocioEconomicBackground: socioEconomicMatches.length > 0 ? socioEconomicMatches : allSocioEconomicOptions // Use specific matches if found, otherwise default to ALL
     }
 
-    return {
+    var result = {
       anythingElseImportant: str(data.anythingElseImportant),
       applicationDeadline: str(data.applicationDeadline),
       approvalFirst: bool(data.approvalFirst),
