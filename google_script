@@ -197,6 +197,70 @@ function testDemographicsIntegration() {
 }
 
 /**
+ * 🧪 Test Specific Demographics Parsing - Comma-separated values
+ */
+function testSpecificDemographicsParsing() {
+  Logger.log('🧪 Testing specific demographics parsing with comma-separated values...');
+  
+  var mockContent = `Event Title: Test Arts Residency
+Event Description: A residency program for emerging artists with specific demographic targeting
+Application Deadline: December 6th, 2025
+Industry Tags: Arts, Creative Industries
+Gender & Sexual Preference: Women, Non-binary, LGBTQ+, He/Him, She/Her, They/Them
+Age: 18-25, Over 18
+Ethnicity: BAME, Black, Asian
+Disability: Neurodiversity, Physical disability
+Economic Background: Working class, Low income`;
+
+  Logger.log('🔍 Parsing mock content with specific demographic criteria...');
+  var parsedResult = parseTextFileInGoogleScript(mockContent);
+  
+  Logger.log('📋 Parsed keywords: ' + JSON.stringify(parsedResult.tags.keywords));
+  Logger.log('🎯 Should contain individual demographic values like: Women, Non-binary, He/Him, She/Her, They/Them, 18-25, Over 18, BAME, Black, Asian, Neurodiversity, Working class, Low income');
+  
+  // Check if parsing correctly split comma-separated values
+  var expectedValues = ['Women', 'Non-binary', 'LGBTQ+', 'He/Him', 'She/Her', 'They/Them', '18-25', 'Over 18', 'BAME', 'Black', 'Asian', 'Neurodiversity', 'Physical disability', 'Working class', 'Low income'];
+  var foundValues = [];
+  var missingValues = [];
+  
+  for (var i = 0; i < expectedValues.length; i++) {
+    if (parsedResult.tags.keywords.indexOf(expectedValues[i]) !== -1) {
+      foundValues.push(expectedValues[i]);
+    } else {
+      missingValues.push(expectedValues[i]);
+    }
+  }
+  
+  Logger.log('✅ Found demographic values: ' + JSON.stringify(foundValues));
+  if (missingValues.length > 0) {
+    Logger.log('❌ Missing demographic values: ' + JSON.stringify(missingValues));
+  }
+  
+  // Send through API bridge to test final demographic processing
+  var result = sendToApiBridge(parsedResult);
+  
+  if (result && result.success) {
+    Logger.log('🎉 SPECIFIC DEMOGRAPHICS TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - demographics should be specific, not defaulting to "All" arrays');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Specific demographics parsing test completed - check Firebase for individual demographic tags'
+    };
+  } else {
+    Logger.log('❌ SPECIFIC DEMOGRAPHICS TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
  * 🧪 Test Empty Demographics - PATCH20 FIX TEST!
  */
 function testEmptyDemographics() {
@@ -424,9 +488,12 @@ function parseApplicationDeadline(dateString) {
   
   var cleanDate = dateString.trim();
   
+  // Remove ordinal suffixes (1st, 2nd, 3rd, 4th, etc.)
+  cleanDate = cleanDate.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
+  
   try {
     // Handle common patterns
-    // "5th December 2025" -> "2025-12-05T23:59:59Z"
+    // "5th December 2025" -> "5 December 2025" -> "2025-12-05T23:59:59Z"
     // "December 5, 2025" -> "2025-12-05T23:59:59Z"
     // "14 December 2025 for Term 2" -> "2025-12-14T23:59:59Z"
     // "5/12/25" -> "2025-12-05T23:59:59Z"
@@ -527,7 +594,16 @@ function parseApplicationDeadline(dateString) {
       return date.toISOString();
     }
     
-    // If all parsing fails, return the original string
+    // If all parsing fails, check for special cases
+    if (dateString.toLowerCase().includes('not specified') || 
+        dateString.toLowerCase().includes('n/a') || 
+        dateString.toLowerCase().includes('tbc') ||
+        dateString.toLowerCase().includes('to be confirmed')) {
+      Logger.log('⚠️ Could not parse date: ' + dateString + ', returning "No deadline specified"');
+      return 'No deadline specified';
+    }
+    
+    // Return original string for other cases
     Logger.log('⚠️ Could not parse date: ' + dateString + ', returning original');
     return dateString;
     
@@ -547,6 +623,7 @@ function parseTextFileInGoogleScript(textContent) {
   Logger.log('🔍 TEXT PARSER (Google Script): Starting text file parsing...');
   
   var lines = textContent.split('\n').map(function(line) { return line.trim(); }).filter(function(line) { return line; });
+  var eventDate = ''; // Store event date for deadline fallback
   var result = {
     title: '',
     description: '',
@@ -570,12 +647,31 @@ function parseTextFileInGoogleScript(textContent) {
     }
   };
 
-  lines.forEach(function(line) {
-    if (!line.includes(':')) return;
+  // Enhanced parsing to handle multi-line sections
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (!line.includes(':')) continue;
     
     var parts = line.split(':');
     var key = parts[0].trim();
     var value = parts.slice(1).join(':').trim();
+    
+    // Check for multi-line sections like "Important details:"
+    if ((key === 'Important details' || key === 'Important Details') && (!value || value === '')) {
+      // Collect all following lines until we hit another field with a colon
+      var multiLineContent = [];
+      var j = i + 1;
+      while (j < lines.length && !lines[j].includes(':')) {
+        if (lines[j].trim()) {
+          multiLineContent.push(lines[j]);
+        }
+        j++;
+      }
+      if (multiLineContent.length > 0) {
+        value = multiLineContent.join('\n');
+        i = j - 1; // Skip the lines we just processed
+      }
+    }
     
     Logger.log('🔍 TEXT PARSER: Processing "' + key + '" = "' + value + '"');
     
@@ -669,6 +765,7 @@ function parseTextFileInGoogleScript(textContent) {
         break;
         
       case 'Industry':
+      case 'Industry Tags':
         // Split comma-separated values and clean them
         result.tags.industry = value.split(',')
           .map(function(item) { return item.trim(); })
@@ -677,45 +774,176 @@ function parseTextFileInGoogleScript(textContent) {
         break;
         
       case 'Age':
-        // Handle complex age strings like "16, 17, 18, 19, 20, 21, 22, 23, 24, 25, Over 18"
-        // Just use "Over 18" as the main demographic since it covers most of the range
-        if (value.includes('Over 18')) {
-          result.tags.keywords.push('Over 18');
-          Logger.log('🔍 TEXT PARSER: Added simplified age to keywords: Over 18');
-        } else {
-          result.tags.keywords.push(value);
-          Logger.log('🔍 TEXT PARSER: Added age to keywords: ' + value);
+      case 'Age Tags':
+        // Split comma-separated age values and add individually
+        if (value && value.trim()) {
+          var ageValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(ageValues);
+          Logger.log('🔍 TEXT PARSER: Added age values to keywords: ' + JSON.stringify(ageValues));
         }
         break;
         
       case 'Gender & Sexual Preference':
-        // Add gender to keywords for demographic processing
-        result.tags.keywords.push(value);
-        Logger.log('🔍 TEXT PARSER: Added gender to keywords: ' + value);
+      case 'Gender & Sexual Preference Tags':
+        // Split comma-separated demographic values and add individually
+        if (value && value.trim()) {
+          var genderValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(genderValues);
+          Logger.log('🔍 TEXT PARSER: Added gender values to keywords: ' + JSON.stringify(genderValues));
+        }
         break;
         
       case 'Ethnicity':
-        // Add ethnicity to keywords for demographic processing
-        result.tags.keywords.push(value);
-        Logger.log('🔍 TEXT PARSER: Added ethnicity to keywords: ' + value);
+      case 'Ethnicity Tags':
+        // Split comma-separated demographic values and add individually
+        if (value && value.trim()) {
+          var ethnicityValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(ethnicityValues);
+          Logger.log('🔍 TEXT PARSER: Added ethnicity values to keywords: ' + JSON.stringify(ethnicityValues));
+        }
         break;
         
       case 'Disability':
-        // Add disability to keywords for demographic processing
-        result.tags.keywords.push(value);
-        Logger.log('🔍 TEXT PARSER: Added disability to keywords: ' + value);
+      case 'Disability Tags':
+        // Split comma-separated demographic values and add individually
+        if (value && value.trim()) {
+          var disabilityValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(disabilityValues);
+          Logger.log('🔍 TEXT PARSER: Added disability values to keywords: ' + JSON.stringify(disabilityValues));
+        }
         break;
         
       case 'Economic Background':
-        // Add economic background to keywords for demographic processing
-        result.tags.keywords.push(value);
-        Logger.log('🔍 TEXT PARSER: Added economic background to keywords: ' + value);
+      case 'Economic Background Tags':
+        // Split comma-separated demographic values and add individually
+        if (value && value.trim()) {
+          var economicValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(economicValues);
+          Logger.log('🔍 TEXT PARSER: Added economic background values to keywords: ' + JSON.stringify(economicValues));
+        }
         break;
         
       case 'Region':
         // Use region info if no specific location
         if (!result.location || result.location === '') {
           result.location = value;
+        }
+        break;
+        
+      case 'Event Title':
+        // Use event title as the main title
+        if (value && value.trim()) {
+          result.title = value.trim();
+          Logger.log('🔍 TEXT PARSER: Set title from Event Title: ' + value);
+        }
+        break;
+        
+      case 'Event Description':
+        // Use event description as main content
+        if (value && value.trim()) {
+          result.anythingElseImportant = value;
+          result.shortSummary = value.length > 200 ? value.substring(0, 200) + '...' : value;
+          result.description = value;
+          Logger.log('🔍 TEXT PARSER: Set event description');
+        }
+        break;
+        
+      case 'Event Date':
+        // Capture event date information and store for deadline fallback
+        if (value && value.trim()) {
+          eventDate = value.trim(); // Store for potential deadline use
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\n\nEvent Date: ' + value;
+          } else {
+            result.anythingElseImportant = 'Event Date: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added event date info and stored for deadline fallback');
+        }
+        break;
+        
+      case 'Event Time':
+        // Capture event time information
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nEvent Time: ' + value;
+          } else {
+            result.anythingElseImportant = 'Event Time: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added event time info');
+        }
+        break;
+        
+      case 'Cost':
+        // Capture cost information
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nCost: ' + value;
+          } else {
+            result.anythingElseImportant = 'Cost: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added cost info');
+        }
+        break;
+        
+      case '- Age requirement':
+      case 'Age requirement':
+        // Capture age requirements
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nAge Requirement: ' + value;
+          } else {
+            result.anythingElseImportant = 'Age Requirement: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added age requirement');
+        }
+        break;
+        
+      case '- Contact for accessibility or event questions':
+      case 'Contact for accessibility':
+      case 'Event contact':
+        // Capture contact information
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nContact: ' + value;
+          } else {
+            result.anythingElseImportant = 'Contact: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added contact info');
+        }
+        break;
+        
+      case '- Daniel Regan':
+      case '- Sam Ulla Lindsay':
+      case 'Artists Info':
+        // Capture artist/presenter information
+        if (value && value.trim()) {
+          var fieldName = key.startsWith('- ') ? key.substring(2) : key;
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\n\n' + fieldName + ': ' + value;
+          } else {
+            result.anythingElseImportant = fieldName + ': ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added artist/presenter info');
+        }
+        break;
+        
+      case 'Tags':
+        // Handle additional tags field
+        if (value && value.trim()) {
+          var additionalTags = value.split(',').map(function(tag) { return tag.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(additionalTags);
+          Logger.log('🔍 TEXT PARSER: Added additional tags: ' + JSON.stringify(additionalTags));
+        }
+        break;
+        
+      case 'Important details':
+      case 'Important Details':
+        // Handle important details field specifically
+        if (value && value.trim()) {
+          result.anythingElseImportant = value;
+          result.description = value;
+          result.shortSummary = value.length > 200 ? value.substring(0, 200) + '...' : value;
+          Logger.log('🔍 TEXT PARSER: Set important details as main content');
         }
         break;
         
@@ -745,7 +973,7 @@ function parseTextFileInGoogleScript(textContent) {
         Logger.log('🔍 TEXT PARSER: Unhandled field "' + key + '" = "' + value + '"');
         break;
     }
-  });
+  }
 
   // Generate title if not set
   if (!result.title || result.title.trim() === '') {
@@ -771,6 +999,12 @@ function parseTextFileInGoogleScript(textContent) {
     result.tags.keywords = result.tags.keywords.concat(['course', 'opportunity']);
   } else {
     result.tags.keywords = result.tags.keywords.concat(['internship', 'opportunity']);
+  }
+
+  // Use event date as deadline if no specific deadline was provided
+  if (eventDate && (result.applicationDeadline === 'No deadline specified' || !result.applicationDeadline)) {
+    result.applicationDeadline = parseApplicationDeadline(eventDate);
+    Logger.log('🔍 TEXT PARSER: Using event date as deadline: ' + result.applicationDeadline);
   }
 
   Logger.log('🔍 TEXT PARSER (Google Script): Final parsed result: ' + JSON.stringify(result, null, 2));
@@ -922,94 +1156,68 @@ function processDocument(file) {
     var disabilityTagsToAdd = [];
     var socioEconomicTagsToAdd = [];
 
-    // Find age in keywords and add to tagsArr
+    // Collect ALL matching demographic values from keywords (FIXED: collect all matches, not just first)
+    var ageMatches = [];
+    var genderMatches = [];
+    var ethnicityMatches = [];
+    var disabilityMatches = [];
+    var socioEconomicMatches = [];
+
+    // Find all age matches in keywords
     for (var i = 0; i < keywordsArr.length; i++) {
       if (allowedAges.includes(keywordsArr[i])) {
-        ageString = keywordsArr[i];
-        if (ageString === 'All ages') {
-          // Add all individual age options to tags array
-          ageTagsToAdd = allAgeOptions.slice(); // Copy array
-          ageString = 'All ages'; // Keep for demographic object
-        } else {
-          ageTagsToAdd = [ageString];
-        }
-        break;
+        ageMatches.push(keywordsArr[i]);
       }
     }
 
-    // Find gender in keywords and add to tagsArr
+    // Find all gender matches in keywords
     for (var j = 0; j < keywordsArr.length; j++) {
       if (allowedGenders.includes(keywordsArr[j])) {
-        genderString = keywordsArr[j];
-        if (genderString === 'All genders & preferences') {
-          // Add all individual gender options to tags array
-          genderTagsToAdd = allGenderOptions.slice(); // Copy array
-          genderString = 'All genders & preferences'; // Keep for demographic object
-        } else {
-          genderTagsToAdd = [genderString];
-        }
-        break;
+        genderMatches.push(keywordsArr[j]);
       }
     }
 
-    // Find ethnicity in keywords and add to tagsArr
+    // Find all ethnicity matches in keywords
     for (var k = 0; k < keywordsArr.length; k++) {
       if (allowedEthnicities.includes(keywordsArr[k])) {
-        ethnicityString = keywordsArr[k];
-        if (ethnicityString === 'All ethnicities') {
-          // Add all individual ethnicity options to tags array
-          ethnicityTagsToAdd = allEthnicityOptions.slice(); // Copy array
-          ethnicityString = 'All ethnicities'; // Keep for demographic object
-        } else {
-          ethnicityTagsToAdd = [ethnicityString];
-        }
-        break;
+        ethnicityMatches.push(keywordsArr[k]);
       }
     }
 
-    // Find disability in keywords and add to tagsArr
+    // Find all disability matches in keywords
     for (var d = 0; d < keywordsArr.length; d++) {
       if (allowedDisabilities.includes(keywordsArr[d])) {
-        disabilityString = keywordsArr[d];
-        if (disabilityString === 'All disability') {
-          // Add all individual disability options to tags array
-          disabilityTagsToAdd = allDisabilityOptions.slice(); // Copy array
-          disabilityString = 'All disability'; // Keep for demographic object
-        } else {
-          disabilityTagsToAdd = [disabilityString];
-        }
-        break;
+        disabilityMatches.push(keywordsArr[d]);
       }
     }
 
-    // Find socioeconomic in keywords and add to tagsArr
+    // Find all socioeconomic matches in keywords
     for (var l = 0; l < keywordsArr.length; l++) {
       if (allowedSocioEconomic.includes(keywordsArr[l])) {
-        lowerSocioEconomicBackgroundString = keywordsArr[l];
-        if (lowerSocioEconomicBackgroundString === 'All backgrounds') {
-          // Add all individual socioeconomic options to tags array
-          socioEconomicTagsToAdd = allSocioEconomicOptions.slice(); // Copy array
-          lowerSocioEconomicBackgroundString = 'All backgrounds'; // Keep for demographic object
-        } else {
-          socioEconomicTagsToAdd = [lowerSocioEconomicBackgroundString];
-        }
-        break;
+        socioEconomicMatches.push(keywordsArr[l]);
       }
     }
+
+    // Process matches for tags array
+    ageTagsToAdd = ageMatches.length > 0 ? ageMatches : [];
+    genderTagsToAdd = genderMatches.length > 0 ? genderMatches : [];
+    ethnicityTagsToAdd = ethnicityMatches.length > 0 ? ethnicityMatches : [];
+    disabilityTagsToAdd = disabilityMatches.length > 0 ? disabilityMatches : [];
+    socioEconomicTagsToAdd = socioEconomicMatches.length > 0 ? socioEconomicMatches : [];
 
     // DON'T add demographic tags to main tags array here!
     // Let the API server handle the demographic -> tag ID conversion
     // The demographic object below will be processed by the API server
 
-    // *** PATCH25 FIX: Demographic object for API server processing ***
+    // *** PATCH27 FIX: Demographic object using collected matches ***
     // The API server will convert these demographic arrays to Firebase tag IDs
     var demographicObj = {
       industry: industryTags, // Keep as array for demographic.industry
-      age: ageString ? (ageString === 'All ages' ? allAgeOptions : [ageString]) : allAgeOptions, // Default to ALL ages if empty
-      genderSexualPreference: genderString ? (genderString === 'All genders & preferences' ? allGenderOptions : [genderString]) : allGenderOptions, // Default to ALL genders if empty
-      ethnicity: ethnicityString ? (ethnicityString === 'All ethnicities' ? allEthnicityOptions : [ethnicityString]) : allEthnicityOptions, // Default to ALL ethnicities if empty
-      disability: disabilityString ? (disabilityString === 'All disability' ? allDisabilityOptions : [disabilityString]) : allDisabilityOptions, // Default to ALL disabilities if empty
-      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? (lowerSocioEconomicBackgroundString === 'All backgrounds' ? allSocioEconomicOptions : [lowerSocioEconomicBackgroundString]) : allSocioEconomicOptions // Default to ALL backgrounds if empty
+      age: ageMatches.length > 0 ? ageMatches : allAgeOptions, // Use specific matches if found, otherwise default to ALL
+      genderSexualPreference: genderMatches.length > 0 ? genderMatches : allGenderOptions, // Use specific matches if found, otherwise default to ALL
+      ethnicity: ethnicityMatches.length > 0 ? ethnicityMatches : allEthnicityOptions, // Use specific matches if found, otherwise default to ALL
+      disability: disabilityMatches.length > 0 ? disabilityMatches : allDisabilityOptions, // Use specific matches if found, otherwise default to ALL
+      lowerSocioEconomicBackground: socioEconomicMatches.length > 0 ? socioEconomicMatches : allSocioEconomicOptions // Use specific matches if found, otherwise default to ALL
     }
 
     return {
