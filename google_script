@@ -2291,6 +2291,44 @@ function testMultipleLocationGeocoding() {
 }
 
 /**
+ * 🧪 Test Milngavie Geocoding - Quick Test
+ */
+function testMilngavieGeocoding() {
+  Logger.log('🧪 Testing Milngavie Geocoding Fix...');
+  
+  var testAddresses = [
+    'Milngavie Library, Allander Road, Milngavie, G62 8PN, East Dunbartonshire, United Kingdom',
+    'Milngavie',
+    'East Dunbartonshire',
+    'Glasgow'
+  ];
+  
+  var successCount = 0;
+  
+  for (var i = 0; i < testAddresses.length; i++) {
+    var address = testAddresses[i];
+    var coords = getLocationCoordinates(address);
+    
+    if (coords) {
+      Logger.log('✅ "' + address + '" → lat=' + coords.lat + ', lng=' + coords.lng);
+      successCount++;
+    } else {
+      Logger.log('❌ "' + address + '" → No coordinates found');
+    }
+  }
+  
+  Logger.log('📊 GEOCODING TEST RESULT: ' + successCount + '/' + testAddresses.length + ' addresses geocoded');
+  
+  if (successCount >= 3) {
+    Logger.log('🎉 GEOCODING FIX SUCCESS! Enhanced fallback working correctly.');
+    return { success: true, message: 'Milngavie geocoding working' };
+  } else {
+    Logger.log('❌ GEOCODING FIX FAILED! Need to investigate further.');
+    return { success: false, message: 'Geocoding still not working properly' };
+  }
+}
+
+/**
  * 🧪 Test Geolocation Fix - End-to-End Validation
  */
 function testGeolocationFix() {
