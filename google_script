@@ -1427,6 +1427,18 @@ function processDocument(file) {
       demographic: demographicObj,
       audienceLocation: str(data.audienceLocation)
     };
+
+    // PATCH28: Include geolocation data if present (conditional addition)
+    if (data._geoloc && typeof data._geoloc === 'object' && 
+        typeof data._geoloc.lat === 'number' && 
+        typeof data._geoloc.lng === 'number') {
+      result._geoloc = {
+        lat: data._geoloc.lat,
+        lng: data._geoloc.lng
+      };
+    }
+
+    return result;
   }
   Logger.log('📋 Processing document: ' + file.getName());
 
