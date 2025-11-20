@@ -189,10 +189,32 @@ function geocodeLocationFallback(locationName) {
   // PATCH28: Try partial matching for complex addresses
   Logger.log('🔍 GEOCODING (Fallback): Trying partial match for "' + locationName + '"');
   
-  for (var cityName in ukLocations) {
-    if (ukLocations[cityName] !== null && key.includes(cityName)) {
-      Logger.log('🌍 GEOCODING (Fallback): Found partial match "' + cityName + '" in "' + locationName + '" - lat: ' + ukLocations[cityName].lat + ', lng: ' + ukLocations[cityName].lng);
-      return ukLocations[cityName];
+  // Sort cities by length (longest first) to match most specific location first
+  var cityNames = Object.keys(ukLocations);
+  cityNames.sort(function(a, b) { return b.length - a.length; });
+  
+  for (var i = 0; i < cityNames.length; i++) {
+    var cityName = cityNames[i];
+    var coords = ukLocations[cityName];
+    
+    if (coords !== null && key.indexOf(cityName) !== -1) {
+      Logger.log('🌍 GEOCODING (Fallback): Found partial match "' + cityName + '" in "' + locationName + '" - lat: ' + coords.lat + ', lng: ' + coords.lng);
+      return coords;
+    }
+  }
+  
+  // Try word-based matching for better results
+  Logger.log('🔍 GEOCODING (Fallback): Trying word-based matching...');
+  var words = key.split(/[\s,]+/); // Split on spaces and commas
+  
+  for (var j = 0; j < words.length; j++) {
+    var word = words[j].trim();
+    if (word.length > 2 && ukLocations[word]) { // Only check words longer than 2 chars
+      var coords = ukLocations[word];
+      if (coords !== null) {
+        Logger.log('🌍 GEOCODING (Fallback): Found word match "' + word + '" in "' + locationName + '" - lat: ' + coords.lat + ', lng: ' + coords.lng);
+        return coords;
+      }
     }
   }
   
