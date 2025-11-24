@@ -1486,6 +1486,7 @@ function parseTextFileInGoogleScript(textContent) {
       deadline.includes('to be confirmed') ||
       deadline.includes('tbc') ||
       deadline.includes('not specified') ||
+      deadline.includes('not explicitly stated') ||
       deadline.includes('rolling') ||
       deadline.includes('ongoing') ||
       deadline === 'n/a'
