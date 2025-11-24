@@ -1474,6 +1474,58 @@ function parseTextFileInGoogleScript(textContent) {
     Logger.log('🔍 TEXT PARSER: Using event date as deadline: ' + result.applicationDeadline);
   }
 
+  // PATCH28: Add "Unclear" to title for unclear deadlines
+  var isUnclearDeadline = false;
+  if (result.applicationDeadline) {
+    var deadline = result.applicationDeadline.toLowerCase().trim();
+    
+    // Check for explicit unclear indicators
+    var explicitUnclear = (
+      deadline === 'no deadline specified' ||
+      deadline === 'unclear' ||
+      deadline.includes('to be confirmed') ||
+      deadline.includes('tbc') ||
+      deadline.includes('not specified') ||
+      deadline.includes('rolling') ||
+      deadline.includes('ongoing') ||
+      deadline === 'n/a'
+    );
+    
+    // Check if it's NOT a valid ISO date (which indicates parsing failed and original text was returned)
+    var isValidISODate = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(result.applicationDeadline);
+    
+    // If it's not an ISO date and contains vague language, consider it unclear
+    var isVagueText = false;
+    if (!isValidISODate) {
+      isVagueText = (
+        deadline.includes('apply') ||
+        deadline.includes('contact') ||
+        deadline.includes('email') ||
+        deadline.includes('when') ||
+        deadline.includes('next') ||
+        deadline.includes('soon') ||
+        deadline.includes('later') ||
+        deadline.includes('call') ||
+        deadline.includes('website') ||
+        deadline.includes('visit') ||
+        deadline.length > 50 // Very long text is likely descriptive rather than a date
+      );
+    }
+    
+    isUnclearDeadline = explicitUnclear || isVagueText;
+  } else {
+    isUnclearDeadline = true; // No deadline at all
+  }
+
+  if (isUnclearDeadline) {
+    if (result.title && result.title.trim() !== '') {
+      result.title = result.title + ' [Unclear Deadline]';
+    } else {
+      result.title = 'Opportunity [Unclear Deadline]';
+    }
+    Logger.log('🔍 TEXT PARSER: Added "Unclear Deadline" to title due to unclear/missing deadline');
+  }
+
   Logger.log('🔍 TEXT PARSER (Google Script): Final parsed result: ' + JSON.stringify(result, null, 2));
   return result;
 }
