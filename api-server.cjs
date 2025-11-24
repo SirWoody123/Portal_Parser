@@ -572,7 +572,7 @@ const transformData = (data) => {
     paidOrFreeCourses: data.paidOrFreeCourses || '',
     publishedAt: data.publishedAt || '',
     schedulePost: data.schedulePost || '',
-    status: data.status || 'expired',
+    status: data.status || 'in-review',
     tags: tags,
     title: data.title || '',
     type: data.type || 'announcements',
@@ -599,6 +599,10 @@ const transformData = (data) => {
     
     // PATCH27 FIX: Add demographic object for portal UI demographic sections
     demographic: buildDemographicObject(data.demographic),
+    
+    // PATCH28: Add enhanced title generation fields
+    jobTitle: data.jobTitle || '',
+    employer: data.employer || '',
     
     // GEOLOCATION FEATURE: Add _geoloc field for location-based filtering
     ...(data._geoloc && typeof data._geoloc === 'object' && 

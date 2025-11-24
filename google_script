@@ -1097,6 +1097,9 @@ function parseTextFileInGoogleScript(textContent) {
     courseType: '', // Added for course support
     anythingElseImportant: '',
     _geoloc: null, // Will be populated with {lat: number, lng: number} if location is geocoded
+    // PATCH28: Enhanced title generation fields
+    jobTitle: '', // Extracted job title
+    employer: '', // Extracted company/employer name
     tags: {
       industry: [],
       keywords: []
@@ -1201,6 +1204,32 @@ function parseTextFileInGoogleScript(textContent) {
         if (value && value.trim()) {
           result.title = value.trim();
           Logger.log('🔍 TEXT PARSER: Set title from file: ' + value);
+        }
+        break;
+        
+      case '- Job title':
+      case 'Job title':
+      case 'Position':
+      case 'Role':
+      case 'Job Title':
+        // Capture job title for better title generation
+        if (value && value.trim()) {
+          result.jobTitle = value.trim();
+          Logger.log('🔍 TEXT PARSER: Captured job title: ' + value);
+        }
+        break;
+        
+      case '- Employer':
+      case 'Employer':
+      case 'Company':
+      case 'Organisation':
+      case 'Organization':
+      case '- Company':
+      case 'Company Name':
+        // Capture employer/company name for better title generation
+        if (value && value.trim()) {
+          result.employer = value.trim();
+          Logger.log('🔍 TEXT PARSER: Captured employer: ' + value);
         }
         break;
         
@@ -1442,23 +1471,44 @@ function parseTextFileInGoogleScript(textContent) {
     }
   }
 
-  // Generate title if not set
+  // Generate title if not set - PATCH28: Enhanced with company and job title
   if (!result.title || result.title.trim() === '') {
-    var industryText = result.tags.industry.length > 0 ? result.tags.industry[0] : 'Opportunity';
-    // Use opportunityType to determine title
-    if (result.opportunityType === 'Course') {
-      result.title = industryText + ' Course';
-    } else if (result.opportunityType === 'Junior part-time role') {
-      result.title = industryText + ' Part-Time Role';
-    } else if (result.opportunityType === 'Junior full-time role') {
-      result.title = industryText + ' Full-Time Role';
-    } else if (result.opportunityType === 'Apprenticeship') {
-      result.title = industryText + ' Apprenticeship';
-    } else if (result.opportunityType === 'Internship') {
-      result.title = industryText + ' Internship';
-    } else {
-      result.title = industryText + ' Opportunity';
+    var titleParts = [];
+    
+    // Add employer/company name if available
+    if (result.employer && result.employer.trim() !== '') {
+      titleParts.push(result.employer.trim());
     }
+    
+    // Add job title if available, otherwise use industry + opportunity type
+    if (result.jobTitle && result.jobTitle.trim() !== '') {
+      titleParts.push(result.jobTitle.trim());
+    } else {
+      var industryText = result.tags.industry.length > 0 ? result.tags.industry[0] : 'Opportunity';
+      // Use opportunityType to determine title suffix
+      if (result.opportunityType === 'Course') {
+        titleParts.push(industryText + ' Course');
+      } else if (result.opportunityType === 'Junior part-time role') {
+        titleParts.push(industryText + ' Part-Time Role');
+      } else if (result.opportunityType === 'Junior full-time role') {
+        titleParts.push(industryText + ' Full-Time Role');
+      } else if (result.opportunityType === 'Apprenticeship') {
+        titleParts.push(industryText + ' Apprenticeship');
+      } else if (result.opportunityType === 'Internship') {
+        titleParts.push(industryText + ' Internship');
+      } else {
+        titleParts.push(industryText + ' Opportunity');
+      }
+    }
+    
+    // Join parts with " - " separator, or use fallback
+    if (titleParts.length > 0) {
+      result.title = titleParts.join(' - ');
+    } else {
+      result.title = 'Opportunity';
+    }
+    
+    Logger.log('🔍 TEXT PARSER: Generated title: ' + result.title);
   }
   
   // Add some basic keywords based on opportunity type
