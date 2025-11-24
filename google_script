@@ -1088,8 +1088,8 @@ function parseTextFileInGoogleScript(textContent) {
     location: '',
     remote: false,
     ukWide: false,
-    opportunityType: 'Course', // Default for this type of content - FIXED
-    status: 'live', // Set status to live by default - FIXED
+    opportunityType: '', // Will be determined from content - PATCH28
+    status: 'in-review', // Set status to in-review by default - PATCH28
     salary: '',
     lengthOfApprenticeship: '',
     lengthOfInternship: '',
@@ -1468,6 +1468,56 @@ function parseTextFileInGoogleScript(textContent) {
       default:
         Logger.log('🔍 TEXT PARSER: Unhandled field "' + key + '" = "' + value + '"');
         break;
+    }
+  }
+
+  // PATCH28: Ensure description is populated from available content
+  if (!result.description || result.description.trim() === '') {
+    if (result.anythingElseImportant && result.anythingElseImportant.trim()) {
+      result.description = result.anythingElseImportant;
+      Logger.log('🔍 TEXT PARSER: Populated description from anythingElseImportant');
+    }
+  }
+
+  // Ensure shortSummary is populated
+  if (!result.shortSummary || result.shortSummary.trim() === '') {
+    if (result.description && result.description.trim()) {
+      result.shortSummary = result.description.length > 200 ? result.description.substring(0, 200) + '...' : result.description;
+      Logger.log('🔍 TEXT PARSER: Populated shortSummary from description');
+    }
+  }
+
+  // PATCH28: Auto-detect opportunity type if not already set
+  if (!result.opportunityType || result.opportunityType.trim() === '') {
+    // Look for clues in the content to determine opportunity type
+    var contentToAnalyze = (result.anythingElseImportant + ' ' + result.description + ' ' + result.title).toLowerCase();
+    var hasInternshipClues = contentToAnalyze.includes('internship') || result.lengthOfInternship;
+    var hasApprenticeshipClues = contentToAnalyze.includes('apprentice') || result.lengthOfApprenticeship;
+    var hasCourseClues = contentToAnalyze.includes('course') || contentToAnalyze.includes('training') || result.lengthOfCourse;
+    var hasJobClues = result.jobTitle || contentToAnalyze.includes('junior') || contentToAnalyze.includes('role') || contentToAnalyze.includes('position');
+    
+    if (hasInternshipClues) {
+      result.opportunityType = 'Internship';
+      Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Internship');
+    } else if (hasApprenticeshipClues) {
+      result.opportunityType = 'Apprenticeship';
+      Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Apprenticeship');
+    } else if (hasCourseClues && !hasJobClues) {
+      result.opportunityType = 'Course';
+      Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Course');
+    } else if (hasJobClues) {
+      // Try to determine if it's part-time or full-time
+      if (contentToAnalyze.includes('part-time') || contentToAnalyze.includes('part time')) {
+        result.opportunityType = 'Junior part-time role';
+        Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Junior part-time role');
+      } else {
+        result.opportunityType = 'Junior full-time role';
+        Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Junior full-time role');
+      }
+    } else {
+      // Default fallback
+      result.opportunityType = 'Course';
+      Logger.log('🔍 TEXT PARSER: Defaulted opportunity type to: Course');
     }
   }
 
