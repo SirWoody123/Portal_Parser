@@ -1088,8 +1088,8 @@ function parseTextFileInGoogleScript(textContent) {
     location: '',
     remote: false,
     ukWide: false,
-    opportunityType: '', // Will be determined from content - PATCH28
-    status: 'in-review', // Set status to in-review by default - PATCH28
+  opportunityType: '', // Will be determined from content - PATCH28
+  status: 'scouted', // Set status to scouted by default - PATCH28
     salary: '',
     lengthOfApprenticeship: '',
     lengthOfInternship: '',

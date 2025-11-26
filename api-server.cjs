@@ -572,7 +572,7 @@ const transformData = (data) => {
     paidOrFreeCourses: data.paidOrFreeCourses || '',
     publishedAt: data.publishedAt || '',
     schedulePost: data.schedulePost || '',
-    status: data.status || 'in-review',
+  status: data.status || 'scouted',
     tags: tags,
     title: data.title || '',
     type: data.type || 'announcements',
