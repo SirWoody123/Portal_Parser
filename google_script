@@ -1929,7 +1929,7 @@ function processDocument(file) {
       remote: bool(data.remote),
       republish: bool(data.republish),
       schedulePost: str(data.schedulePost),
-      status: str(data.status),
+  status: str(data.status) || 'scouted',
       supportSettings: arr(data.supportSettings),
       tags: {
         tags: tagsArr, // This now includes industry + keywords + demographic values

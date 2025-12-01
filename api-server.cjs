@@ -161,7 +161,7 @@ console.log('Script start');
 // Configuration
 const config = {
   port: process.env.PORT || 8080,
-  firebaseProjectUrl: process.env.FIREBASE_DATABASE_URL || 'https://eric-dev-c6144.firebaseio.com',
+  firebaseProjectUrl: process.env.FIREBASE_DATABASE_URL || 'https://neweric-744ee.firebaseio.com',
   serviceAccountPath: process.env.SERVICE_ACCOUNT_PATH || 'serviceAccountKey.json',
   targetCollectionPath: process.env.MASTER_COLLECTION_PATH || 'announcements/announcements/list'
 };
@@ -170,7 +170,7 @@ const config = {
 // Build service account object from environment variables
 const serviceAccount = {
   type: 'service_account',
-  project_id: process.env.FIREBASE_PROJECT_ID,
+  project_id: process.env.FIREBASE_PROJECT_ID || 'neweric-744ee',
   private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
   private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
   client_email: process.env.FIREBASE_CLIENT_EMAIL,
@@ -211,7 +211,8 @@ app.use(express.text({ type: 'text/plain' })); // Support text input
 const parseTextFile = (textContent) => {
   console.log('🔍 TEXT PARSER: Starting text file parsing...');
   
-  const lines = textContent.split('\n').map(line => line.trim()).filter(line => line);
+  const rawLines = textContent.split('\n');
+  const lines = rawLines.map(line => line.trim());
   const result = {
     title: '',
     description: '',
@@ -231,12 +232,25 @@ const parseTextFile = (textContent) => {
     }
   };
 
-  lines.forEach(line => {
-    if (!line.includes(':')) return;
-    
+  // Iterate by index so we can gather multi-line values (lines until next key with ':')
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.includes(':')) continue;
+
     const [key, ...valueParts] = line.split(':');
-    const value = valueParts.join(':').trim();
-    
+    let value = valueParts.join(':').trim();
+
+    // Collect continuation lines (no colon) as part of the current value
+    let j = i + 1;
+    while (j < lines.length && !lines[j].includes(':')) {
+      // Use rawLines to preserve original spacing/characters
+      const cont = rawLines[j].trim();
+      if (cont) value += '\n' + cont;
+      j++;
+    }
+    // advance the outer loop to the last consumed line
+    i = j - 1;
+
     console.log(`🔍 TEXT PARSER: Processing "${key.trim()}" = "${value}"`);
     
     switch (key.trim()) {
