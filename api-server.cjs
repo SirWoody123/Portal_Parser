@@ -384,7 +384,7 @@ const parseTextFile = (textContent) => {
         console.log(`🔍 TEXT PARSER: Unhandled field "${key.trim()}" = "${value}"`);
         break;
     }
-  });
+  }
 
   // Set default title if still empty
   if (!result.title) {
