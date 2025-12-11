@@ -222,6 +222,31 @@ const parseTextFile = (textContent) => {
     remote: false,
     ukWide: false,
     opportunityType: 'Opportunity',
+    // Enhanced event-specific fields
+    eventDate: '',
+    eventTime: '',
+    eventTimeEnd: '',
+    eventName: '',
+    anythingElseImportant: '',
+    // Additional event details for comprehensive support
+    eventDetails: {
+      eventTitle: '',
+      eventDescription: '',
+      eventStartTime: '',
+      eventEndTime: '',
+      eventDuration: '',
+      venueDetails: '',
+      organizer: '',
+      eventFormat: '',
+      ticketPrice: '',
+      bookingRegistration: '',
+      capacity: '',
+      targetAudience: '',
+      eventType: '',
+      refundPolicy: '',
+      contactInformation: '',
+      specialRequirements: ''
+    },
     demographic: {
       industry: [],
       age: [],
@@ -255,6 +280,7 @@ const parseTextFile = (textContent) => {
     
     switch (key.trim()) {
       case 'Application Deadline':
+      case 'Application deadline':
         result.applicationDeadline = value;
         break;
         
@@ -380,15 +406,153 @@ const parseTextFile = (textContent) => {
         result.link = value;
         break;
         
+      // === EVENT-SPECIFIC FIELDS ===
+      case 'Event Title':
+        result.eventDetails.eventTitle = value;
+        // Use event title as main title if not already set
+        if (!result.title) {
+          result.title = value;
+        }
+        console.log(`🔍 TEXT PARSER: Set event title: ${value}`);
+        break;
+        
+      case 'Event Description':
+        result.eventDetails.eventDescription = value;
+        // Also add to main description for compatibility
+        if (!result.description) {
+          result.description = value;
+        }
+        console.log(`🔍 TEXT PARSER: Set event description`);
+        break;
+        
+      case 'Event Date':
+        result.eventDate = value;
+        // Store for potential use as deadline fallback
+        console.log(`🔍 TEXT PARSER: Set event date: ${value}`);
+        break;
+        
+      case 'Event Start Time':
+        result.eventTime = value;
+        result.eventDetails.eventStartTime = value;
+        console.log(`🔍 TEXT PARSER: Set event start time: ${value}`);
+        break;
+        
+      case 'Event End Time':
+        result.eventTimeEnd = value;
+        result.eventDetails.eventEndTime = value;
+        console.log(`🔍 TEXT PARSER: Set event end time: ${value}`);
+        break;
+        
+      case 'Event Duration':
+        result.eventDetails.eventDuration = value;
+        // Add to important details
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Duration: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set event duration: ${value}`);
+        break;
+        
+      case 'Venue Details':
+        result.eventDetails.venueDetails = value;
+        // Add to important details for accessibility info
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Venue Details: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set venue details`);
+        break;
+        
+      case 'Organizer':
+        result.eventDetails.organizer = value;
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Organized by: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set organizer: ${value}`);
+        break;
+        
+      case 'Event Format':
+        result.eventDetails.eventFormat = value;
+        // Set remote based on format
+        if (value.toLowerCase().includes('online')) {
+          result.remote = true;
+        }
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Format: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set event format: ${value}`);
+        break;
+        
+      case 'Ticket Price':
+        result.eventDetails.ticketPrice = value;
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Price: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set ticket price: ${value}`);
+        break;
+        
+      case 'Booking/Registration':
+      case 'Booking':
+      case 'Registration':
+        result.eventDetails.bookingRegistration = value;
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Booking: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set booking/registration info`);
+        break;
+        
+      case 'Capacity':
+        result.eventDetails.capacity = value;
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Capacity: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set capacity: ${value}`);
+        break;
+        
+      case 'Target Audience':
+        result.eventDetails.targetAudience = value;
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Target Audience: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set target audience: ${value}`);
+        break;
+        
+      case 'Event Type':
+        result.eventDetails.eventType = value;
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Event Type: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set event type: ${value}`);
+        break;
+        
+      case 'Refund Policy':
+        result.eventDetails.refundPolicy = value;
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Refund Policy: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set refund policy`);
+        break;
+        
+      case 'Contact Information':
+        result.eventDetails.contactInformation = value;
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Contact: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set contact information`);
+        break;
+        
+      case 'Special Requirements':
+        result.eventDetails.specialRequirements = value;
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + `Requirements: ${value}`;
+        console.log(`🔍 TEXT PARSER: Set special requirements`);
+        break;
+        
+      case 'Anything else important':
+      case 'Additional Information':
+        // Append to existing important details
+        result.anythingElseImportant += (result.anythingElseImportant ? '\n' : '') + value;
+        console.log(`🔍 TEXT PARSER: Added additional important information`);
+        break;
+        
       default:
         console.log(`🔍 TEXT PARSER: Unhandled field "${key.trim()}" = "${value}"`);
         break;
     }
   }
 
-  // Set default title if still empty
+  // Enhanced title generation for events
   if (!result.title) {
-    result.title = 'Opportunity';
+    if (result.eventDetails.eventTitle) {
+      result.title = result.eventDetails.eventTitle;
+    } else if (result.eventDetails.eventType && result.demographic.industry.length > 0) {
+      result.title = `${result.demographic.industry[0]} ${result.eventDetails.eventType}`;
+    } else if (result.eventDetails.eventType) {
+      result.title = result.eventDetails.eventType;
+    } else {
+      result.title = result.opportunityType === 'Event' ? 'Creative Event' : 'Opportunity';
+    }
+  }
+
+  // Use event date as application deadline if no specific deadline provided
+  if (!result.applicationDeadline && result.eventDate) {
+    result.applicationDeadline = result.eventDate;
+    console.log(`🔍 TEXT PARSER: Using event date as deadline: ${result.applicationDeadline}`);
   }
 
   console.log('🔍 TEXT PARSER: Final parsed result:', JSON.stringify(result, null, 2));
@@ -617,6 +781,28 @@ const transformData = (data) => {
     // PATCH28: Add enhanced title generation fields
     jobTitle: data.jobTitle || '',
     employer: data.employer || '',
+    
+    // PATCH29: Enhanced event fields support
+    ...(data.eventDetails ? {
+      eventDetails: {
+        eventTitle: data.eventDetails.eventTitle || '',
+        eventDescription: data.eventDetails.eventDescription || '',
+        eventStartTime: data.eventDetails.eventStartTime || '',
+        eventEndTime: data.eventDetails.eventEndTime || '',
+        eventDuration: data.eventDetails.eventDuration || '',
+        venueDetails: data.eventDetails.venueDetails || '',
+        organizer: data.eventDetails.organizer || '',
+        eventFormat: data.eventDetails.eventFormat || '',
+        ticketPrice: data.eventDetails.ticketPrice || '',
+        bookingRegistration: data.eventDetails.bookingRegistration || '',
+        capacity: data.eventDetails.capacity || '',
+        targetAudience: data.eventDetails.targetAudience || '',
+        eventType: data.eventDetails.eventType || '',
+        refundPolicy: data.eventDetails.refundPolicy || '',
+        contactInformation: data.eventDetails.contactInformation || '',
+        specialRequirements: data.eventDetails.specialRequirements || ''
+      }
+    } : {}),
     
     // GEOLOCATION FEATURE: Add _geoloc field for location-based filtering
     ...(data._geoloc && typeof data._geoloc === 'object' && 
