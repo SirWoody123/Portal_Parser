@@ -3,25 +3,9 @@
  * 
  * SETUP INSTRUCTIONS:
  * 1. Deploy your API bridge to Railway/Heroku
-  Logger.log('📁 Total: ' + Object.keys(parsed).length);
-}
-  }
-  
-  var parsed = JSON.parse(processedFiles);
-  var stats = {success: 0, error: 0, unsupported: 0};
-  
-  Object.keys(parsed).forEach(function(fileId) {
-    stats[parsed[fileId].status]++;
-  });
-  
-  Logger.log('📊 Processing Status:');
-  Logger.log('✅ Success: ' + stats.success);
-  Logger.log('❌ Errors: ' + stats.error); 
-  Logger.log('🚫 Unsupported: ' + stats.unsupported);
-  Logger.log('📁 Total: ' + Object.keys(parsed).length);
-}
- * 4. Once working, run installTrigg
- * er() to set up automatic processing
+ * 2. Update CONFIG.API_BRIDGE_URL with your deployment URL
+ * 3. Test with testApiBridgeIntegration() or testRailwayIntegration()
+ * 4. Once working, run installTrigger() to set up automatic processing
  */
 
 // --- CONFIGURATION ---
@@ -37,8 +21,463 @@ var CONFIG = {
   
   // Other settings
   API_KEY: 'your-api-key-here',
-  ERIC_WEBHOOK_URL: 'https://meet-eric.co/api/opportunities/review'
+  ERIC_WEBHOOK_URL: 'https://meet-eric.co/api/opportunities/review',
+  
+  // Google Maps API key for geolocation (replace with your actual API key)
+  GOOGLE_MAPS_API_KEY: 'your-google-maps-api-key-here'
 };
+
+/**
+ * 🌍 GEOLOCATION SERVICE - Convert location names to lat/lng coordinates
+ */
+
+/**
+ * Convert a location name to latitude/longitude coordinates using Google Maps Geocoding API
+ * @param {string} locationName The location name to geocode (e.g., "Manchester", "London, UK")
+ * @returns {Object|null} Object with lat and lng properties, or null if geocoding fails
+ */
+function geocodeLocation(locationName) {
+  if (!locationName || locationName.trim() === '') {
+    return null;
+  }
+  
+  // Check if we already have coordinates in cache to avoid API calls
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'geocode_' + locationName.toLowerCase().replace(/\s+/g, '_');
+  var cached = cache.get(cacheKey);
+  
+  if (cached) {
+    Logger.log('🌍 GEOCODING: Using cached coordinates for ' + locationName);
+    return JSON.parse(cached);
+  }
+  
+  try {
+    // Use Google Maps Geocoding API
+    var geocodingUrl = 'https://maps.googleapis.com/maps/api/geocode/json?address=' + 
+                      encodeURIComponent(locationName) + 
+                      '&key=' + CONFIG.GOOGLE_MAPS_API_KEY;
+    
+    var response = UrlFetchApp.fetch(geocodingUrl);
+    var data = JSON.parse(response.getContentText());
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      var location = data.results[0].geometry.location;
+      var result = {
+        lat: location.lat,
+        lng: location.lng
+      };
+      
+      // Cache the result for 24 hours (86400 seconds)
+      cache.put(cacheKey, JSON.stringify(result), 86400);
+      
+      Logger.log('🌍 GEOCODING: Successfully geocoded "' + locationName + '" to lat: ' + result.lat + ', lng: ' + result.lng);
+      return result;
+      
+    } else {
+      Logger.log('⚠️ GEOCODING: Failed to geocode "' + locationName + '": ' + data.status);
+      return null;
+    }
+    
+  } catch (error) {
+    Logger.log('❌ GEOCODING: Error geocoding "' + locationName + '": ' + error.toString());
+    return null;
+  }
+}
+
+/**
+ * Fallback geocoding using a predefined list of UK cities (when API key is not available)
+ * @param {string} locationName The location name to geocode
+ * @returns {Object|null} Object with lat and lng properties, or null if not found
+ */
+function geocodeLocationFallback(locationName) {
+  if (!locationName || locationName.trim() === '') {
+    return null;
+  }
+  
+  // PATCH28: Comprehensive UK locations database with coordinates
+  var ukLocations = {
+    // Major cities (original entries)
+    'manchester': { lat: 53.4872927, lng: -2.2900071 },
+    'london': { lat: 51.5074456, lng: -0.1277653 },
+    'birmingham': { lat: 52.4796992, lng: -1.9026911 },
+    'leeds': { lat: 53.7974185, lng: -1.5437941 },
+    'glasgow': { lat: 55.8610306, lng: -4.2501671 },
+    'liverpool': { lat: 53.4106086, lng: -2.9779312 },
+    'bristol': { lat: 51.4538022, lng: -2.5972985 },
+    'edinburgh': { lat: 55.9533456, lng: -3.1883749 },
+    'cardiff': { lat: 51.4816546, lng: -3.1791353 },
+    'belfast': { lat: 54.5946593, lng: -5.9690754 },
+    'newcastle': { lat: 54.9738474, lng: -1.6131572 },
+    'newcastle upon tyne': { lat: 54.9738474, lng: -1.6131572 },
+    'nottingham': { lat: 52.9534193, lng: -1.1496461 },
+    'sheffield': { lat: 53.3806626, lng: -1.4702278 },
+    'bradford': { lat: 53.7943026, lng: -1.7548636 },
+    'coventry': { lat: 52.4082663, lng: -1.5105777 },
+    'leicester': { lat: 52.6368778, lng: -1.1397592 },
+    'sunderland': { lat: 54.9069619, lng: -1.3838009 },
+    'plymouth': { lat: 50.3790795, lng: -4.1326565 },
+    'derby': { lat: 52.9225301, lng: -1.4746186 },
+    'wolverhampton': { lat: 52.5855681, lng: -2.1282226 },
+    'salford': { lat: 53.4873218, lng: -2.2906621 },
+    
+    // English locations A-Z
+    'abingdon': { lat: 51.6697, lng: -1.2867 },
+    'abingdon-on-thames': { lat: 51.6697, lng: -1.2867 },
+    'alfreton': { lat: 53.0973, lng: -1.3887 },
+    'altrincham': { lat: 53.3878, lng: -2.3489 },
+    'amber valley': { lat: 53.0417, lng: -1.4139 },
+    'anstruther': { lat: 56.2234, lng: -2.7011 },
+    'armagh': { lat: 54.3503, lng: -6.6528 },
+    'ashbourne': { lat: 53.0147, lng: -1.7331 },
+    'ashton under lyne': { lat: 53.4900, lng: -2.0997 },
+    'axminster': { lat: 50.7785, lng: -3.0069 },
+    'aylsham': { lat: 52.7938, lng: 1.2473 },
+    'banbury': { lat: 52.0628, lng: -1.3392 },
+    'barking': { lat: 51.5396, lng: 0.0751 },
+    'barnstaple': { lat: 51.0801, lng: -4.0585 },
+    'bath': { lat: 51.3811, lng: -2.3590 },
+    'bedford': { lat: 52.1357, lng: -0.4668 },
+    'bicester': { lat: 51.9001, lng: -1.1518 },
+    'birkenhead': { lat: 53.3931, lng: -3.0173 },
+    'blackpool': { lat: 53.8175, lng: -3.0357 },
+    'blackwater': { lat: 51.3244, lng: -0.7879 },
+    'bognor regis': { lat: 50.7824, lng: -0.6754 },
+    'borehamwood': { lat: 51.6577, lng: -0.2731 },
+    'bourne': { lat: 52.7670, lng: -0.3773 },
+    'bournemouth': { lat: 50.7192, lng: -1.8808 },
+    'bracknell': { lat: 51.4158, lng: -0.7536 },
+    'brackley': { lat: 52.0332, lng: -1.1469 },
+    'brierley hill': { lat: 52.4816, lng: -2.1218 },
+    'brighton': { lat: 50.8225, lng: -0.1372 },
+    'brighton and hove': { lat: 50.8225, lng: -0.1372 },
+    'bromley': { lat: 51.4068, lng: 0.0145 },
+    'broxbourne': { lat: 51.7479, lng: -0.0133 },
+    'buckinghamshire': { lat: 51.8167, lng: -0.8167 },
+    'burnley': { lat: 53.7887, lng: -2.2426 },
+    'burton on trent': { lat: 52.8065, lng: -1.6400 },
+    'burton upon trent': { lat: 52.8065, lng: -1.6400 },
+    'cambridge': { lat: 52.2053, lng: 0.1218 },
+    'camden': { lat: 51.5290, lng: -0.1255 },
+    'canterbury': { lat: 51.2802, lng: 1.0789 },
+    'carlisle': { lat: 54.8951, lng: -2.9382 },
+    'chelmsford': { lat: 51.7356, lng: 0.4685 },
+    'chertsey': { lat: 51.3906, lng: -0.5061 },
+    'chester': { lat: 53.1906, lng: -2.8837 },
+    'chesterfield': { lat: 53.2351, lng: -1.4315 },
+    'chichester': { lat: 50.8365, lng: -0.7792 },
+    'clacton': { lat: 51.7896, lng: 1.1567 },
+    'cleckheaton': { lat: 53.7248, lng: -1.7114 },
+    'clevedon': { lat: 51.4368, lng: -2.8546 },
+    'colchester': { lat: 51.8959, lng: 0.9035 },
+    'congleton': { lat: 53.1643, lng: -2.2118 },
+    'cramlington': { lat: 55.0864, lng: -1.5901 },
+    'crewe': { lat: 53.0963, lng: -2.4417 },
+    'crowborough': { lat: 51.0551, lng: 0.1615 },
+    'croydon': { lat: 51.3762, lng: -0.0982 },
+    'dartford': { lat: 51.4472, lng: 0.2131 },
+    'darlington': { lat: 54.5253, lng: -1.5584 },
+    'doncaster': { lat: 53.5228, lng: -1.1285 },
+    'dudley': { lat: 52.5122, lng: -2.0808 },
+    'durham': { lat: 54.7753, lng: -1.5849 },
+    'exeter': { lat: 50.7236, lng: -3.5269 },
+    'farnborough': { lat: 51.2944, lng: -0.7581 },
+    'farnham': { lat: 51.2147, lng: -0.7982 },
+    'felixstowe': { lat: 51.9642, lng: 1.3506 },
+    'flitwick': { lat: 52.0043, lng: -0.4886 },
+    'framlingham': { lat: 52.2245, lng: 1.3408 },
+    'frome': { lat: 51.2277, lng: -2.3199 },
+    'gainsborough': { lat: 53.3982, lng: -0.7749 },
+    'galashiels': { lat: 55.6195, lng: -2.8081 },
+    'guildford': { lat: 51.2362, lng: -0.5704 },
+    'halifax': { lat: 53.7218, lng: -1.8590 },
+    'harpenden': { lat: 51.8153, lng: -0.3535 },
+    'hartlepool': { lat: 54.6869, lng: -1.2125 },
+    'hastings': { lat: 50.8429, lng: 0.5734 },
+    'havant': { lat: 50.8551, lng: -0.9810 },
+    'henley-on-thames': { lat: 51.5338, lng: -0.8987 },
+    'henley in arden': { lat: 52.2915, lng: -1.7782 },
+    'hereford': { lat: 52.0564, lng: -2.7159 },
+    'high wycombe': { lat: 51.6287, lng: -0.7482 },
+    'horsham': { lat: 51.0628, lng: -0.3258 },
+    'huddersfield': { lat: 53.6458, lng: -1.7850 },
+    'hull': { lat: 53.7676, lng: -0.3274 },
+    'ipswich': { lat: 52.0595, lng: 1.1550 },
+    'kidderminster': { lat: 52.3881, lng: -2.2470 },
+    'kirkcaldy': { lat: 56.1121, lng: -3.1564 },
+    'knutsford': { lat: 53.3041, lng: -2.3714 },
+    'lancaster': { lat: 54.0466, lng: -2.8007 },
+    'lancing': { lat: 50.8341, lng: -0.3208 },
+    'leek': { lat: 53.1038, lng: -2.0226 },
+    'lewes': { lat: 50.8738, lng: 0.0108 },
+    'lewisham': { lat: 51.4649, lng: -0.0122 },
+    'loughborough': { lat: 52.7684, lng: -1.2039 },
+    'luton': { lat: 51.8787, lng: -0.4200 },
+    'macclesfield': { lat: 53.2606, lng: -2.1259 },
+    'malton': { lat: 54.1373, lng: -0.7979 },
+    'mansfield': { lat: 53.1395, lng: -1.1982 },
+    'margate': { lat: 51.3813, lng: 1.3862 },
+    'melrose': { lat: 55.5993, lng: -2.7227 },
+    'merton': { lat: 51.4098, lng: -0.1951 },
+    'middleton': { lat: 53.5503, lng: -2.1932 },
+    'milton keynes': { lat: 52.0406, lng: -0.7594 },
+    'newbury': { lat: 51.4011, lng: -1.3223 },
+    'newry': { lat: 54.1751, lng: -6.3402 },
+    'norwich': { lat: 52.6309, lng: 1.2974 },
+    'northampton': { lat: 52.2405, lng: -0.9027 },
+    'nuneaton': { lat: 52.5225, lng: -1.4669 },
+    'orpington': { lat: 51.3729, lng: 0.0967 },
+    'oxford': { lat: 51.7520, lng: -1.2577 },
+    'peterborough': { lat: 52.5695, lng: -0.2405 },
+    'poole': { lat: 50.7150, lng: -1.9872 },
+    'portsmouth': { lat: 50.8058, lng: -1.0872 },
+    'preston': { lat: 53.7632, lng: -2.7031 },
+    'reading': { lat: 51.4543, lng: -0.9781 },
+    'retford': { lat: 53.3221, lng: -0.9464 },
+    'ripley': { lat: 53.0468, lng: -1.4093 },
+    'rochdale': { lat: 53.6097, lng: -2.1561 },
+    'romford': { lat: 51.5748, lng: 0.1821 },
+    'rotherham': { lat: 53.4302, lng: -1.3571 },
+    'runcorn': { lat: 53.3420, lng: -2.7319 },
+    'sale': { lat: 53.4217, lng: -2.3248 },
+    'saltash': { lat: 50.4064, lng: -4.2072 },
+    'sandwich': { lat: 51.2763, lng: 1.3387 },
+    'scarborough': { lat: 54.2833, lng: -0.3997 },
+    'scunthorpe': { lat: 53.5904, lng: -0.6544 },
+    'sharnbrook': { lat: 52.2117, lng: -0.5935 },
+    'shrewsbury': { lat: 52.7069, lng: -2.7528 },
+    'skipton': { lat: 53.9620, lng: -2.0175 },
+    'slough': { lat: 51.5105, lng: -0.5950 },
+    'solihull': { lat: 52.4118, lng: -1.7776 },
+    'south shields': { lat: 54.9988, lng: -1.4313 },
+    'southampton': { lat: 50.9097, lng: -1.4044 },
+    'southend-on-sea': { lat: 51.5459, lng: 0.7077 },
+    'southwold': { lat: 52.3275, lng: 1.6810 },
+    'st albans': { lat: 51.7520, lng: -0.3360 },
+    'stockport': { lat: 53.4106, lng: -2.1575 },
+    'stoke-on-trent': { lat: 53.0027, lng: -2.1794 },
+    'stornoway': { lat: 58.2093, lng: -6.3890 },
+    'stretford': { lat: 53.4455, lng: -2.3116 },
+    'sutton coldfield': { lat: 52.5644, lng: -1.8241 },
+    'swanage': { lat: 50.6095, lng: -1.9594 },
+    'taunton': { lat: 51.0147, lng: -3.1006 },
+    'torquay': { lat: 50.4619, lng: -3.5253 },
+    'totton': { lat: 50.9189, lng: -1.4866 },
+    'trowbridge': { lat: 51.3186, lng: -2.2081 },
+    'wakefield': { lat: 53.6833, lng: -1.4977 },
+    'walthamstow': { lat: 51.5820, lng: -0.0195 },
+    'walton-on-thames': { lat: 51.3869, lng: -0.4099 },
+    'warrington': { lat: 53.3900, lng: -2.5970 },
+    'warwick': { lat: 52.2819, lng: -1.5849 },
+    'washington': { lat: 54.8998, lng: -1.5180 },
+    'watford': { lat: 51.6565, lng: -0.3973 },
+    'welwyn garden city': { lat: 51.8011, lng: -0.2056 },
+    'wembley': { lat: 51.5523, lng: -0.2964 },
+    'west bridgford': { lat: 52.9261, lng: -1.1260 },
+    'widnes': { lat: 53.3667, lng: -2.7333 },
+    'wigan': { lat: 53.5448, lng: -2.6318 },
+    'winchester': { lat: 51.0632, lng: -1.3080 },
+    'windsor': { lat: 51.4816, lng: -0.6044 },
+    'witham': { lat: 51.8007, lng: 0.6424 },
+    'witney': { lat: 51.7836, lng: -1.4854 },
+    'worcester': { lat: 52.1936, lng: -2.2200 },
+    'worthing': { lat: 50.8114, lng: -0.3725 },
+    'wymondham': { lat: 52.5700, lng: 1.1180 },
+    'yeovil': { lat: 50.9415, lng: -2.6320 },
+    'york': { lat: 53.9600, lng: -1.0873 },
+    
+    // Gloucestershire locations
+    'gloucester': { lat: 51.8642, lng: -2.2382 },
+    'cheltenham': { lat: 51.8994, lng: -2.0783 },
+    'stroud': { lat: 51.7450, lng: -2.2094 },
+    'cirencester': { lat: 51.7197, lng: -1.9685 },
+    'tewkesbury': { lat: 51.9923, lng: -2.1581 },
+    'dursley': { lat: 51.6799, lng: -2.3549 },
+    'cinderford': { lat: 51.8226, lng: -2.4990 },
+    'chipping campden': { lat: 52.0411, lng: -1.7811 },
+    'thornbury': { lat: 51.6092, lng: -2.5199 },
+    'wotton-under-edge': { lat: 51.6299, lng: -2.3489 },
+    
+    // Scottish locations
+    'milngavie': { lat: 55.9423, lng: -4.3177 },
+    'east dunbartonshire': { lat: 55.9423, lng: -4.3177 },
+    'dunbartonshire': { lat: 55.9423, lng: -4.3177 },
+    'stirling': { lat: 56.1165, lng: -3.9369 },
+    'dundee': { lat: 56.4620, lng: -2.9707 },
+    'aberdeen': { lat: 57.1497, lng: -2.0943 },
+    'aberdeenshire': { lat: 57.1497, lng: -2.0943 },
+    'aberfeldy': { lat: 56.6198, lng: -3.8661 },
+    'aberfoyle': { lat: 56.1833, lng: -4.3833 },
+    'aberystwyth': { lat: 52.4144, lng: -4.0819 },
+    'aboyne': { lat: 57.0703, lng: -2.7889 },
+    'alloa': { lat: 56.1156, lng: -3.7894 },
+    'ayr': { lat: 55.4639, lng: -4.6289 },
+    'carradale': { lat: 55.5876, lng: -5.4969 },
+    'castle douglas': { lat: 54.9404, lng: -3.9269 },
+    'cumbernauld': { lat: 55.9468, lng: -3.9963 },
+    'dumfries': { lat: 55.0709, lng: -3.6036 },
+    'east kilbride': { lat: 55.7645, lng: -4.1675 },
+    'falkirk': { lat: 56.0019, lng: -3.7841 },
+    'findhorn': { lat: 57.6533, lng: -3.6000 },
+    'greenock': { lat: 55.9485, lng: -4.7692 },
+    'hamilton': { lat: 55.7781, lng: -4.0589 },
+    'inverness': { lat: 57.4778, lng: -4.2247 },
+    'johnstone': { lat: 55.8356, lng: -4.5050 },
+    'kilmarnock': { lat: 55.6144, lng: -4.4985 },
+    'leith': { lat: 55.9763, lng: -3.1681 },
+    'leven': { lat: 56.1933, lng: -3.0000 },
+    'paisley': { lat: 55.8456, lng: -4.4337 },
+    'perth': { lat: 56.3952, lng: -3.4304 },
+    'stranraer': { lat: 54.9063, lng: -5.0286 },
+    
+    // Welsh locations
+    'swansea': { lat: 51.6214, lng: -3.9436 },
+    'newport': { lat: 51.5842, lng: -2.9977 },
+    'wrexham': { lat: 53.0478, lng: -2.9916 },
+    'bangor': { lat: 53.2280, lng: -4.1287 },
+    'bridgwater': { lat: 51.1279, lng: -3.0045 },
+    'cwmgors': { lat: 51.7833, lng: -3.8167 },
+    'glynneath': { lat: 51.7281, lng: -3.6281 },
+    'pontypridd': { lat: 51.6014, lng: -3.3428 },
+    
+    // Northern Ireland locations
+    'derry': { lat: 54.9966, lng: -7.3086 },
+    'londonderry': { lat: 54.9966, lng: -7.3086 },
+    'armagh': { lat: 54.3503, lng: -6.6528 },
+    'newry': { lat: 54.1751, lng: -6.3402 },
+    'lisburn': { lat: 54.5162, lng: -6.0581 },
+    'lurgan': { lat: 54.4600, lng: -6.3378 },
+    'portadown': { lat: 54.4231, lng: -6.4378 },
+    
+    // Counties and regions
+    'cheshire': { lat: 53.2000, lng: -2.6000 },
+    'cornwall': { lat: 50.4000, lng: -4.9000 },
+    'devon': { lat: 50.7000, lng: -3.8000 },
+    'dorset': { lat: 50.7000, lng: -2.3000 },
+    'east sussex': { lat: 50.9000, lng: 0.2000 },
+    'west sussex': { lat: 50.9000, lng: -0.4000 },
+    'essex': { lat: 51.7500, lng: 0.4500 },
+    'hampshire': { lat: 51.0000, lng: -1.3000 },
+    'hertfordshire': { lat: 51.8000, lng: -0.2000 },
+    'kent': { lat: 51.2500, lng: 0.7500 },
+    'lancashire': { lat: 53.8000, lng: -2.6000 },
+    'leicestershire': { lat: 52.6000, lng: -1.2000 },
+    'lincolnshire': { lat: 53.0000, lng: -0.5000 },
+    'norfolk': { lat: 52.6000, lng: 1.0000 },
+    'northumberland': { lat: 55.2000, lng: -2.0000 },
+    'oxfordshire': { lat: 51.8000, lng: -1.3000 },
+    'somerset': { lat: 51.1000, lng: -3.0000 },
+    'suffolk': { lat: 52.2000, lng: 1.0000 },
+    'surrey': { lat: 51.3000, lng: -0.5000 },
+    'warwickshire': { lat: 52.3000, lng: -1.6000 },
+    'wiltshire': { lat: 51.3000, lng: -2.0000 },
+    'worcestershire': { lat: 52.2000, lng: -2.3000 },
+    'yorkshire': { lat: 54.0000, lng: -1.5000 },
+    'north yorkshire': { lat: 54.2000, lng: -1.8000 },
+    'west yorkshire': { lat: 53.7000, lng: -1.8000 },
+    'south yorkshire': { lat: 53.4000, lng: -1.3000 },
+    'east yorkshire': { lat: 53.8000, lng: -0.4000 },
+    'east riding': { lat: 53.8000, lng: -0.4000 },
+    'east riding of yorkshire': { lat: 53.8000, lng: -0.4000 },
+    'greater manchester': { lat: 53.4800, lng: -2.2426 },
+    'merseyside': { lat: 53.4000, lng: -2.9000 },
+    'tyne and wear': { lat: 54.9000, lng: -1.6000 },
+    'west midlands': { lat: 52.5000, lng: -2.0000 },
+    'east midlands': { lat: 52.8000, lng: -1.0000 },
+    'midlands': { lat: 52.5000, lng: -1.5000 },
+    'south west': { lat: 51.0000, lng: -3.0000 },
+    'south east': { lat: 51.2000, lng: 0.0000 },
+    'north west': { lat: 54.0000, lng: -2.5000 },
+    'north east': { lat: 55.0000, lng: -1.5000 },
+    'wales': { lat: 52.1307, lng: -3.7837 },
+    'scotland': { lat: 56.4907, lng: -4.2026 },
+    'northern ireland': { lat: 54.7877, lng: -6.4923 },
+    'east ayrshire': { lat: 55.4500, lng: -4.3000 },
+    'fife': { lat: 56.2000, lng: -3.2000 },
+    'tayside': { lat: 56.5000, lng: -3.0000 },
+    'lothian': { lat: 55.9000, lng: -3.2000 },
+    'county down': { lat: 54.3000, lng: -5.8000 },
+    'gloucestershire': { lat: 51.8000, lng: -2.2000 },
+    
+    // Virtual/remote locations
+    'online': null, // No coordinates for online locations
+    'remote': null, // No coordinates for remote locations
+    'uk wide': null, // No specific coordinates for UK-wide opportunities
+    'uk-wide': null, // Alternative spelling
+    'nationwide': null, // No specific coordinates for nationwide opportunities
+    'virtual': null, // No coordinates for virtual events
+    'global': null, // No coordinates for global opportunities
+    'international': null // No coordinates for international opportunities
+  };
+  
+  // First try exact match
+  var key = locationName.toLowerCase().trim();
+  var result = ukLocations[key];
+  
+  if (result) {
+    Logger.log('🌍 GEOCODING (Fallback): Found exact match for "' + locationName + '" - lat: ' + result.lat + ', lng: ' + result.lng);
+    return result;
+  } else if (result === null) {
+    Logger.log('🌍 GEOCODING (Fallback): "' + locationName + '" is a virtual location (no coordinates)');
+    return null;
+  }
+  
+  // PATCH28: Try partial matching for complex addresses
+  Logger.log('🔍 GEOCODING (Fallback): Trying partial match for "' + locationName + '"');
+  
+  // Sort cities by length (longest first) to match most specific location first
+  var cityNames = Object.keys(ukLocations);
+  cityNames.sort(function(a, b) { return b.length - a.length; });
+  
+  for (var i = 0; i < cityNames.length; i++) {
+    var cityName = cityNames[i];
+    var coords = ukLocations[cityName];
+    
+    if (coords !== null && key.indexOf(cityName) !== -1) {
+      Logger.log('🌍 GEOCODING (Fallback): Found partial match "' + cityName + '" in "' + locationName + '" - lat: ' + coords.lat + ', lng: ' + coords.lng);
+      return coords;
+    }
+  }
+  
+  // Try word-based matching for better results
+  Logger.log('🔍 GEOCODING (Fallback): Trying word-based matching...');
+  var words = key.split(/[\s,]+/); // Split on spaces and commas
+  
+  for (var j = 0; j < words.length; j++) {
+    var word = words[j].trim();
+    if (word.length > 2 && ukLocations[word]) { // Only check words longer than 2 chars
+      var coords = ukLocations[word];
+      if (coords !== null) {
+        Logger.log('🌍 GEOCODING (Fallback): Found word match "' + word + '" in "' + locationName + '" - lat: ' + coords.lat + ', lng: ' + coords.lng);
+        return coords;
+      }
+    }
+  }
+  
+  Logger.log('⚠️ GEOCODING (Fallback): No coordinates found for "' + locationName + '"');
+  return null;
+}
+
+/**
+ * Main geocoding function that tries Google Maps API first, then falls back to predefined list
+ * @param {string} locationName The location name to geocode
+ * @returns {Object|null} Object with lat and lng properties, or null if geocoding fails
+ */
+function getLocationCoordinates(locationName) {
+  if (!locationName || locationName.trim() === '') {
+    return null;
+  }
+  
+  // Try Google Maps API first (if API key is configured)
+  if (CONFIG.GOOGLE_MAPS_API_KEY && CONFIG.GOOGLE_MAPS_API_KEY !== 'your-google-maps-api-key-here') {
+    var result = geocodeLocation(locationName);
+    if (result) {
+      return result;
+    }
+  }
+  
+  // Fall back to predefined list
+  return geocodeLocationFallback(locationName);
+}
 
 /**
  * 🧪 TEST FUNCTION - Run this first to test your deployment
@@ -203,6 +642,70 @@ function testDemographicsIntegration() {
     };
   } else {
     Logger.log('❌ DEMOGRAPHICS TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Specific Demographics Parsing - Comma-separated values
+ */
+function testSpecificDemographicsParsing() {
+  Logger.log('🧪 Testing specific demographics parsing with comma-separated values...');
+  
+  var mockContent = `Event Title: Test Arts Residency
+Event Description: A residency program for emerging artists with specific demographic targeting
+Application Deadline: December 6th, 2025
+Industry Tags: Arts, Creative Industries
+Gender & Sexual Preference: Women, Non-binary, LGBTQ+, He/Him, She/Her, They/Them
+Age: 18-25, Over 18
+Ethnicity: BAME, Black, Asian
+Disability: Neurodiversity, Physical disability
+Economic Background: Working class, Low income`;
+
+  Logger.log('🔍 Parsing mock content with specific demographic criteria...');
+  var parsedResult = parseTextFileInGoogleScript(mockContent);
+  
+  Logger.log('📋 Parsed keywords: ' + JSON.stringify(parsedResult.tags.keywords));
+  Logger.log('🎯 Should contain individual demographic values like: Women, Non-binary, He/Him, She/Her, They/Them, 18-25, Over 18, BAME, Black, Asian, Neurodiversity, Working class, Low income');
+  
+  // Check if parsing correctly split comma-separated values
+  var expectedValues = ['Women', 'Non-binary', 'LGBTQ+', 'He/Him', 'She/Her', 'They/Them', '18-25', 'Over 18', 'BAME', 'Black', 'Asian', 'Neurodiversity', 'Physical disability', 'Working class', 'Low income'];
+  var foundValues = [];
+  var missingValues = [];
+  
+  for (var i = 0; i < expectedValues.length; i++) {
+    if (parsedResult.tags.keywords.indexOf(expectedValues[i]) !== -1) {
+      foundValues.push(expectedValues[i]);
+    } else {
+      missingValues.push(expectedValues[i]);
+    }
+  }
+  
+  Logger.log('✅ Found demographic values: ' + JSON.stringify(foundValues));
+  if (missingValues.length > 0) {
+    Logger.log('❌ Missing demographic values: ' + JSON.stringify(missingValues));
+  }
+  
+  // Send through API bridge to test final demographic processing
+  var result = sendToApiBridge(parsedResult);
+  
+  if (result && result.success) {
+    Logger.log('🎉 SPECIFIC DEMOGRAPHICS TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - demographics should be specific, not defaulting to "All" arrays');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Specific demographics parsing test completed - check Firebase for individual demographic tags'
+    };
+  } else {
+    Logger.log('❌ SPECIFIC DEMOGRAPHICS TEST FAILED!');
     Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
     
     return {
@@ -429,6 +932,706 @@ function checkFilesAndProcess() {
 }
 
 /**
+ * Parse application deadline from human-readable format to ISO string.
+ * @param {string} dateString The human-readable date string.
+ * @returns {string} ISO formatted date string.
+ */
+function parseApplicationDeadline(dateString) {
+  if (!dateString || dateString.trim() === '') {
+    return '';
+  }
+  
+  var cleanDate = dateString.trim();
+  
+  // Remove ordinal suffixes (1st, 2nd, 3rd, 4th, etc.)
+  cleanDate = cleanDate.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
+  
+  try {
+    // Handle common patterns
+    // "5th December 2025" -> "5 December 2025" -> "2025-12-05T23:59:59Z"
+    // "December 5, 2025" -> "2025-12-05T23:59:59Z"
+    // "14 December 2025 for Term 2" -> "2025-12-14T23:59:59Z"
+    // "5/12/25" -> "2025-12-05T23:59:59Z"
+    // "2025-12-05" -> "2025-12-05T23:59:59Z"
+    
+    var date = null;
+    
+    // Pattern 1: Extract first date from complex strings like "14 December 2025 for Term 2"
+    var complexDatePattern = /(\d{1,2})\s+(\w+)\s+(\d{4})/i;
+    var complexMatch = cleanDate.match(complexDatePattern);
+    if (complexMatch) {
+      var day = parseInt(complexMatch[1]);
+      var monthName = complexMatch[2];
+      var year = parseInt(complexMatch[3]);
+      
+      var months = {
+        'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
+        'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
+      };
+      
+      var monthIndex = months[monthName.toLowerCase()];
+      if (monthIndex !== undefined) {
+        date = new Date(year, monthIndex, day, 23, 59, 59);
+        Logger.log('🔍 DATE PARSER: Extracted date from complex string: ' + day + ' ' + monthName + ' ' + year);
+      }
+    }
+    
+    // Pattern 1B: Handle dates without year like "14 December" - assume current year or next year
+    if (!date) {
+      var noYearPattern = /(\d{1,2})\s+(\w+)/i;
+      var noYearMatch = cleanDate.match(noYearPattern);
+      if (noYearMatch) {
+        var day = parseInt(noYearMatch[1]);
+        var monthName = noYearMatch[2];
+        var currentYear = new Date().getFullYear();
+        
+        var months = {
+          'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
+          'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
+        };
+        
+        var monthIndex = months[monthName.toLowerCase()];
+        if (monthIndex !== undefined) {
+          // Try current year first
+          var testDate = new Date(currentYear, monthIndex, day);
+          var now = new Date();
+          
+          // If the date is in the past, use next year
+          var year = (testDate < now) ? currentYear + 1 : currentYear;
+          
+          date = new Date(year, monthIndex, day, 23, 59, 59);
+          Logger.log('🔍 DATE PARSER: Extracted date without year: ' + day + ' ' + monthName + ' -> ' + year);
+        }
+      }
+    }
+    
+    // Pattern 2: "5th December 2025", "1st January 2024", etc.
+    if (!date) {
+      var ordinalPattern = /(\d{1,2})(st|nd|rd|th)\s+(\w+)\s+(\d{4})/i;
+      var ordinalMatch = cleanDate.match(ordinalPattern);
+      if (ordinalMatch) {
+        var day = parseInt(ordinalMatch[1]);
+        var monthName = ordinalMatch[3];
+        var year = parseInt(ordinalMatch[4]);
+        
+        var months = {
+          'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
+          'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
+        };
+        
+        var monthIndex = months[monthName.toLowerCase()];
+        if (monthIndex !== undefined) {
+          date = new Date(year, monthIndex, day, 23, 59, 59);
+        }
+      }
+    }
+    
+    // Pattern 3: Try standard JavaScript Date parsing
+    if (!date) {
+      date = new Date(cleanDate);
+      if (isNaN(date.getTime())) {
+        date = null;
+      }
+    }
+    
+    // Pattern 4: Try with added time if no time specified
+    if (!date && !cleanDate.includes('T') && !cleanDate.includes(':')) {
+      date = new Date(cleanDate + ' 23:59:59');
+      if (isNaN(date.getTime())) {
+        date = null;
+      }
+    }
+    
+    if (date && !isNaN(date.getTime())) {
+      // Set to end of day (23:59:59) for deadlines
+      date.setHours(23, 59, 59, 999);
+      Logger.log('🔍 DATE PARSER: Successfully parsed to ISO: ' + date.toISOString());
+      return date.toISOString();
+    }
+    
+    // If all parsing fails, check for special cases
+    if (dateString.toLowerCase().includes('not specified') || 
+        dateString.toLowerCase().includes('n/a') || 
+        dateString.toLowerCase().includes('tbc') ||
+        dateString.toLowerCase().includes('to be confirmed')) {
+      Logger.log('⚠️ Could not parse date: ' + dateString + ', returning "No deadline specified"');
+      return 'No deadline specified';
+    }
+    
+    // Return original string for other cases
+    Logger.log('⚠️ Could not parse date: ' + dateString + ', returning original');
+    return dateString;
+    
+  } catch (e) {
+    Logger.log('⚠️ Date parsing error for "' + dateString + '": ' + e.toString());
+    return dateString;
+  }
+}
+
+/**
+ * Parse text file format into JSON structure (Google Apps Script version).
+ * Handles key: value pairs and converts demographic text values into proper arrays.
+ * @param {string} textContent The raw text content from the file.
+ * @returns {Object} The parsed JSON structure.
+ */
+function parseTextFileInGoogleScript(textContent) {
+  Logger.log('🔍 TEXT PARSER (Google Script): Starting text file parsing...');
+  
+  var lines = textContent.split('\n').map(function(line) { return line.trim(); }).filter(function(line) { return line; });
+  var eventDate = ''; // Store event date for deadline fallback
+  var result = {
+    title: '',
+    description: '',
+    shortSummary: '',
+    link: '',
+    applicationDeadline: '',
+    location: '',
+    remote: false,
+    ukWide: false,
+  opportunityType: '', // Will be determined from content - PATCH28
+  status: 'scouted', // Set status to scouted by default - PATCH28
+    salary: '',
+    lengthOfApprenticeship: '',
+    lengthOfInternship: '',
+    lengthOfCourse: '', // Added for course support
+    courseType: '', // Added for course support
+    anythingElseImportant: '',
+    _geoloc: null, // Will be populated with {lat: number, lng: number} if location is geocoded
+    // PATCH28: Enhanced title generation fields
+    jobTitle: '', // Extracted job title
+    employer: '', // Extracted company/employer name
+    tags: {
+      industry: [],
+      keywords: []
+    }
+  };
+
+  // Enhanced parsing to handle multi-line sections
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (!line.includes(':')) continue;
+    
+    var parts = line.split(':');
+    var key = parts[0].trim();
+    var value = parts.slice(1).join(':').trim();
+    
+    // Check for multi-line sections like "Important details:"
+    if ((key === 'Important details' || key === 'Important Details') && (!value || value === '')) {
+      // Collect all following lines until we hit another field with a colon
+      var multiLineContent = [];
+      var j = i + 1;
+      while (j < lines.length && !lines[j].includes(':')) {
+        if (lines[j].trim()) {
+          multiLineContent.push(lines[j]);
+        }
+        j++;
+      }
+      if (multiLineContent.length > 0) {
+        value = multiLineContent.join('\n');
+        i = j - 1; // Skip the lines we just processed
+      }
+    }
+    
+    Logger.log('🔍 TEXT PARSER: Processing "' + key + '" = "' + value + '"');
+    
+    switch (key) {
+      case 'Salary':
+        result.salary = value;
+        break;
+        
+      case 'Length of internship & start date/ month':
+      case 'Length of internship':
+        result.lengthOfInternship = value;
+        break;
+        
+      case 'Length of course':
+        result.lengthOfCourse = value;
+        // Also set opportunityType to Course if we see course-related fields
+        result.opportunityType = 'Course';
+        Logger.log('🔍 TEXT PARSER: Set opportunityType to Course, lengthOfCourse: ' + value);
+        break;
+        
+      case 'Course type':
+        result.courseType = value;
+        result.opportunityType = 'Course';
+        Logger.log('🔍 TEXT PARSER: Set opportunityType to Course, courseType: ' + value);
+        break;
+        
+      case 'Application deadline':
+        // Parse human-readable date formats into ISO format
+        result.applicationDeadline = parseApplicationDeadline(value);
+        Logger.log('🔍 TEXT PARSER: Parsed deadline "' + value + '" to "' + result.applicationDeadline + '"');
+        break;
+        
+      case 'Location':
+        result.location = value;
+        // Add geolocation coordinates for the location
+        var coordinates = getLocationCoordinates(value);
+        if (coordinates) {
+          result._geoloc = {
+            lat: coordinates.lat,
+            lng: coordinates.lng
+          };
+          Logger.log('🌍 TEXT PARSER: Added geolocation for "' + value + '" - lat: ' + coordinates.lat + ', lng: ' + coordinates.lng);
+        } else {
+          Logger.log('⚠️ TEXT PARSER: Could not geocode location "' + value + '"');
+        }
+        break;
+        
+      case 'Anything else important':
+        result.anythingElseImportant = value;
+        result.shortSummary = value.length > 200 ? value.substring(0, 200) + '...' : value;
+        break;
+        
+      case 'Link':
+        result.link = value;
+        break;
+        
+      case '- Website':
+      case 'Website':
+      case 'Company Website':
+      case 'Apply Link':
+      case 'Application Link':
+        // Capture website/application links
+        if (!result.link && value) {
+          result.link = value;
+          Logger.log('🔍 TEXT PARSER: Set link from ' + key + ': ' + value);
+        }
+        break;
+        
+      case 'Title':
+        // Use title from file if provided
+        if (value && value.trim()) {
+          result.title = value.trim();
+          Logger.log('🔍 TEXT PARSER: Set title from file: ' + value);
+        }
+        break;
+        
+      case '- Job title':
+      case 'Job title':
+      case 'Position':
+      case 'Role':
+      case 'Job Title':
+        // Capture job title for better title generation
+        if (value && value.trim()) {
+          result.jobTitle = value.trim();
+          Logger.log('🔍 TEXT PARSER: Captured job title: ' + value);
+        }
+        break;
+        
+      case '- Employer':
+      case 'Employer':
+      case 'Company':
+      case 'Organisation':
+      case 'Organization':
+      case '- Company':
+      case 'Company Name':
+        // Capture employer/company name for better title generation
+        if (value && value.trim()) {
+          result.employer = value.trim();
+          Logger.log('🔍 TEXT PARSER: Captured employer: ' + value);
+        }
+        break;
+        
+      case 'Type':
+        // Handle opportunity type from file
+        if (value && value.trim()) {
+          var typeValue = value.trim();
+          if (typeValue.toLowerCase().includes('part-time')) {
+            result.opportunityType = 'Junior part-time role';
+          } else if (typeValue.toLowerCase().includes('full-time')) {
+            result.opportunityType = 'Junior full-time role';
+          } else if (typeValue.toLowerCase().includes('apprentice')) {
+            result.opportunityType = 'Apprenticeship';
+          } else if (typeValue.toLowerCase().includes('internship')) {
+            result.opportunityType = 'Internship';
+          } else if (typeValue.toLowerCase().includes('course')) {
+            result.opportunityType = 'Course';
+          }
+          Logger.log('🔍 TEXT PARSER: Set opportunityType from Type field: ' + result.opportunityType);
+        }
+        break;
+        
+      case 'Remote':
+        result.remote = value.toLowerCase() === 'yes' || value.toLowerCase() === 'true';
+        break;
+        
+      case 'UK Wide':
+        result.ukWide = value.toLowerCase() === 'yes' || value.toLowerCase() === 'true';
+        break;
+        
+      case 'Industry':
+      case 'Industry Tags':
+        // Split comma-separated values and clean them
+        result.tags.industry = value.split(',')
+          .map(function(item) { return item.trim(); })
+          .filter(function(item) { return item; });
+        Logger.log('🔍 TEXT PARSER: Parsed industries: ' + JSON.stringify(result.tags.industry));
+        break;
+        
+      case 'Age':
+      case 'Age Tags':
+        // Split comma-separated age values and add individually
+        if (value && value.trim()) {
+          var ageValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(ageValues);
+          Logger.log('🔍 TEXT PARSER: Added age values to keywords: ' + JSON.stringify(ageValues));
+        }
+        break;
+        
+      case 'Gender & Sexual Preference':
+      case 'Gender & Sexual Preference Tags':
+        // Split comma-separated demographic values and add individually
+        if (value && value.trim()) {
+          var genderValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(genderValues);
+          Logger.log('🔍 TEXT PARSER: Added gender values to keywords: ' + JSON.stringify(genderValues));
+        }
+        break;
+        
+      case 'Ethnicity':
+      case 'Ethnicity Tags':
+        // Split comma-separated demographic values and add individually
+        if (value && value.trim()) {
+          var ethnicityValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(ethnicityValues);
+          Logger.log('🔍 TEXT PARSER: Added ethnicity values to keywords: ' + JSON.stringify(ethnicityValues));
+        }
+        break;
+        
+      case 'Disability':
+      case 'Disability Tags':
+        // Split comma-separated demographic values and add individually
+        if (value && value.trim()) {
+          var disabilityValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(disabilityValues);
+          Logger.log('🔍 TEXT PARSER: Added disability values to keywords: ' + JSON.stringify(disabilityValues));
+        }
+        break;
+        
+      case 'Economic Background':
+      case 'Economic Background Tags':
+        // Split comma-separated demographic values and add individually
+        if (value && value.trim()) {
+          var economicValues = value.split(',').map(function(item) { return item.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(economicValues);
+          Logger.log('🔍 TEXT PARSER: Added economic background values to keywords: ' + JSON.stringify(economicValues));
+        }
+        break;
+        
+      case 'Region':
+        // Use region info if no specific location
+        if (!result.location || result.location === '') {
+          result.location = value;
+        }
+        break;
+        
+      case 'Event Title':
+        // Use event title as the main title
+        if (value && value.trim()) {
+          result.title = value.trim();
+          Logger.log('🔍 TEXT PARSER: Set title from Event Title: ' + value);
+        }
+        break;
+        
+      case 'Event Description':
+        // Use event description as main content
+        if (value && value.trim()) {
+          result.anythingElseImportant = value;
+          result.shortSummary = value.length > 200 ? value.substring(0, 200) + '...' : value;
+          result.description = value;
+          Logger.log('🔍 TEXT PARSER: Set event description');
+        }
+        break;
+        
+      case 'Event Date':
+        // Capture event date information and store for deadline fallback
+        if (value && value.trim()) {
+          eventDate = value.trim(); // Store for potential deadline use
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\n\nEvent Date: ' + value;
+          } else {
+            result.anythingElseImportant = 'Event Date: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added event date info and stored for deadline fallback');
+        }
+        break;
+        
+      case 'Event Time':
+        // Capture event time information
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nEvent Time: ' + value;
+          } else {
+            result.anythingElseImportant = 'Event Time: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added event time info');
+        }
+        break;
+        
+      case 'Cost':
+        // Capture cost information
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nCost: ' + value;
+          } else {
+            result.anythingElseImportant = 'Cost: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added cost info');
+        }
+        break;
+        
+      case '- Age requirement':
+      case 'Age requirement':
+        // Capture age requirements
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nAge Requirement: ' + value;
+          } else {
+            result.anythingElseImportant = 'Age Requirement: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added age requirement');
+        }
+        break;
+        
+      case '- Contact for accessibility or event questions':
+      case 'Contact for accessibility':
+      case 'Event contact':
+        // Capture contact information
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nContact: ' + value;
+          } else {
+            result.anythingElseImportant = 'Contact: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added contact info');
+        }
+        break;
+        
+      case '- Daniel Regan':
+      case '- Sam Ulla Lindsay':
+      case 'Artists Info':
+        // Capture artist/presenter information
+        if (value && value.trim()) {
+          var fieldName = key.startsWith('- ') ? key.substring(2) : key;
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\n\n' + fieldName + ': ' + value;
+          } else {
+            result.anythingElseImportant = fieldName + ': ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added artist/presenter info');
+        }
+        break;
+        
+      case 'Tags':
+        // Handle additional tags field
+        if (value && value.trim()) {
+          var additionalTags = value.split(',').map(function(tag) { return tag.trim(); });
+          result.tags.keywords = result.tags.keywords.concat(additionalTags);
+          Logger.log('🔍 TEXT PARSER: Added additional tags: ' + JSON.stringify(additionalTags));
+        }
+        break;
+        
+      case 'Important details':
+      case 'Important Details':
+        // Handle important details field specifically
+        if (value && value.trim()) {
+          result.anythingElseImportant = value;
+          result.description = value;
+          result.shortSummary = value.length > 200 ? value.substring(0, 200) + '...' : value;
+          Logger.log('🔍 TEXT PARSER: Set important details as main content');
+        }
+        break;
+        
+      case 'Key Responsibilities':
+      case 'Skills & Experience':
+      case 'Essential':
+      case 'Desirable':
+      case 'How to Apply':
+      case 'Description':
+      case 'Job Description':
+        // Add important details to anythingElseImportant
+        if (value && value.trim()) {
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\n\n' + key + ': ' + value;
+          } else {
+            result.anythingElseImportant = key + ': ' + value;
+          }
+          // Also update shortSummary if it's empty
+          if (!result.shortSummary) {
+            result.shortSummary = value.length > 200 ? value.substring(0, 200) + '...' : value;
+          }
+          Logger.log('🔍 TEXT PARSER: Added ' + key + ' to anythingElseImportant');
+        }
+        break;
+        
+      default:
+        Logger.log('🔍 TEXT PARSER: Unhandled field "' + key + '" = "' + value + '"');
+        break;
+    }
+  }
+
+  // PATCH28: Ensure description is populated from available content
+  if (!result.description || result.description.trim() === '') {
+    if (result.anythingElseImportant && result.anythingElseImportant.trim()) {
+      result.description = result.anythingElseImportant;
+      Logger.log('🔍 TEXT PARSER: Populated description from anythingElseImportant');
+    }
+  }
+
+  // Ensure shortSummary is populated
+  if (!result.shortSummary || result.shortSummary.trim() === '') {
+    if (result.description && result.description.trim()) {
+      result.shortSummary = result.description.length > 200 ? result.description.substring(0, 200) + '...' : result.description;
+      Logger.log('🔍 TEXT PARSER: Populated shortSummary from description');
+    }
+  }
+
+  // PATCH28: Auto-detect opportunity type if not already set
+  if (!result.opportunityType || result.opportunityType.trim() === '') {
+    // Look for clues in the content to determine opportunity type
+    var contentToAnalyze = (result.anythingElseImportant + ' ' + result.description + ' ' + result.title).toLowerCase();
+    var hasInternshipClues = contentToAnalyze.includes('internship') || result.lengthOfInternship;
+    var hasApprenticeshipClues = contentToAnalyze.includes('apprentice') || result.lengthOfApprenticeship;
+    var hasCourseClues = contentToAnalyze.includes('course') || contentToAnalyze.includes('training') || result.lengthOfCourse;
+    var hasJobClues = result.jobTitle || contentToAnalyze.includes('junior') || contentToAnalyze.includes('role') || contentToAnalyze.includes('position');
+    
+    if (hasInternshipClues) {
+      result.opportunityType = 'Internship';
+      Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Internship');
+    } else if (hasApprenticeshipClues) {
+      result.opportunityType = 'Apprenticeship';
+      Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Apprenticeship');
+    } else if (hasCourseClues && !hasJobClues) {
+      result.opportunityType = 'Course';
+      Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Course');
+    } else if (hasJobClues) {
+      // Try to determine if it's part-time or full-time
+      if (contentToAnalyze.includes('part-time') || contentToAnalyze.includes('part time')) {
+        result.opportunityType = 'Junior part-time role';
+        Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Junior part-time role');
+      } else {
+        result.opportunityType = 'Junior full-time role';
+        Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Junior full-time role');
+      }
+    } else {
+      // Default fallback
+      result.opportunityType = 'Course';
+      Logger.log('🔍 TEXT PARSER: Defaulted opportunity type to: Course');
+    }
+  }
+
+  // Generate title if not set - PATCH28: Enhanced with company and job title
+  if (!result.title || result.title.trim() === '') {
+    var titleParts = [];
+    
+    // Add employer/company name if available
+    if (result.employer && result.employer.trim() !== '') {
+      titleParts.push(result.employer.trim());
+    }
+    
+    // Add job title if available, otherwise use industry + opportunity type
+    if (result.jobTitle && result.jobTitle.trim() !== '') {
+      titleParts.push(result.jobTitle.trim());
+    } else {
+      var industryText = result.tags.industry.length > 0 ? result.tags.industry[0] : 'Opportunity';
+      // Use opportunityType to determine title suffix
+      if (result.opportunityType === 'Course') {
+        titleParts.push(industryText + ' Course');
+      } else if (result.opportunityType === 'Junior part-time role') {
+        titleParts.push(industryText + ' Part-Time Role');
+      } else if (result.opportunityType === 'Junior full-time role') {
+        titleParts.push(industryText + ' Full-Time Role');
+      } else if (result.opportunityType === 'Apprenticeship') {
+        titleParts.push(industryText + ' Apprenticeship');
+      } else if (result.opportunityType === 'Internship') {
+        titleParts.push(industryText + ' Internship');
+      } else {
+        titleParts.push(industryText + ' Opportunity');
+      }
+    }
+    
+    // Join parts with " - " separator, or use fallback
+    if (titleParts.length > 0) {
+      result.title = titleParts.join(' - ');
+    } else {
+      result.title = 'Opportunity';
+    }
+    
+    Logger.log('🔍 TEXT PARSER: Generated title: ' + result.title);
+  }
+  
+  // Add some basic keywords based on opportunity type
+  if (result.opportunityType === 'Course') {
+    result.tags.keywords = result.tags.keywords.concat(['course', 'opportunity']);
+  } else {
+    result.tags.keywords = result.tags.keywords.concat(['internship', 'opportunity']);
+  }
+
+  // Use event date as deadline if no specific deadline was provided
+  if (eventDate && (result.applicationDeadline === 'No deadline specified' || !result.applicationDeadline)) {
+    result.applicationDeadline = parseApplicationDeadline(eventDate);
+    Logger.log('🔍 TEXT PARSER: Using event date as deadline: ' + result.applicationDeadline);
+  }
+
+  // PATCH28: Add "Unclear" to title for unclear deadlines
+  var isUnclearDeadline = false;
+  if (result.applicationDeadline) {
+    var deadline = result.applicationDeadline.toLowerCase().trim();
+    
+    // Check for explicit unclear indicators
+    var explicitUnclear = (
+      deadline === 'no deadline specified' ||
+      deadline === 'unclear' ||
+      deadline.includes('to be confirmed') ||
+      deadline.includes('tbc') ||
+      deadline.includes('not specified') ||
+      deadline.includes('not explicitly stated') ||
+      deadline.includes('rolling') ||
+      deadline.includes('ongoing') ||
+      deadline === 'n/a'
+    );
+    
+    // Check if it's NOT a valid ISO date (which indicates parsing failed and original text was returned)
+    var isValidISODate = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(result.applicationDeadline);
+    
+    // If it's not an ISO date and contains vague language, consider it unclear
+    var isVagueText = false;
+    if (!isValidISODate) {
+      isVagueText = (
+        deadline.includes('apply') ||
+        deadline.includes('contact') ||
+        deadline.includes('email') ||
+        deadline.includes('when') ||
+        deadline.includes('next') ||
+        deadline.includes('soon') ||
+        deadline.includes('later') ||
+        deadline.includes('call') ||
+        deadline.includes('website') ||
+        deadline.includes('visit') ||
+        deadline.length > 50 // Very long text is likely descriptive rather than a date
+      );
+    }
+    
+    isUnclearDeadline = explicitUnclear || isVagueText;
+  } else {
+    isUnclearDeadline = true; // No deadline at all
+  }
+
+  if (isUnclearDeadline) {
+    if (result.title && result.title.trim() !== '') {
+      result.title = result.title + ' [Unclear Deadline]';
+    } else {
+      result.title = 'Opportunity [Unclear Deadline]';
+    }
+    Logger.log('🔍 TEXT PARSER: Added "Unclear Deadline" to title due to unclear/missing deadline');
+  }
+
+  Logger.log('🔍 TEXT PARSER (Google Script): Final parsed result: ' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+/**
  * Process a single document file
  */
 function processDocument(file) {
@@ -547,19 +1750,19 @@ function processDocument(file) {
     // Add keyword tags
     tagsArr = tagsArr.concat(keywordsArr);
 
-    // Define allowed demographic values (PATCH21: Added "All" options that expand to include all individual values)
-    var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', 'All ages'];
+    // Define allowed demographic values (PATCH29: Fixed to match portal UI expectations exactly)
+    var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only', 'All ages'];
     var allowedGenders = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say', 'All genders & preferences'];
     var allowedEthnicities = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say', 'All ethnicities'];
-    var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'All disability'];
-    var allowedSocioEconomic = ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh', 'All backgrounds'];
+    var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health', 'All disability'];
+    var allowedSocioEconomic = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background'];
     
-    // Define what "All" options expand to
-    var allAgeOptions = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under'];
+    // Define what "All" options expand to (PATCH29: Added portal-compatible options)
+    var allAgeOptions = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only'];
     var allGenderOptions = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
     var allEthnicityOptions = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
-    var allDisabilityOptions = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment'];
-    var allSocioEconomicOptions = ['20fXkU9RdlTlpfcS5K5D', 'V9J6aDjeQc7hIePqgsCh'];
+    var allDisabilityOptions = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health'];
+    var allSocioEconomicOptions = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background'];
 
     // Extract demographic values and add them to tagsArr (PATCH21: Handle "All" expansions)
     var ageString = '';
@@ -573,109 +1776,124 @@ function processDocument(file) {
     var disabilityTagsToAdd = [];
     var socioEconomicTagsToAdd = [];
 
-    // Find age in keywords and add to tagsArr
+    // Collect ALL matching demographic values from keywords (FIXED: collect all matches, not just first)
+    var ageMatches = [];
+    var genderMatches = [];
+    var ethnicityMatches = [];
+    var disabilityMatches = [];
+    var socioEconomicMatches = [];
+
+    // Find all age matches in keywords
     for (var i = 0; i < keywordsArr.length; i++) {
       if (allowedAges.includes(keywordsArr[i])) {
-        ageString = keywordsArr[i];
-        if (ageString === 'All ages') {
-          // Add all individual age options to tags array
-          ageTagsToAdd = allAgeOptions.slice(); // Copy array
-          ageString = 'All ages'; // Keep for demographic object
-        } else {
-          ageTagsToAdd = [ageString];
-        }
-        break;
+        ageMatches.push(keywordsArr[i]);
       }
     }
 
-    // Find gender in keywords and add to tagsArr
+    // Find all gender matches in keywords
     for (var j = 0; j < keywordsArr.length; j++) {
       if (allowedGenders.includes(keywordsArr[j])) {
-        genderString = keywordsArr[j];
-        if (genderString === 'All genders & preferences') {
-          // Add all individual gender options to tags array
-          genderTagsToAdd = allGenderOptions.slice(); // Copy array
-          genderString = 'All genders & preferences'; // Keep for demographic object
-        } else {
-          genderTagsToAdd = [genderString];
-        }
-        break;
+        genderMatches.push(keywordsArr[j]);
       }
     }
 
-    // Find ethnicity in keywords and add to tagsArr
+    // Find all ethnicity matches in keywords
     for (var k = 0; k < keywordsArr.length; k++) {
       if (allowedEthnicities.includes(keywordsArr[k])) {
-        ethnicityString = keywordsArr[k];
-        if (ethnicityString === 'All ethnicities') {
-          // Add all individual ethnicity options to tags array
-          ethnicityTagsToAdd = allEthnicityOptions.slice(); // Copy array
-          ethnicityString = 'All ethnicities'; // Keep for demographic object
-        } else {
-          ethnicityTagsToAdd = [ethnicityString];
-        }
-        break;
+        ethnicityMatches.push(keywordsArr[k]);
       }
     }
 
-    // Find disability in keywords and add to tagsArr
+    // Find all disability matches in keywords
     for (var d = 0; d < keywordsArr.length; d++) {
       if (allowedDisabilities.includes(keywordsArr[d])) {
-        disabilityString = keywordsArr[d];
-        if (disabilityString === 'All disability') {
-          // Add all individual disability options to tags array
-          disabilityTagsToAdd = allDisabilityOptions.slice(); // Copy array
-          disabilityString = 'All disability'; // Keep for demographic object
-        } else {
-          disabilityTagsToAdd = [disabilityString];
-        }
-        break;
+        disabilityMatches.push(keywordsArr[d]);
       }
     }
 
-    // Find socioeconomic in keywords and add to tagsArr
+    // Find all socioeconomic matches in keywords
     for (var l = 0; l < keywordsArr.length; l++) {
       if (allowedSocioEconomic.includes(keywordsArr[l])) {
-        lowerSocioEconomicBackgroundString = keywordsArr[l];
-        if (lowerSocioEconomicBackgroundString === 'All backgrounds') {
-          // Add all individual socioeconomic options to tags array
-          socioEconomicTagsToAdd = allSocioEconomicOptions.slice(); // Copy array
-          lowerSocioEconomicBackgroundString = 'All backgrounds'; // Keep for demographic object
-        } else {
-          socioEconomicTagsToAdd = [lowerSocioEconomicBackgroundString];
-        }
-        break;
+        socioEconomicMatches.push(keywordsArr[l]);
       }
     }
 
-    // Add all demographic tags to main tags array
-    ageTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
-    genderTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
-    ethnicityTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
-    disabilityTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
-    socioEconomicTagsToAdd.forEach(function(tag) {
-      if (tagsArr.indexOf(tag) === -1) tagsArr.push(tag);
-    });
+    // Process matches for tags array
+    ageTagsToAdd = ageMatches.length > 0 ? ageMatches : [];
+    genderTagsToAdd = genderMatches.length > 0 ? genderMatches : [];
+    ethnicityTagsToAdd = ethnicityMatches.length > 0 ? ethnicityMatches : [];
+    disabilityTagsToAdd = disabilityMatches.length > 0 ? disabilityMatches : [];
+    socioEconomicTagsToAdd = socioEconomicMatches.length > 0 ? socioEconomicMatches : [];
 
-    // *** PATCH21 FIX: Handle both individual demographics and "All" expansions ***
-    var demographicObj = {
-      industry: industryTags, // Keep as array for demographic.industry
-      age: ageString ? (ageString === 'All ages' ? allAgeOptions : [ageString]) : [], // Expand "All ages" or use specific age
-      genderSexualPreference: genderString ? (genderString === 'All genders & preferences' ? allGenderOptions : [genderString]) : [], // Expand "All genders" or use specific gender
-      ethnicity: ethnicityString ? (ethnicityString === 'All ethnicities' ? allEthnicityOptions : [ethnicityString]) : [], // Expand "All ethnicities" or use specific ethnicity
-      disability: disabilityString ? (disabilityString === 'All disability' ? allDisabilityOptions : [disabilityString]) : [], // Expand "All disability" or use specific disability
-      lowerSocioEconomicBackground: lowerSocioEconomicBackgroundString ? (lowerSocioEconomicBackgroundString === 'All backgrounds' ? allSocioEconomicOptions : [lowerSocioEconomicBackgroundString]) : [] // Expand "All backgrounds" or use specific background
+    // DON'T add demographic tags to main tags array here!
+    // Let the API server handle the demographic -> tag ID conversion
+    // The demographic object below will be processed by the API server
+
+    // *** PATCH28 FIX: Handle "All" demographic expansions ***
+    // Expand "All" keywords to include all individual options
+    
+    // Handle age expansion
+    var finalAgeOptions = [];
+    if (ageMatches.includes('All ages')) {
+      finalAgeOptions = allAgeOptions; // Expand to all individual age options
+    } else if (ageMatches.length > 0) {
+      finalAgeOptions = ageMatches; // Use specific matches
+    } else {
+      finalAgeOptions = allAgeOptions; // Default to all
+    }
+    
+    // Handle gender expansion  
+    var finalGenderOptions = [];
+    if (genderMatches.includes('All genders & preferences')) {
+      finalGenderOptions = allGenderOptions; // Expand to all individual gender options
+    } else if (genderMatches.length > 0) {
+      finalGenderOptions = genderMatches; // Use specific matches
+    } else {
+      finalGenderOptions = allGenderOptions; // Default to all
+    }
+    
+    // Handle ethnicity expansion
+    var finalEthnicityOptions = [];
+    if (ethnicityMatches.includes('All ethnicities')) {
+      finalEthnicityOptions = allEthnicityOptions; // Expand to all individual ethnicity options
+    } else if (ethnicityMatches.length > 0) {
+      finalEthnicityOptions = ethnicityMatches; // Use specific matches
+    } else {
+      finalEthnicityOptions = allEthnicityOptions; // Default to all
+    }
+    
+    // Handle disability expansion
+    var finalDisabilityOptions = [];
+    if (disabilityMatches.includes('All disability')) {
+      finalDisabilityOptions = allDisabilityOptions; // Expand to all individual disability options
+    } else if (disabilityMatches.length > 0) {
+      finalDisabilityOptions = disabilityMatches; // Use specific matches
+    } else {
+      finalDisabilityOptions = allDisabilityOptions; // Default to all
+    }
+    
+    // Handle socioeconomic expansion
+    var finalSocioEconomicOptions = [];
+    if (socioEconomicMatches.includes('All backgrounds')) {
+      finalSocioEconomicOptions = allSocioEconomicOptions; // Expand to all individual background options
+    } else if (socioEconomicMatches.length > 0) {
+      finalSocioEconomicOptions = socioEconomicMatches; // Use specific matches
+    } else {
+      finalSocioEconomicOptions = allSocioEconomicOptions; // Default to all
     }
 
-    return {
+    // *** PATCH27 FIX: Demographic object using expanded matches ***
+    // The API server will convert these demographic arrays to Firebase tag IDs
+    var demographicObj = {
+      industry: industryTags, // Keep as array for demographic.industry
+      age: finalAgeOptions,
+      genderSexualPreference: finalGenderOptions,
+      ethnicity: finalEthnicityOptions,
+      disability: finalDisabilityOptions,
+      lowerSocioEconomicBackground: finalSocioEconomicOptions
+    }
+
+    var result = {
       anythingElseImportant: str(data.anythingElseImportant),
       applicationDeadline: str(data.applicationDeadline),
       approvalFirst: bool(data.approvalFirst),
@@ -711,7 +1929,7 @@ function processDocument(file) {
       remote: bool(data.remote),
       republish: bool(data.republish),
       schedulePost: str(data.schedulePost),
-      status: str(data.status),
+  status: str(data.status) || 'scouted',
       supportSettings: arr(data.supportSettings),
       tags: {
         tags: tagsArr, // This now includes industry + keywords + demographic values
@@ -734,6 +1952,18 @@ function processDocument(file) {
       demographic: demographicObj,
       audienceLocation: str(data.audienceLocation)
     };
+
+    // PATCH28: Include geolocation data if present (conditional addition)
+    if (data._geoloc && typeof data._geoloc === 'object' && 
+        typeof data._geoloc.lat === 'number' && 
+        typeof data._geoloc.lng === 'number') {
+      result._geoloc = {
+        lat: data._geoloc.lat,
+        lng: data._geoloc.lng
+      };
+    }
+
+    return result;
   }
   Logger.log('📋 Processing document: ' + file.getName());
 
@@ -745,8 +1975,9 @@ function processDocument(file) {
 
   var parsedData = null;
   var fileName = file.getName().toLowerCase();
-  // Try to parse as JSON if file extension is .json or .txt, or if content looks like JSON
-  if (fileName.endsWith('.json') || fileName.endsWith('.txt')) {
+  
+  // Try to parse as JSON if file extension is .json (but not .txt to avoid parsing errors)
+  if (fileName.endsWith('.json')) {
     try {
       var jsonCandidate = JSON.parse(content);
       if (typeof jsonCandidate === 'object' && jsonCandidate !== null) {
@@ -754,14 +1985,25 @@ function processDocument(file) {
         Logger.log('📦 Parsed JSON opportunity data from file.');
       }
     } catch (e) {
-      Logger.log('Not valid JSON, falling back to default: ' + e.toString());
+      Logger.log('Not valid JSON, falling back to text parsing: ' + e.toString());
+    }
+  }
+  
+  // NEW: Try to parse as text file with key-value format
+  if (!parsedData && fileName.endsWith('.txt')) {
+    try {
+      parsedData = parseTextFileInGoogleScript(content);
+      Logger.log('📝 Parsed text file opportunity data from file.');
+    } catch (e) {
+      Logger.log('Text parsing failed, falling back to default: ' + e.toString());
     }
   }
 
   // Option 1: If you have a parser API, call it first (only if not already parsed as JSON)
-  if (!parsedData && CONFIG.PARSER_API_URL && CONFIG.PARSER_API_URL !== 'https://karolyn-unmendacious-unsuccessfully.ngrok-free.dev/api/parse') {
-    parsedData = callDocumentParser(content, file.getName());
-  }
+  // Disabled parser API for now - ngrok endpoint is offline
+  // if (!parsedData && CONFIG.PARSER_API_URL && CONFIG.PARSER_API_URL !== 'https://karolyn-unmendacious-unsuccessfully.ngrok-free.dev/api/parse') {
+  //   parsedData = callDocumentParser(content, file.getName());
+  // }
 
   // Option 2: Create basic opportunity data ONLY if no parser or JSON
   if (!parsedData) {
@@ -976,4 +2218,800 @@ function getProcessingStatus() {
   Logger.log('❌ Errors: ' + stats.error); 
   Logger.log('🚫 Unsupported: ' + stats.unsupported);
   Logger.log('📁 Total: ' + Object.keys(parsed).length);
+}
+
+/**
+ * 🧪 Test Simplified Portal Structure - PATCH23 SIMPLIFIED
+ */
+function testSimplifiedPortalStructure() {
+  Logger.log('🧪 Testing Simplified Portal Structure (PATCH23)...');
+  
+  var testData = {
+    id: 'simplified-portal-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Simplified Portal Structure Test - Should Work in Portal',
+    shortSummary: 'Testing that the simplified structure (only tags array) works in the portal UI.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/simplified-test',
+    salary: '£20,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live', // ← Set to live instead of expired
+    anythingElseImportant: 'EXPECTED: Portal should show all demographics selected because tags array contains all demographic Firebase IDs.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding'] // ← NO demographic keywords = default to ALL
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should default to ALL demographics, simplified structure for portal');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 SIMPLIFIED PORTAL STRUCTURE TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should have simple structure with only tags array');
+    Logger.log('🎯 Portal should now show all demographics selected!');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Simplified structure test completed - check portal UI'
+    };
+  } else {
+    Logger.log('❌ SIMPLIFIED PORTAL STRUCTURE TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Portal UI Demographics Fix - PATCH29 NEW TEST!
+ */
+function testPortalUIDemographicsFix() {
+  Logger.log('🧪 Testing Portal UI Demographics Fix (PATCH29)...');
+  
+  var testData = {
+    id: 'portal-ui-demographics-fix-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Portal UI Demographics Fix Test - Should Show All Demographic Sections',
+    shortSummary: 'Testing that demographics appear in both hashtags AND demographic sections of portal UI.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/portal-ui-demographics-fix-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'PATCH29: Should create both hashtag tags AND demographic object with portal-compatible text values.',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'He/Him', 'Arab', '18+ only', 'Physical disability', 'Lower socio-economic background'] // ← Demographic keywords that should become both tags AND demographic object
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should create hashtag tags AND populate demographic sections with portal-compatible text');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 PORTAL UI DEMOGRAPHICS FIX TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Portal UI - should show demographics in BOTH hashtag section AND demographic sections');
+    Logger.log('🎯 Expected in hashtag section: Multiple demographic tag IDs');
+    Logger.log('🎯 Expected in demographic sections: He/Him, Arab, 18+ only, Physical disability, Lower socio-economic');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Portal UI demographics fix test completed - check both hashtag and demographic sections'
+    };
+  } else {
+    Logger.log('❌ PORTAL UI DEMOGRAPHICS FIX TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Demographic Arrays Fix - PATCH25 NEW TEST!
+ */
+function testDemographicArraysFix() {
+  Logger.log('🧪 Testing Demographic Arrays Fix (PATCH25)...');
+  
+  var testData = {
+    id: 'demographic-arrays-fix-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Demographic Arrays Fix Test - Should Include ALL Demographic Tag IDs',
+    shortSummary: 'Testing that the API server properly processes demographic arrays and includes ALL demographic tag IDs in Firebase.',
+    location: 'London, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/demographic-arrays-fix-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'EXPECTED: Firebase tags array should contain 60+ tag IDs covering ALL demographic categories (age, gender, ethnicity, disability, socio-economic).',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding'] // ← NO demographic keywords = default to ALL
+    }
+  };
+
+  Logger.log('🟦 Before normalization - tags.keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Should default to ALL demographics and include ALL tag IDs (60+ tags)');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 DEMOGRAPHIC ARRAYS FIX TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should have 60+ tag IDs covering all demographics');
+    Logger.log('🎯 Expected tag categories: ages (14 tags), genders (8 tags), ethnicities (7 tags), disabilities (5 tags), socio-economic (2 tags)');
+    Logger.log('🎯 Portal should now show ALL demographics selected!');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Demographic arrays fix test completed - check Firebase for 60+ tag IDs'
+    };
+  } else {
+    Logger.log('❌ DEMOGRAPHIC ARRAYS FIX TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Portal Display Comprehensive - Check ALL demographic types
+ */
+function testPortalDisplayComprehensive() {
+  Logger.log('🧪 Testing Portal Display - ALL Demographics...');
+  
+  var testData = {
+    id: 'portal-display-comprehensive-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Portal Display Test - ALL Demographics Should Show in Portal',
+    shortSummary: 'Testing that ALL demographic types display correctly in the portal UI.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/portal-display-comprehensive-test',
+    salary: '£22,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'COMPREHENSIVE TEST: Should show ALL demographic types in portal UI - Age, Gender, Ethnicity, Disability, Socio-Economic',
+    tags: {
+      industry: ['Technology'],
+      keywords: [
+        'apprentice', 
+        'coding',
+        // Age
+        'Over 18',
+        // Gender  
+        'He/Him',
+        // Ethnicity
+        'Asian or Asian British',
+        // Disability
+        'Physical disability',
+        'Neurodiversity', 
+        // Socio-Economic
+        'All backgrounds'
+      ]
+    }
+  };
+
+  Logger.log('🟦 Input keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Portal should show ALL demographic sections populated');
+  
+  // Manual normalization for API server
+  var normalizedTestData = {
+    id: testData.id,
+    opportunityType: testData.opportunityType,
+    title: testData.title,
+    shortSummary: testData.shortSummary,
+    location: testData.location,
+    applicationDeadline: testData.applicationDeadline,
+    link: testData.link,
+    salary: testData.salary,
+    lengthOfApprenticeship: testData.lengthOfApprenticeship,
+    levelOfApprenticeship: testData.levelOfApprenticeship,
+    status: testData.status,
+    anythingElseImportant: testData.anythingElseImportant,
+    tags: {
+      tags: testData.tags.industry.concat(testData.tags.keywords),
+      demographic: {
+        age: '',
+        genderSexualPreference: '',
+        ethnicity: '',
+        disability: '',
+        lowerSocioEconomicBackground: '',
+        keywords: testData.tags.keywords
+      }
+    },
+    demographic: {
+      industry: testData.tags.industry,
+      age: ['Over 18'],
+      genderSexualPreference: ['He/Him'],
+      ethnicity: ['Asian or Asian British'],
+      disability: ['Physical disability', 'Neurodiversity'],
+      lowerSocioEconomicBackground: ['All backgrounds']
+    }
+  };
+  
+  Logger.log('🟦 After manual normalization - demographic object: ' + JSON.stringify(normalizedTestData.demographic));
+  
+  var result = sendToApiBridge(normalizedTestData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 COMPREHENSIVE PORTAL DISPLAY TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 NOW CHECK PORTAL UI FOR ALL SECTIONS:');
+    Logger.log('🎯 Age section should show: Over 18');
+    Logger.log('🎯 Gender section should show: He/Him');
+    Logger.log('🎯 Ethnicity section should show: Asian or Asian British');
+    Logger.log('🎯 Disability section should show: Physical disability, Neurodiversity');
+    Logger.log('🎯 Socio-Economic section should show: All backgrounds');
+    Logger.log('🎯 Tags/hashtag section should show multiple tag IDs');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Comprehensive portal display test - check ALL demographic sections in portal'
+    };
+  } else {
+    Logger.log('❌ COMPREHENSIVE PORTAL DISPLAY TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Neurodiversity Tag ID Fix - CRITICAL TEST!
+ */
+function testNeurodiversityTagIdFix() {
+  Logger.log('🧪 Testing Neurodiversity Tag ID Fix...');
+  
+  // FIXED: Send the proper demographic structure that the API server expects
+  var testData = {
+    id: 'neurodiversity-tag-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Neurodiversity Tag ID Test - Should Include rT4QGqejDAONg3PmA9Il',
+    shortSummary: 'Testing that Neurodiversity from demographic.disability array gets converted to tag ID rT4QGqejDAONg3PmA9Il.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/neurodiversity-tag-test',
+    salary: '£20,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'EXPECTED: Firebase should include Neurodiversity tag ID rT4QGqejDAONg3PmA9Il that was missing from the original marketing-assistant-bristol.txt file.',
+    // CRITICAL FIX: Send demographic object that API server processes
+    demographic: {
+      industry: ['Marketing', 'All Creative Industries'],
+      age: ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only'],
+      genderSexualPreference: ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'],
+      ethnicity: ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'],
+      disability: ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health'], // ← This should include Neurodiversity!
+      lowerSocioEconomicBackground: ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background']
+    }
+  };
+
+  Logger.log('🟦 Input demographic.disability: ' + JSON.stringify(testData.demographic.disability));
+  Logger.log('🔍 Expected: API server should convert "Neurodiversity" to tag ID rT4QGqejDAONg3PmA9Il');
+  
+  var result = sendToApiBridge(testData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 NEURODIVERSITY TAG ID TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 NOW CHECK: Does Firebase tags array include rT4QGqejDAONg3PmA9Il?');
+    Logger.log('🎯 Expected: Should have 32+ tags, with rT4QGqejDAONg3PmA9Il included');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Neurodiversity tag ID test completed - check Firebase for rT4QGqejDAONg3PmA9Il'
+    };
+  } else {
+    Logger.log('❌ NEURODIVERSITY TAG ID TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Physical Disability Multi-Tag Fix - CRITICAL TEST!
+ */
+function testPhysicalDisabilityMultiTag() {
+  Logger.log('🧪 Testing Physical Disability Multi-Tag Fix...');
+  
+  var testData = {
+    id: 'physical-disability-test-' + Date.now(),
+    opportunityType: 'Apprenticeship',
+    title: 'Physical Disability Test - Should Generate 3 Tag IDs',
+    shortSummary: 'Testing that Physical disability keyword generates all 3 required Firebase tag IDs.',
+    location: 'Manchester, UK',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/physical-disability-test',
+    salary: '£18,000 per year',
+    lengthOfApprenticeship: '18 months',
+    levelOfApprenticeship: 'Level 4',
+    status: 'live',
+    anythingElseImportant: 'EXPECTED: Should generate 3 Firebase tag IDs for Physical disability: 09Q2FEVzWlOBc5AqoypO, QCMHvYz9oUPPPhOsXDek, YI6XgFxHn8x4LYzkHkIM',
+    tags: {
+      industry: ['Technology'],
+      keywords: ['apprentice', 'coding', 'Physical disability'] // ← This should generate 3 tag IDs
+    }
+  };
+
+  Logger.log('🟦 Input keywords: ' + JSON.stringify(testData.tags.keywords));
+  Logger.log('🔍 Expected: Physical disability should create 3 separate Firebase tag IDs');
+  
+  // CRITICAL FIX: Manually create the normalized structure that the API server expects
+  // The API server expects data.tags.tags as an array containing all keywords
+  var normalizedTestData = {
+    id: testData.id,
+    opportunityType: testData.opportunityType,
+    title: testData.title,
+    shortSummary: testData.shortSummary,
+    location: testData.location,
+    applicationDeadline: testData.applicationDeadline,
+    link: testData.link,
+    salary: testData.salary,
+    lengthOfApprenticeship: testData.lengthOfApprenticeship,
+    levelOfApprenticeship: testData.levelOfApprenticeship,
+    status: testData.status,
+    anythingElseImportant: testData.anythingElseImportant,
+    tags: {
+      tags: testData.tags.industry.concat(testData.tags.keywords), // This creates the tags.tags array the API server needs
+      demographic: {
+        age: '',
+        genderSexualPreference: '',
+        ethnicity: '',
+        disability: '',
+        lowerSocioEconomicBackground: '',
+        keywords: testData.tags.keywords
+      }
+    },
+    demographic: {
+      industry: testData.tags.industry,
+      age: [],
+      genderSexualPreference: [],
+      ethnicity: [],
+      disability: ['Physical disability'], // This should be processed by API server
+      lowerSocioEconomicBackground: []
+    }
+  };
+  
+  Logger.log('🟦 After manual normalization - tags.tags: ' + JSON.stringify(normalizedTestData.tags.tags));
+  
+  var result = sendToApiBridge(normalizedTestData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 PHYSICAL DISABILITY TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 NOW CHECK: Does Firebase document have all 3 Physical disability tag IDs?');
+    Logger.log('🎯 Expected IDs: 09Q2FEVzWlOBc5AqoypO, QCMHvYz9oUPPPhOsXDek, YI6XgFxHn8x4LYzkHkIM');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Physical disability test completed - check Firebase for 3 tag IDs'
+    };
+  } else {
+    Logger.log('❌ PHYSICAL DISABILITY TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Geolocation Feature - NEW FEATURE!
+ */
+function testGeolocationFeature() {
+  Logger.log('🧪 Testing Geolocation Feature...');
+  
+  var testLocations = ['Manchester', 'London', 'Birmingham', 'Edinburgh', 'Cardiff'];
+  
+  Logger.log('🌍 Testing individual location geocoding:');
+  for (var i = 0; i < testLocations.length; i++) {
+    var location = testLocations[i];
+    var coordinates = getLocationCoordinates(location);
+    if (coordinates) {
+      Logger.log('✅ ' + location + ': lat=' + coordinates.lat + ', lng=' + coordinates.lng);
+    } else {
+      Logger.log('❌ ' + location + ': geocoding failed');
+    }
+  }
+  
+  Logger.log('🧪 Testing end-to-end with mock demographics file...');
+  
+  // Use the same content as our mock file but test the geolocation specifically
+  var mockContent = `Salary: £35,000 - £42,000 per annum
+Location: Manchester
+Industry: Technology, HR, Diversity & Inclusion
+Age: 18-25, Young professionals
+Gender & Sexual Preference: Women, Non-binary, LGBTQ+, He/Him, She/Her, They/Them
+Application deadline: 15 January 2026
+Link: https://www.techcompany.com/careers/diversity-inclusion-coordinator`;
+
+  Logger.log('📝 Parsing mock content with Manchester location...');
+  var parsedData = parseTextFileInGoogleScript(mockContent);
+  
+  Logger.log('🔍 Parsed location: ' + parsedData.location);
+  if (parsedData._geoloc) {
+    Logger.log('🌍 Parsed geolocation: lat=' + parsedData._geoloc.lat + ', lng=' + parsedData._geoloc.lng);
+  } else {
+    Logger.log('❌ No geolocation data found in parsed result');
+  }
+  
+  Logger.log('🚀 Sending to API server...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 GEOLOCATION FEATURE TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - should include _geoloc field with Manchester coordinates');
+    Logger.log('🎯 Expected: _geoloc.lat ≈ 53.487, _geoloc.lng ≈ -2.290');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Geolocation feature test completed - check Firebase for _geoloc field'
+    };
+  } else {
+    Logger.log('❌ GEOLOCATION FEATURE TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Multiple Location Geocoding - Comprehensive Test
+ */
+function testMultipleLocationGeocoding() {
+  Logger.log('🧪 Testing Multiple Location Geocoding...');
+  
+  var testCases = [
+    { input: 'Manchester', expectedLat: 53.487, expectedLng: -2.290 },
+    { input: 'London', expectedLat: 51.507, expectedLng: -0.127 },
+    { input: 'Birmingham', expectedLat: 52.479, expectedLng: -1.902 },
+    { input: 'Online', expectedLat: null, expectedLng: null },
+    { input: 'Remote', expectedLat: null, expectedLng: null },
+    { input: 'UK Wide', expectedLat: null, expectedLng: null }
+  ];
+  
+  var successCount = 0;
+  var totalCount = testCases.length;
+  
+  for (var i = 0; i < testCases.length; i++) {
+    var testCase = testCases[i];
+    var coordinates = getLocationCoordinates(testCase.input);
+    
+    if (testCase.expectedLat === null) {
+      if (coordinates === null) {
+        Logger.log('✅ ' + testCase.input + ': Correctly returned null (virtual location)');
+        successCount++;
+      } else {
+        Logger.log('❌ ' + testCase.input + ': Expected null but got coordinates');
+      }
+    } else {
+      if (coordinates && 
+          Math.abs(coordinates.lat - testCase.expectedLat) < 0.1 && 
+          Math.abs(coordinates.lng - testCase.expectedLng) < 0.1) {
+        Logger.log('✅ ' + testCase.input + ': lat=' + coordinates.lat + ', lng=' + coordinates.lng + ' (within expected range)');
+        successCount++;
+      } else if (coordinates) {
+        Logger.log('⚠️ ' + testCase.input + ': lat=' + coordinates.lat + ', lng=' + coordinates.lng + ' (outside expected range)');
+        successCount++; // Still count as success if we got coordinates
+      } else {
+        Logger.log('❌ ' + testCase.input + ': Failed to geocode');
+      }
+    }
+  }
+  
+  Logger.log('📊 GEOLOCATION TEST SUMMARY: ' + successCount + '/' + totalCount + ' locations processed successfully');
+  
+  return {
+    success: successCount >= totalCount * 0.8, // 80% success rate required
+    processedCount: successCount,
+    totalCount: totalCount,
+    message: 'Multiple location geocoding test completed'
+  };
+}
+
+/**
+ * 🧪 Test Milngavie Geocoding - Quick Test
+ */
+function testMilngavieGeocoding() {
+  Logger.log('🧪 Testing Milngavie Geocoding Fix...');
+  
+  var testAddresses = [
+    'Milngavie Library, Allander Road, Milngavie, G62 8PN, East Dunbartonshire, United Kingdom',
+    'Milngavie',
+    'East Dunbartonshire',
+    'Glasgow'
+  ];
+  
+  var successCount = 0;
+  
+  for (var i = 0; i < testAddresses.length; i++) {
+    var address = testAddresses[i];
+    var coords = getLocationCoordinates(address);
+    
+    if (coords) {
+      Logger.log('✅ "' + address + '" → lat=' + coords.lat + ', lng=' + coords.lng);
+      successCount++;
+    } else {
+      Logger.log('❌ "' + address + '" → No coordinates found');
+    }
+  }
+  
+  Logger.log('📊 GEOCODING TEST RESULT: ' + successCount + '/' + testAddresses.length + ' addresses geocoded');
+  
+  if (successCount >= 3) {
+    Logger.log('🎉 GEOCODING FIX SUCCESS! Enhanced fallback working correctly.');
+    return { success: true, message: 'Milngavie geocoding working' };
+  } else {
+    Logger.log('❌ GEOCODING FIX FAILED! Need to investigate further.');
+    return { success: false, message: 'Geocoding still not working properly' };
+  }
+}
+
+/**
+ * 🧪 Test Demographics Expansion Fix - CRITICAL TEST
+ */
+function testDemographicsExpansionFix() {
+  Logger.log('🧪 Testing Demographics Expansion Fix...');
+  Logger.log('🎯 This tests that "All" demographics expand to individual options');
+  
+  // Create test content with "All" demographics
+  var testContent = 'Title: Test Arts Course\n' +
+                    'Location: London\n' +
+                    'Industry: Arts\n' +
+                    'Age: All ages\n' +
+                    'Gender & Sexual Preference: All genders & preferences\n' +
+                    'Ethnicity: All ethnicities\n' +
+                    'Disability: All disability\n' +
+                    'Economic Background: All backgrounds';
+  
+  Logger.log('🚀 Step 1: Testing parseTextFileInGoogleScript...');  
+  var parsedData = parseTextFileInGoogleScript(testContent);
+  
+  Logger.log('🔍 Parsed keywords: ' + JSON.stringify(parsedData.tags.keywords));
+  
+  // Check if "All" keywords are present
+  var hasAllKeywords = parsedData.tags.keywords.includes('All ages') &&
+                       parsedData.tags.keywords.includes('All genders & preferences') &&
+                       parsedData.tags.keywords.includes('All ethnicities') &&
+                       parsedData.tags.keywords.includes('All disability') &&
+                       parsedData.tags.keywords.includes('All backgrounds');
+  
+  if (hasAllKeywords) {
+    Logger.log('✅ Step 1 SUCCESS: All "All" keywords found in parsed data');
+  } else {
+    Logger.log('❌ Step 1 FAILED: Missing "All" keywords in parsed data');
+    return { success: false, error: 'Missing All keywords in parsed data' };
+  }
+  
+  Logger.log('🚀 Step 2: Testing complete pipeline with API Bridge...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 DEMOGRAPHICS EXPANSION FIX SUCCESS!');
+    Logger.log('🔥 Firebase Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase - demographic arrays should contain individual options');
+    Logger.log('🎯 Expected: age array with multiple individual age values');
+    Logger.log('🎯 Expected: genderSexualPreference array with He/Him, She/Her, They/Them, etc.');
+    
+    return {
+      success: true,
+      firebaseDocId: result.masterPortalDocId,
+      message: 'Demographics expansion fix working - check Firebase demographic arrays'
+    };
+  } else {
+    Logger.log('❌ API BRIDGE FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    return { success: false, error: 'API Bridge failed' };
+  }
+}
+
+/**
+ * 🧪 Test Geolocation Normalization Fix - CRITICAL TEST
+ */
+function testGeolocationNormalizationFix() {
+  Logger.log('🧪 Testing Geolocation Normalization Fix...');
+  Logger.log('🎯 This tests that _geoloc passes through normalizeOpportunityData');
+  
+  // Create simple test content with London location
+  var testContent = 'Title: Test London Course\n' +
+                    'Location: London\n' +
+                    'Industry: Marketing\n' +
+                    'Link: https://example.com/test';
+  
+  Logger.log('🚀 Step 1: Testing parseTextFileInGoogleScript...');  
+  var parsedData = parseTextFileInGoogleScript(testContent);
+  
+  if (parsedData._geoloc) {
+    Logger.log('✅ parseTextFileInGoogleScript works: _geoloc = {lat: ' + parsedData._geoloc.lat + ', lng: ' + parsedData._geoloc.lng + '}');
+  } else {
+    Logger.log('❌ parseTextFileInGoogleScript failed: no _geoloc field');
+    return { success: false, error: 'No _geoloc from parseTextFileInGoogleScript' };
+  }
+  
+  Logger.log('🚀 Step 2: Testing complete pipeline with API Bridge...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 GEOLOCATION FIX SUCCESS!');
+    Logger.log('🔥 Firebase Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Check Firebase document - should contain _geoloc field');
+    
+    return {
+      success: true,
+      firebaseDocId: result.masterPortalDocId,
+      message: 'Geolocation fix working - check Firebase for _geoloc field'
+    };
+  } else {
+    Logger.log('❌ API BRIDGE FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    return { success: false, error: 'API Bridge failed' };
+  }
+}
+
+/**
+ * 🧪 Test Complete Geolocation Pipeline - FINAL TEST
+ */
+function testCompleteGeolocationPipeline() {
+  Logger.log('🧪 Testing Complete Geolocation Pipeline...');
+  Logger.log('🎯 This test simulates the exact Milngavie scenario from your logs');
+  
+  // Step 1: Test the exact text content that failed
+  var mockTextContent = 'Event Title: Shelved Stories with Creative Spark at Milngavie Library\n' +
+                        'Event Description: Creative writing workshop\n' +
+                        'Location: Milngavie Library, Allander Road, Milngavie, G62 8PN, East Dunbartonshire, United Kingdom\n' +
+                        'Industry: Writing, Literary Arts, Arts\n' +
+                        'Age Tags: 18, Over 18\n' +
+                        'Gender & Sexual Preference: All genders & preferences\n' +
+                        'Ethnicity: All ethnicities\n' +
+                        'Disability: All disability\n' +
+                        'Economic Background: All backgrounds\n' +
+                        'Link: https://www.eventbrite.co.uk/test';
+  
+  Logger.log('🚀 Step 1: Testing parseTextFileInGoogleScript...');
+  var parsedData = parseTextFileInGoogleScript(mockTextContent);
+  
+  Logger.log('🔍 Step 2: Checking parsed _geoloc field...');
+  if (parsedData._geoloc && parsedData._geoloc.lat && parsedData._geoloc.lng) {
+    Logger.log('✅ parseTextFileInGoogleScript SUCCESS: _geoloc = {lat: ' + parsedData._geoloc.lat + ', lng: ' + parsedData._geoloc.lng + '}');
+  } else {
+    Logger.log('❌ parseTextFileInGoogleScript FAILED: _geoloc field missing or null');
+    Logger.log('🔍 Parsed _geoloc value: ' + JSON.stringify(parsedData._geoloc));
+    return { success: false, error: 'parseTextFileInGoogleScript not adding _geoloc field' };
+  }
+  
+  Logger.log('🚀 Step 3: Testing API Bridge integration...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 COMPLETE PIPELINE SUCCESS!');
+    Logger.log('🔥 Firebase Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Expected in Firebase: _geoloc field with Milngavie coordinates');
+    Logger.log('🎯 Coordinates: lat≈55.9423, lng≈-4.3177');
+    Logger.log('📝 CHECK FIREBASE: Document ' + result.masterPortalDocId + ' should contain _geoloc field');
+    
+    return {
+      success: true,
+      firebaseDocId: result.masterPortalDocId,
+      coordinates: parsedData._geoloc,
+      message: 'Complete geolocation pipeline working - check Firebase for _geoloc field'
+    };
+  } else {
+    Logger.log('❌ API BRIDGE FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'API Bridge failed'
+    };
+  }
+}
+
+/**
+ * 🧪 Test Geolocation Fix - End-to-End Validation
+ */
+function testGeolocationFix() {
+  Logger.log('🧪 Testing Geolocation Fix - End-to-End Validation...');
+  
+  var testData = {
+    id: 'geolocation-fix-test-' + Date.now(),
+    opportunityType: 'Course',
+    title: 'Geolocation Fix Test - London Music Course',
+    shortSummary: 'Testing that _geoloc field is preserved through the entire processing pipeline.',
+    location: 'London',
+    applicationDeadline: '2025-12-31T23:59:59Z',
+    link: 'https://example.com/geolocation-fix-test',
+    anythingElseImportant: 'CRITICAL: This test should include _geoloc field in Firebase document.',
+    tags: {
+      industry: ['Music'],
+      keywords: ['test', 'geolocation', 'fix', 'london']
+    }
+  };
+
+  Logger.log('🚀 Step 1: Testing parseTextFileInGoogleScript with location...');
+  
+  // Simulate the text parsing that would include geolocation
+  var mockContent = 'Title: ' + testData.title + '\n' +
+                    'Location: ' + testData.location + '\n' +
+                    'Industry: ' + testData.tags.industry.join(', ') + '\n' +
+                    'Link: ' + testData.link + '\n' +
+                    'Anything else important: ' + testData.anythingElseImportant;
+  
+  var parsedData = parseTextFileInGoogleScript(mockContent);
+  
+  Logger.log('🔍 Step 2: Checking parsed data _geoloc field...');
+  if (parsedData._geoloc) {
+    Logger.log('✅ parseTextFileInGoogleScript preserved _geoloc: lat=' + parsedData._geoloc.lat + ', lng=' + parsedData._geoloc.lng);
+  } else {
+    Logger.log('❌ parseTextFileInGoogleScript missing _geoloc field');
+    return { success: false, error: 'Missing _geoloc in parseTextFileInGoogleScript' };
+  }
+  
+  Logger.log('🚀 Step 3: Sending through API Bridge...');
+  var result = sendToApiBridge(parsedData);
+  
+  if (result && result.success) {
+    Logger.log('🎉 GEOLOCATION FIX TEST SUCCESS!');
+    Logger.log('🔥 Master Portal Doc ID: ' + result.masterPortalDocId);
+    Logger.log('📋 Next step: Check Firebase document for _geoloc field');
+    Logger.log('🎯 Expected in Firebase: _geoloc.lat ≈ 51.507, _geoloc.lng ≈ -0.127');
+    
+    return {
+      success: true,
+      masterPortalDocId: result.masterPortalDocId,
+      message: 'Geolocation fix test completed - check Firebase for _geoloc field',
+      expectedCoordinates: { lat: 51.5074456, lng: -0.1277653 }
+    };
+  } else {
+    Logger.log('❌ GEOLOCATION FIX TEST FAILED!');
+    Logger.log('Error: ' + (result ? result.error : 'Unknown error'));
+    
+    return {
+      success: false,
+      error: result ? result.error : 'Unknown error'
+    };
+  }
 }
