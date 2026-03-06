@@ -23,15 +23,23 @@ const TAG_NAME_TO_ID = {
   "Lower socio-economic background": "V9J6aDjeQc7hIePqgsCh", // Alias for above
   "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG", // CSV: сommunities
 
-  // Communities/Disability (PATCH29: Corrected ALL to actual CSV IDs)
-  "Physical disability": "09Q2FEVzWlOBc5AqoypO", // CSV: communities - Physical disability
-  "Neurodiversity": "4Ed3aFDBvrMHL53yYN4Z", // CSV: сommunities - Neurodiversity
-  "Hearing impairment": "09Q2FEVzWlOBc5AqoypO", // No CSV entry - using Physical disability as closest
-  "Chronic illness": "S6BVkq9Z9rSfeAs1rR78", // CSV: communities - Chronic illness
-  "Visual impairment": "09Q2FEVzWlOBc5AqoypO", // No CSV entry - using Physical disability as closest
-  "LGBTQIA+": "92OxqHPOwpUDI765t62h", // CSV: сommunities - LGBTQIA+
-  "Mental health": "BqfXt7PgSC559RdiiT2w", // CSV: communities - Mental health
-  "Carer": "EnzIhbSJi60VWwmFjq6F", // CSV: сommunities - Carer
+  // Communities/Disability (PATCH29: ALL CSV IDs per concept - portal may check any category)
+  "Physical disability": ["09Q2FEVzWlOBc5AqoypO", "QCMHvYz9oUPPPhOsXDek", "YI6XgFxHn8x4LYzkHkIM", "sehUuVOIEKmsYNpQROHe"],
+    // 09Q2FE = communities, QCMHvY = сommunities, YI6XgF = equality #physicaldisability, sehUuV = equality #disability
+  "Neurodiversity": ["4Ed3aFDBvrMHL53yYN4Z", "9RIS1UCc8jBeQY9lOpwf", "Yk6phdz0yBMP0c0rULDx"],
+    // 4Ed3aF = сommunities, 9RIS1U = communities, Yk6phd = equality #neurodiversity
+  "Hearing impairment": ["09Q2FEVzWlOBc5AqoypO", "QCMHvYz9oUPPPhOsXDek", "sehUuVOIEKmsYNpQROHe"],
+    // No specific CSV entry - using Physical disability + disability equality IDs
+  "Chronic illness": ["S6BVkq9Z9rSfeAs1rR78", "gmjSxiBG5v0rGUFwRdrZ", "sehUuVOIEKmsYNpQROHe"],
+    // S6BVkq = communities, gmjSxi = сommunities, sehUuV = equality #disability
+  "Visual impairment": ["09Q2FEVzWlOBc5AqoypO", "QCMHvYz9oUPPPhOsXDek", "sehUuVOIEKmsYNpQROHe"],
+    // No specific CSV entry - using Physical disability + disability equality IDs
+  "LGBTQIA+": ["92OxqHPOwpUDI765t62h", "RS64HjksdhniUorvNXLe", "mzZKi6mwaVEwTeNkpAjb"],
+    // 92Oxq = сommunities, RS64Hj = pronoun, mzZKi6 = equality #LGBTQIA
+  "Mental health": ["BqfXt7PgSC559RdiiT2w", "wxvBjYt6r8aXPo51j0nI", "sehUuVOIEKmsYNpQROHe"],
+    // BqfXt7 = communities, wxvBjY = сommunities, sehUuV = equality #disability
+  "Carer": ["EnzIhbSJi60VWwmFjq6F", "sehUuVOIEKmsYNpQROHe"],
+    // EnzIhb = сommunities, sehUuV = equality #disability
 
   // Pronouns/Gender (from CSV)
   "ForThem": "2Dhp3LeTBZqgTedOOPMT",
