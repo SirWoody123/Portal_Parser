@@ -2029,12 +2029,21 @@ function processDocument(file) {
   }
 
   // 2. Append backlog date/time to title
+  // PATCH29: Always prefer the original filename as the title base since it's the
+  // most identifiable label (e.g. "Marketing PR Intern at XYZ.txt" → "Marketing PR Intern at XYZ").
+  // Only fall back to the parser-generated title if the filename is generic.
   var now = new Date();
   var nowStr = now.toISOString().replace('T', ' ').substring(0, 16); // e.g. 2025-11-05 14:30
-  if (parsedData && parsedData.title) {
+  var fileTitle = file.getName().replace(/\.[^/.]+$/, "").trim(); // Remove file extension
+  if (fileTitle && fileTitle.length > 0) {
+    parsedData.title = fileTitle + ' [Backlog: ' + nowStr + ']';
+    Logger.log('🔍 PATCH29: Using filename as title base: "' + fileTitle + '"');
+  } else if (parsedData && parsedData.title) {
     parsedData.title = parsedData.title + ' [Backlog: ' + nowStr + ']';
-  } else if (parsedData) {
-    parsedData.title = file.getName().replace(/\.[^/.]+$/, "") + ' [Backlog: ' + nowStr + ']';
+    Logger.log('🔍 PATCH29: Using parser-generated title: "' + parsedData.title + '"');
+  } else {
+    parsedData.title = 'Opportunity [Backlog: ' + nowStr + ']';
+    Logger.log('🔍 PATCH29: Using fallback title');
   }
 
   // 3. Add industry to demographic
@@ -3015,3 +3024,8 @@ function testGeolocationFix() {
     };
   }
 }
+
+
+
+
+
