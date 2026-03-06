@@ -1750,19 +1750,19 @@ function processDocument(file) {
     // Add keyword tags
     tagsArr = tagsArr.concat(keywordsArr);
 
-    // Define allowed demographic values (PATCH29: Fixed to match portal UI expectations exactly)
-    var allowedAges = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only', 'All ages'];
-    var allowedGenders = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say', 'All genders & preferences'];
+    // Define allowed demographic values (PATCH29: Fixed to match actual CSV tag names)
+    var allowedAges = ['16 and under','16','17','18','19','20','21','22','23','24','25','Under 18','Over 18','Over 25','All ages'];
+    var allowedGenders = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say', 'LGBTQIA+', 'All genders & preferences'];
     var allowedEthnicities = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say', 'All ethnicities'];
-    var allowedDisabilities = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health', 'All disability'];
-    var allowedSocioEconomic = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background'];
+    var allowedDisabilities = ['Chronic illness', 'Neurodiversity', 'Physical disability', 'Mental health', 'Carer', 'All disability'];
+    var allowedSocioEconomic = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals'];
     
-    // Define what "All" options expand to (PATCH29: Added portal-compatible options)
-    var allAgeOptions = ['21','22','23','24','25','Over 18','Under 18','Over 25','16 and under', '18+ only'];
-    var allGenderOptions = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say'];
+    // Define what "All" options expand to (PATCH29: Only values that exist in CSV TAG_NAME_TO_ID)
+    var allAgeOptions = ['16 and under','16','17','18','19','20','21','22','23','24','25','Under 18','Over 18','Over 25'];
+    var allGenderOptions = ['He/Him', 'She/Her', 'They/Them', 'Non-binary', 'Transgender', 'Intersex', 'Other', 'Prefer not to say', 'LGBTQIA+'];
     var allEthnicityOptions = ['White or White British', 'African, Caribbean or Black British', 'Asian or Asian British', 'Mixed or Multiple Ethnic group', 'Other Ethnic Group', 'Arab', 'Prefer not to say'];
-    var allDisabilityOptions = ['Chronic illness', 'Hearing impairment', 'Neurodiversity', 'Physical disability', 'Visual impairment', 'Mental health'];
-    var allSocioEconomicOptions = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals', 'Lower socio-economic background'];
+    var allDisabilityOptions = ['Chronic illness', 'Neurodiversity', 'Physical disability', 'Mental health', 'Carer'];
+    var allSocioEconomicOptions = ['All backgrounds', 'Only those from lower socio-economic background', 'Have or had free school meals'];
 
     // Extract demographic values and add them to tagsArr (PATCH21: Handle "All" expansions)
     var ageString = '';

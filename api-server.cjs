@@ -17,20 +17,21 @@ const TAG_NAME_TO_ID = {
   "Over 18": "6Bj2Xtzi0uIWc8ZrTVtY",
   "Over 25": "sS3aP11L68igBoD7f0xe",
 
-  // Socioeconomic (from CSV)
-  "All backgrounds": "bPayOs0b1R9a2jXC9Fkt", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
-  "Only those from lower socio-economic background": "5Z0Z1vg34KYVGFdwSrIz", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
-  "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG",
+  // Socioeconomic (PATCH29: Corrected to actual CSV IDs)
+  "All backgrounds": "20fXkU9RdlTlpfcS5K5D", // CSV: socioeconomic
+  "Only those from lower socio-economic background": "V9J6aDjeQc7hIePqgsCh", // CSV: socioeconomic
+  "Lower socio-economic background": "V9J6aDjeQc7hIePqgsCh", // Alias for above
+  "Have or had free school meals": "KTZ2FRZNDwQImteZFmjG", // CSV: сommunities
 
-  // Communities/Disability (PATCH28C: ALL related tag IDs for each concept)
-  "Physical disability": "lFeNbarY7S9XYdQUS79F", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
-  "Neurodiversity": "rT4QGqejDAONg3PmA9Il", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
-  "Hearing impairment": "uLUtXEJ1od2dZrkmMGID", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
-  "Chronic illness": "S6BVkq9Z9rSfeAs1rR78", // From CSV: communities section
-  "Visual impairment": "t5BMlv7HEf09bHK5a9N0", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
-  "LGBTQIA+": "92OxqHPOwpUDI765t62h",
-  "Mental health": "wxvBjYt6r8aXPo51j0nI", // Fixed: correct CSV mapping
-  "Carer": "EnzIhbSJi60VWwmFjq6F",
+  // Communities/Disability (PATCH29: Corrected ALL to actual CSV IDs)
+  "Physical disability": "09Q2FEVzWlOBc5AqoypO", // CSV: communities - Physical disability
+  "Neurodiversity": "4Ed3aFDBvrMHL53yYN4Z", // CSV: сommunities - Neurodiversity
+  "Hearing impairment": "09Q2FEVzWlOBc5AqoypO", // No CSV entry - using Physical disability as closest
+  "Chronic illness": "S6BVkq9Z9rSfeAs1rR78", // CSV: communities - Chronic illness
+  "Visual impairment": "09Q2FEVzWlOBc5AqoypO", // No CSV entry - using Physical disability as closest
+  "LGBTQIA+": "92OxqHPOwpUDI765t62h", // CSV: сommunities - LGBTQIA+
+  "Mental health": "BqfXt7PgSC559RdiiT2w", // CSV: communities - Mental health
+  "Carer": "EnzIhbSJi60VWwmFjq6F", // CSV: сommunities - Carer
 
   // Pronouns/Gender (from CSV)
   "ForThem": "2Dhp3LeTBZqgTedOOPMT",
