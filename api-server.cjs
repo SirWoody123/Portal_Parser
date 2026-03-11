@@ -587,6 +587,23 @@ const parseTextFile = (textContent) => {
     }
   }
 
+  // PATCH30: Add warning for Instagram/LinkedIn sourced opportunities
+  if (result.link) {
+    const linkLower = result.link.toLowerCase();
+    let sourceWarning = '';
+    if (linkLower.includes('instagram.com') || linkLower.includes('instagr.am')) {
+      sourceWarning = '⚠️ SOURCE WARNING: This opportunity was scraped from Instagram. Details may be incorrect or incomplete — please check before approving.';
+    } else if (linkLower.includes('linkedin.com') || linkLower.includes('lnkd.in')) {
+      sourceWarning = '⚠️ SOURCE WARNING: This opportunity was scraped from LinkedIn. Details may be incorrect or incomplete — please check before approving.';
+    }
+    if (sourceWarning) {
+      result.anythingElseImportant = result.anythingElseImportant
+        ? sourceWarning + '\n\n' + result.anythingElseImportant
+        : sourceWarning;
+      console.log(`🔍 TEXT PARSER: Added source warning for ${linkLower}`);
+    }
+  }
+
   console.log('🔍 TEXT PARSER: Final parsed result:', JSON.stringify(result, null, 2));
   return result;
 };

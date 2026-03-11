@@ -1654,6 +1654,27 @@ function parseTextFileInGoogleScript(textContent) {
     }
   }
 
+  // PATCH30: Add warning for Instagram/LinkedIn sourced opportunities
+  // These platforms have login walls and dynamic content that scrapers struggle with,
+  // so the LLM-extracted data may be inaccurate
+  if (result.link && result.link.trim() !== '') {
+    var linkLower = result.link.toLowerCase();
+    var sourceWarning = '';
+    if (linkLower.includes('instagram.com') || linkLower.includes('instagr.am')) {
+      sourceWarning = '⚠️ SOURCE WARNING: This opportunity was scraped from Instagram. Details may be incorrect or incomplete — please check before approving.';
+    } else if (linkLower.includes('linkedin.com') || linkLower.includes('lnkd.in')) {
+      sourceWarning = '⚠️ SOURCE WARNING: This opportunity was scraped from LinkedIn. Details may be incorrect or incomplete — please check before approving.';
+    }
+    if (sourceWarning) {
+      if (result.anythingElseImportant && result.anythingElseImportant.trim() !== '') {
+        result.anythingElseImportant = sourceWarning + '\n\n' + result.anythingElseImportant;
+      } else {
+        result.anythingElseImportant = sourceWarning;
+      }
+      Logger.log('🔍 TEXT PARSER: Added source warning for ' + linkLower);
+    }
+  }
+
   // Generate title if not set - PATCH28: Enhanced with company and job title
   if (!result.title || result.title.trim() === '') {
     var titleParts = [];
