@@ -943,6 +943,30 @@ function parseApplicationDeadline(dateString) {
   
   var cleanDate = dateString.trim();
   
+  // PATCH30: Early return for known non-date values
+  // These indicate the LLM couldn't find a deadline — return empty to avoid Invalid Date
+  var lowerClean = cleanDate.toLowerCase();
+  if (lowerClean === 'unclear' ||
+      lowerClean === 'n/a' ||
+      lowerClean === 'tbc' ||
+      lowerClean === 'tba' ||
+      lowerClean === 'none' ||
+      lowerClean === 'rolling' ||
+      lowerClean === 'ongoing' ||
+      lowerClean.includes('not specified') ||
+      lowerClean.includes('not mentioned') ||
+      lowerClean.includes('not stated') ||
+      lowerClean.includes('not found') ||
+      lowerClean.includes('not available') ||
+      lowerClean.includes('to be confirmed') ||
+      lowerClean.includes('to be announced') ||
+      lowerClean.includes('no deadline') ||
+      lowerClean.includes('no closing date') ||
+      lowerClean.includes('not explicitly')) {
+    Logger.log('🔍 DATE PARSER: Non-date value detected "' + cleanDate + '" — returning empty');
+    return '';
+  }
+  
   // Remove ordinal suffixes (1st, 2nd, 3rd, 4th, etc.)
   cleanDate = cleanDate.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
   
@@ -1022,6 +1046,23 @@ function parseApplicationDeadline(dateString) {
         var monthIndex = months[monthName.toLowerCase()];
         if (monthIndex !== undefined) {
           date = new Date(year, monthIndex, day, 23, 59, 59);
+        }
+      }
+    }
+    
+    // PATCH30: Pattern 2B: DD/MM/YYYY or DD/MM/YY (UK date format)
+    // Must come before standard JS Date.parse which assumes US MM/DD/YYYY
+    if (!date) {
+      var ukDatePattern = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/;
+      var ukMatch = cleanDate.match(ukDatePattern);
+      if (ukMatch) {
+        var day = parseInt(ukMatch[1]);
+        var month = parseInt(ukMatch[2]) - 1; // 0-indexed
+        var year = parseInt(ukMatch[3]);
+        if (year < 100) year += 2000; // Convert 2-digit year: 26 -> 2026
+        if (day >= 1 && day <= 31 && month >= 0 && month <= 11) {
+          date = new Date(year, month, day, 23, 59, 59);
+          Logger.log('🔍 DATE PARSER: Parsed UK date format: ' + day + '/' + (month+1) + '/' + year);
         }
       }
     }
