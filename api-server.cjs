@@ -744,10 +744,18 @@ const transformData = (data) => {
     return result;
   }
 
+  // PATCH30: Sanitize applicationDeadline — only valid ISO dates or empty
+  // Prevents "Invalid date" on portal which locks the deadline field
+  let sanitizedDeadline = data.applicationDeadline || '';
+  if (sanitizedDeadline && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(sanitizedDeadline)) {
+    console.log(`⚠️ TRANSFORM: applicationDeadline "${sanitizedDeadline}" is not valid ISO — clearing to empty`);
+    sanitizedDeadline = '';
+  }
+
   return {
     // Required fields from actual portal format
     anythingElseImportant: data.anythingElseImportant ?? '',
-    applicationDeadline: data.applicationDeadline || '',
+    applicationDeadline: sanitizedDeadline,
     author: data.author || '',
     bannerPic: data.bannerPic || '',
     category: data.category || '',

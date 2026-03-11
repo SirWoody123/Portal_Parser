@@ -1054,17 +1054,18 @@ function parseApplicationDeadline(dateString) {
         dateString.toLowerCase().includes('n/a') || 
         dateString.toLowerCase().includes('tbc') ||
         dateString.toLowerCase().includes('to be confirmed')) {
-      Logger.log('⚠️ Could not parse date: ' + dateString + ', returning "No deadline specified"');
-      return 'No deadline specified';
+      Logger.log('⚠️ Could not parse date: ' + dateString + ', returning empty (no deadline)');
+      return '';
     }
     
-    // Return original string for other cases
-    Logger.log('⚠️ Could not parse date: ' + dateString + ', returning original');
-    return dateString;
+    // PATCH30: If we can't parse to a valid date, return empty string
+    // Returning unparseable text causes "Invalid date" on the portal which locks the field
+    Logger.log('⚠️ Could not parse date: ' + dateString + ', returning empty to avoid Invalid Date on portal');
+    return '';
     
   } catch (e) {
     Logger.log('⚠️ Date parsing error for "' + dateString + '": ' + e.toString());
-    return dateString;
+    return '';
   }
 }
 
@@ -1643,7 +1644,7 @@ function parseTextFileInGoogleScript(textContent) {
   }
 
   // Use event date as deadline if no specific deadline was provided
-  if (eventDate && (result.applicationDeadline === 'No deadline specified' || !result.applicationDeadline)) {
+  if (eventDate && (!result.applicationDeadline || result.applicationDeadline.trim() === '')) {
     result.applicationDeadline = parseApplicationDeadline(eventDate);
     Logger.log('🔍 TEXT PARSER: Using event date as deadline: ' + result.applicationDeadline);
   }
@@ -1969,9 +1970,17 @@ function processDocument(file) {
       lowerSocioEconomicBackground: finalSocioEconomicOptions
     }
 
+    // PATCH30: Sanitize applicationDeadline — only allow valid ISO dates or empty string
+    // Prevents "Invalid date" from appearing on the portal which locks the deadline field
+    var sanitizedDeadline = str(data.applicationDeadline);
+    if (sanitizedDeadline && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(sanitizedDeadline)) {
+      Logger.log('⚠️ NORMALIZE: applicationDeadline "' + sanitizedDeadline + '" is not a valid ISO date — clearing to empty');
+      sanitizedDeadline = '';
+    }
+
     var result = {
       anythingElseImportant: str(data.anythingElseImportant),
-      applicationDeadline: str(data.applicationDeadline),
+      applicationDeadline: sanitizedDeadline,
       approvalFirst: bool(data.approvalFirst),
       author: str(data.author),
       bannerPic: str(data.bannerPic),
