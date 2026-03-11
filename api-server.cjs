@@ -382,6 +382,15 @@ const parseTextFile = (textContent) => {
         result.opportunityType = value;
         break;
         
+      case 'Category':
+        // PATCH30: Map Category field to opportunityType
+        if (value && value.trim()) {
+          result.opportunityType = value.trim();
+          result.category = value.trim();
+          console.log(`🔍 TEXT PARSER: Set opportunityType from Category: ${value}`);
+        }
+        break;
+        
       case 'Disability':
         if (value.toLowerCase() === 'all disability') {
           result.demographic.disability = ['All disability'];

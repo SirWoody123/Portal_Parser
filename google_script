@@ -1097,6 +1097,10 @@ function parseTextFileInGoogleScript(textContent) {
     courseType: '', // Added for course support
     anythingElseImportant: '',
     _geoloc: null, // Will be populated with {lat: number, lng: number} if location is geocoded
+    // PATCH30: Event-specific fields
+    eventStartTime: '', // Event start time
+    eventEndTime: '', // Event end time
+    eventDate: '', // Event date (separate from deadline)
     // PATCH28: Enhanced title generation fields
     jobTitle: '', // Extracted job title
     employer: '', // Extracted company/employer name
@@ -1247,8 +1251,46 @@ function parseTextFileInGoogleScript(textContent) {
             result.opportunityType = 'Internship';
           } else if (typeValue.toLowerCase().includes('course')) {
             result.opportunityType = 'Course';
+          } else if (typeValue.toLowerCase().includes('event')) {
+            result.opportunityType = 'Event';
           }
           Logger.log('🔍 TEXT PARSER: Set opportunityType from Type field: ' + result.opportunityType);
+        }
+        break;
+        
+      case 'Category':
+        // PATCH30: Handle category field — map to opportunityType
+        if (value && value.trim()) {
+          var catValue = value.trim();
+          if (catValue.toLowerCase().includes('event')) {
+            result.opportunityType = 'Event';
+            Logger.log('🔍 TEXT PARSER: Set opportunityType to Event from Category field');
+          } else if (catValue.toLowerCase().includes('part-time')) {
+            result.opportunityType = 'Junior part-time role';
+          } else if (catValue.toLowerCase().includes('full-time')) {
+            result.opportunityType = 'Junior full-time role';
+          } else if (catValue.toLowerCase().includes('apprentice')) {
+            result.opportunityType = 'Apprenticeship';
+          } else if (catValue.toLowerCase().includes('internship') || catValue.toLowerCase().includes('intern')) {
+            result.opportunityType = 'Internship';
+          } else if (catValue.toLowerCase().includes('course')) {
+            result.opportunityType = 'Course';
+          } else if (catValue.toLowerCase().includes('training')) {
+            result.opportunityType = 'Training scheme';
+          } else if (catValue.toLowerCase().includes('freelance')) {
+            result.opportunityType = 'Freelance role';
+          } else if (catValue.toLowerCase().includes('competition') || catValue.toLowerCase().includes('grant')) {
+            result.opportunityType = 'Competition/Grant';
+          } else if (catValue.toLowerCase().includes('mentoring') || catValue.toLowerCase().includes('mentor')) {
+            result.opportunityType = 'Mentoring';
+          } else if (catValue.toLowerCase().includes('work experience')) {
+            result.opportunityType = 'Work experience';
+          } else if (catValue.toLowerCase().includes('runner')) {
+            result.opportunityType = 'Runner role';
+          } else {
+            result.opportunityType = catValue; // Pass through as-is
+          }
+          Logger.log('🔍 TEXT PARSER: Set opportunityType from Category: ' + result.opportunityType);
         }
         break;
         
@@ -1345,9 +1387,11 @@ function parseTextFileInGoogleScript(textContent) {
         break;
         
       case 'Event Date':
+      case 'Event date':
         // Capture event date information and store for deadline fallback
         if (value && value.trim()) {
           eventDate = value.trim(); // Store for potential deadline use
+          result.eventDate = value.trim(); // PATCH30: Also store in result for normalizeOpportunityData
           if (result.anythingElseImportant) {
             result.anythingElseImportant += '\n\nEvent Date: ' + value;
           } else {
@@ -1366,6 +1410,32 @@ function parseTextFileInGoogleScript(textContent) {
             result.anythingElseImportant = 'Event Time: ' + value;
           }
           Logger.log('🔍 TEXT PARSER: Added event time info');
+        }
+        break;
+        
+      case 'Event start time':
+        // Capture event start time
+        if (value && value.trim()) {
+          result.eventStartTime = value.trim();
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nEvent Start Time: ' + value;
+          } else {
+            result.anythingElseImportant = 'Event Start Time: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Set event start time: ' + value);
+        }
+        break;
+        
+      case 'Event end time':
+        // Capture event end time
+        if (value && value.trim()) {
+          result.eventEndTime = value.trim();
+          if (result.anythingElseImportant) {
+            result.anythingElseImportant += '\nEvent End Time: ' + value;
+          } else {
+            result.anythingElseImportant = 'Event End Time: ' + value;
+          }
+          Logger.log('🔍 TEXT PARSER: Set event end time: ' + value);
         }
         break;
         
@@ -1491,12 +1561,16 @@ function parseTextFileInGoogleScript(textContent) {
   if (!result.opportunityType || result.opportunityType.trim() === '') {
     // Look for clues in the content to determine opportunity type
     var contentToAnalyze = (result.anythingElseImportant + ' ' + result.description + ' ' + result.title).toLowerCase();
+    var hasEventClues = result.eventStartTime || result.eventEndTime || contentToAnalyze.includes('event date') || contentToAnalyze.includes('event start') || contentToAnalyze.includes('event time') || contentToAnalyze.includes('ticket') || contentToAnalyze.includes('exhibition') || contentToAnalyze.includes('workshop');
     var hasInternshipClues = contentToAnalyze.includes('internship') || result.lengthOfInternship;
     var hasApprenticeshipClues = contentToAnalyze.includes('apprentice') || result.lengthOfApprenticeship;
-    var hasCourseClues = contentToAnalyze.includes('course') || contentToAnalyze.includes('training') || result.lengthOfCourse;
+    var hasCourseClues = contentToAnalyze.includes('course') || result.lengthOfCourse;
     var hasJobClues = result.jobTitle || contentToAnalyze.includes('junior') || contentToAnalyze.includes('role') || contentToAnalyze.includes('position');
     
-    if (hasInternshipClues) {
+    if (hasEventClues && !hasInternshipClues && !hasApprenticeshipClues && !hasJobClues) {
+      result.opportunityType = 'Event';
+      Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Event');
+    } else if (hasInternshipClues) {
       result.opportunityType = 'Internship';
       Logger.log('🔍 TEXT PARSER: Auto-detected opportunity type: Internship');
     } else if (hasApprenticeshipClues) {
@@ -1649,6 +1723,7 @@ function processDocument(file) {
       { label: 'Apprenticeship', name: 'apprenticeship' },
       { label: 'Competition/Grant', name: 'competition-grant' },
       { label: 'Course', name: 'course' },
+      { label: 'Event', name: 'event' },
       { label: 'Freelance role', name: 'freelance-role' },
       { label: 'Internship', name: 'internship' },
       { label: 'Junior full-time role', name: 'junior-full-time-role' },
@@ -1690,6 +1765,7 @@ function processDocument(file) {
       }
       if (title.includes('apprentice') || idVal.includes('apprentice') || keywords.includes('apprentice')) mappedCat = 'apprenticeship';
       else if (title.includes('intern') || idVal.includes('intern') || keywords.includes('intern')) mappedCat = 'internship';
+      else if (title.includes('event') || idVal.includes('event') || keywords.includes('event') || data.eventStartTime || data.eventEndTime) mappedCat = 'event';
       else if (title.includes('course') || idVal.includes('course') || keywords.includes('course')) mappedCat = 'course';
       else if (title.includes('training') || idVal.includes('training') || keywords.includes('training')) mappedCat = 'training-scheme';
       else if (title.includes('runner') || idVal.includes('runner') || keywords.includes('runner')) mappedCat = 'runner-role';
@@ -1913,8 +1989,8 @@ function processDocument(file) {
       editor: str(data.editor) || 'scheduler',
       eventDate: str(data.eventDate),
       eventName: str(data.eventName),
-      eventTime: str(data.eventTime),
-      eventTimeEnd: str(data.eventTimeEnd),
+      eventTime: str(data.eventTime) || str(data.eventStartTime),
+      eventTimeEnd: str(data.eventTimeEnd) || str(data.eventEndTime),
       expiredDate: str(data.expiredDate),
       id: id(data.id),
       keywords: arr(data.keywords),
