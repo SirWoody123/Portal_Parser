@@ -228,6 +228,7 @@ const parseTextFile = (textContent) => {
     link: '',
     applicationDeadline: '',
     location: '',
+    regionLocation: '', // PATCH30: UK region
     remote: false,
     ukWide: false,
     opportunityType: 'Opportunity',
@@ -414,9 +415,14 @@ const parseTextFile = (textContent) => {
         break;
         
       case 'Region':
-        // Add region to location if not already set
-        if (!result.location) {
-          result.location = value;
+        // PATCH30: Always capture region for regionLocation field
+        if (value && value.trim()) {
+          result.regionLocation = value.trim();
+          // Also use as location fallback if no specific location
+          if (!result.location) {
+            result.location = value;
+          }
+          console.log(`🔍 TEXT PARSER: Set regionLocation: ${value}`);
         }
         break;
         
@@ -571,6 +577,14 @@ const parseTextFile = (textContent) => {
   if (!result.applicationDeadline && result.eventDate) {
     result.applicationDeadline = result.eventDate;
     console.log(`🔍 TEXT PARSER: Using event date as deadline: ${result.applicationDeadline}`);
+  }
+
+  // PATCH30: Prioritize region over remote status
+  if (result.regionLocation && result.regionLocation.trim() !== '') {
+    if (result.remote === true) {
+      console.log(`🔍 TEXT PARSER: Region "${result.regionLocation}" specified with Remote=Yes — overriding remote to false`);
+      result.remote = false;
+    }
   }
 
   console.log('🔍 TEXT PARSER: Final parsed result:', JSON.stringify(result, null, 2));

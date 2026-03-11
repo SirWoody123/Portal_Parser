@@ -1102,6 +1102,8 @@ function parseTextFileInGoogleScript(textContent) {
     eventStartTime: '', // Event start time
     eventEndTime: '', // Event end time
     eventDate: '', // Event date (separate from deadline)
+    // PATCH30: Region field
+    regionLocation: '', // UK region (e.g. "South East", "London")
     // PATCH28: Enhanced title generation fields
     jobTitle: '', // Extracted job title
     employer: '', // Extracted company/employer name
@@ -1363,9 +1365,14 @@ function parseTextFileInGoogleScript(textContent) {
         break;
         
       case 'Region':
-        // Use region info if no specific location
-        if (!result.location || result.location === '') {
-          result.location = value;
+        // PATCH30: Always capture region for regionLocation field
+        if (value && value.trim()) {
+          result.regionLocation = value.trim();
+          // Also use as location fallback if no specific location
+          if (!result.location || result.location === '') {
+            result.location = value;
+          }
+          Logger.log('🔍 TEXT PARSER: Set regionLocation: ' + value);
         }
         break;
         
@@ -1593,6 +1600,16 @@ function parseTextFileInGoogleScript(textContent) {
       // Default fallback
       result.opportunityType = 'Course';
       Logger.log('🔍 TEXT PARSER: Defaulted opportunity type to: Course');
+    }
+  }
+
+  // PATCH30: Prioritize region over remote status
+  // If a specific region is set (not empty), the role is location-based even if marked remote
+  // "Remote: Yes" with "Region: South East" means hybrid, not fully remote
+  if (result.regionLocation && result.regionLocation.trim() !== '') {
+    if (result.remote === true) {
+      Logger.log('🔍 TEXT PARSER: Region "' + result.regionLocation + '" specified with Remote=Yes — overriding remote to false (region takes priority)');
+      result.remote = false;
     }
   }
 
