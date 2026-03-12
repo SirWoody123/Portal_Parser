@@ -1859,6 +1859,13 @@ function processDocument(file) {
       else mappedCat = 'opportunity';
     }
 
+    // Look up the human-readable label for categoryTitle
+    var mappedCatLabel = '';
+    var catMatch = allowedCategories.find(function(opt) { return opt.name === mappedCat; });
+    if (catMatch) {
+      mappedCatLabel = catMatch.label;
+    }
+
     // Allowed industries (case-insensitive match)
     var allowedIndustries = [
       'All Creative Industries', 'Acting', 'Advertising', 'Animation', 'Architecture', 'Arts', 'Audio', 'Comedy', 'Content Creation', 'Craft', 'Culture', 'Dance', 'Design', 'Digital', 'Directing', 'E-Sport', 'Fashion', 'Film', 'Gaming', 'Graphic Design', 'Heritage', 'Journalism', 'Marketing', 'Media', 'Museum', 'Music', 'Performing Arts', 'Photography', 'Podcasting', 'PR', 'Presenting', 'Publishing', 'Radio', 'Social Media', 'Theatre', 'TV', 'UX/UI Design', 'VFX', 'Videography', 'Visual Art', 'Writing'
@@ -2073,7 +2080,7 @@ function processDocument(file) {
       bespokeOnly: bool(data.bespokeOnly),
       opportunityType: mappedCat,
       category: mappedCat,
-      categoryTitle: str(data.categoryTitle),
+      categoryTitle: mappedCatLabel || str(data.categoryTitle),
       companyID: str(data.companyID) || 'S7IvlojyomcTNsUXlrqC',
       companyVerify: bool(data.companyVerify) || true,
       courseLocation: str(data.courseLocation),

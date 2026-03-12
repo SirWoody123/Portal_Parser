@@ -790,15 +790,48 @@ const transformData = (data) => {
     sanitizedDeadline = '';
   }
 
+  // PATCH30: Map category label ↔ name so both fields are always correct
+  const allowedCategories = [
+    { label: 'Apprenticeship', name: 'apprenticeship' },
+    { label: 'Competition/Grant', name: 'competition-grant' },
+    { label: 'Course', name: 'course' },
+    { label: 'Event', name: 'event' },
+    { label: 'Freelance role', name: 'freelance-role' },
+    { label: 'Internship', name: 'internship' },
+    { label: 'Junior full-time role', name: 'junior-full-time-role' },
+    { label: 'Junior part-time role', name: 'junior-part-time-role' },
+    { label: 'Mentoring', name: 'mentoring' },
+    { label: 'Opportunity', name: 'opportunity' },
+    { label: 'Runner role', name: 'runner-role' },
+    { label: 'Training scheme', name: 'training-scheme' },
+    { label: 'Work experience', name: 'work-experience' }
+  ];
+  const rawCat = (data.category || data.opportunityType || '').trim();
+  let resolvedCatName = '';
+  let resolvedCatLabel = '';
+  if (rawCat) {
+    // Try matching as a name first, then as a label
+    let catMatch = allowedCategories.find(c => c.name.toLowerCase() === rawCat.toLowerCase());
+    if (!catMatch) catMatch = allowedCategories.find(c => c.label.toLowerCase() === rawCat.toLowerCase());
+    if (catMatch) {
+      resolvedCatName = catMatch.name;
+      resolvedCatLabel = catMatch.label;
+    } else {
+      // Fallback: slugify the raw value as name
+      resolvedCatName = rawCat.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      resolvedCatLabel = rawCat;
+    }
+  }
+
   return {
     // Required fields from actual portal format
     anythingElseImportant: data.anythingElseImportant ?? '',
     applicationDeadline: sanitizedDeadline,
     author: data.author || '',
     bannerPic: data.bannerPic || '',
-    category: data.category || '',
-    categoryTitle: data.categoryTitle || '',
-    opportunityType: data.opportunityType || '',
+    category: resolvedCatName,
+    categoryTitle: resolvedCatLabel,
+    opportunityType: resolvedCatName,
     companyID: fixedCompanyID,
     companyVerify: data.companyVerify ?? true,
     courseLocation: data.courseLocation || '',
