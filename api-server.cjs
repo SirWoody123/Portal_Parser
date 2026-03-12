@@ -605,10 +605,16 @@ const parseTextFile = (textContent) => {
   }
 
   // PATCH30: Heuristic — detect explicit ethnic targeting that contradicts "All ethnicities"
-  const contentForEthnicityDetection = ((result.anythingElseImportant || '') + ' ' + (result.title || '') + ' ' + (result.description || '')).toLowerCase();
-  if (/\bblack writers?\b/.test(contentForEthnicityDetection) || /\bfor black (authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?)\b/.test(contentForEthnicityDetection)) {
+  const contentForDemographicDetection = ((result.anythingElseImportant || '') + ' ' + (result.title || '') + ' ' + (result.description || '')).toLowerCase();
+  if (/\bblack writers?\b/.test(contentForDemographicDetection) || /\bfor black (authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?)\b/.test(contentForDemographicDetection)) {
     result.demographic.ethnicity = ['African, Caribbean or Black British'];
     console.log('🔍 TEXT PARSER: Detected explicit Black-targeted opportunity — setting ethnicity to African, Caribbean or Black British');
+  }
+
+  // PATCH30: Heuristic — detect explicit gender targeting that contradicts "All genders"
+  if (/\b(creative women|women in business|for women|women only|female (founders?|creatives?|artists?|writers?|graduates?|students?|professionals?|entrepreneurs?)|women'?s network)\b/.test(contentForDemographicDetection)) {
+    result.demographic.genderSexualPreference = ['She/Her'];
+    console.log('🔍 TEXT PARSER: Detected explicit women-targeted opportunity — setting gender to She/Her');
   }
 
   console.log('🔍 TEXT PARSER: Final parsed result:', JSON.stringify(result, null, 2));

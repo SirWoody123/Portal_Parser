@@ -1325,6 +1325,8 @@ function parseTextFileInGoogleScript(textContent) {
             result.opportunityType = 'Freelance role';
           } else if (catValue.toLowerCase().includes('competition') || catValue.toLowerCase().includes('grant')) {
             result.opportunityType = 'Competition/Grant';
+          } else if (catValue.toLowerCase().includes('event')) {
+            result.opportunityType = 'Event';
           } else if (catValue.toLowerCase().includes('mentoring') || catValue.toLowerCase().includes('mentor')) {
             result.opportunityType = 'Mentoring';
           } else if (catValue.toLowerCase().includes('work experience')) {
@@ -2013,6 +2015,13 @@ function processDocument(file) {
       finalGenderOptions = genderMatches; // Use specific matches
     } else {
       finalGenderOptions = allGenderOptions; // Default to all
+    }
+    
+    // Heuristic: detect explicit gender targeting in content that contradicts "All genders"
+    var contentForGenderDetection = ((data.anythingElseImportant || '') + ' ' + (data.title || '') + ' ' + (data.description || '')).toLowerCase();
+    if (/\b(creative women|women in business|for women|women only|female (founders?|creatives?|artists?|writers?|graduates?|students?|professionals?|entrepreneurs?)|women'?s network)\b/.test(contentForGenderDetection)) {
+      finalGenderOptions = ['She/Her'];
+      Logger.log('🔍 NORMALIZE: Detected explicit women-targeted opportunity — setting gender to She/Her');
     }
     
     // Handle ethnicity expansion
