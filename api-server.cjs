@@ -613,8 +613,11 @@ const parseTextFile = (textContent) => {
 
   // PATCH30: Heuristic — detect explicit gender targeting that contradicts "All genders"
   if (/\b(creative women|women in business|for women|women only|female (founders?|creatives?|artists?|writers?|graduates?|students?|professionals?|entrepreneurs?)|women'?s network)\b/.test(contentForDemographicDetection)) {
-    result.demographic.genderSexualPreference = ['She/Her'];
-    console.log('🔍 TEXT PARSER: Detected explicit women-targeted opportunity — setting gender to She/Her');
+    result.demographic.genderSexualPreference = ['She/Her', 'They/Them'];
+    console.log('🔍 TEXT PARSER: Detected explicit women-targeted opportunity — setting gender to She/Her, They/Them');
+  } else if (/\b(for men|men only|male (founders?|creatives?|artists?|writers?|graduates?|students?|professionals?|entrepreneurs?)|men'?s network)\b/.test(contentForDemographicDetection)) {
+    result.demographic.genderSexualPreference = ['He/Him', 'They/Them'];
+    console.log('🔍 TEXT PARSER: Detected explicit men-targeted opportunity — setting gender to He/Him, They/Them');
   }
 
   console.log('🔍 TEXT PARSER: Final parsed result:', JSON.stringify(result, null, 2));

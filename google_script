@@ -2020,8 +2020,11 @@ function processDocument(file) {
     // Heuristic: detect explicit gender targeting in content that contradicts "All genders"
     var contentForGenderDetection = ((data.anythingElseImportant || '') + ' ' + (data.title || '') + ' ' + (data.description || '')).toLowerCase();
     if (/\b(creative women|women in business|for women|women only|female (founders?|creatives?|artists?|writers?|graduates?|students?|professionals?|entrepreneurs?)|women'?s network)\b/.test(contentForGenderDetection)) {
-      finalGenderOptions = ['She/Her'];
-      Logger.log('🔍 NORMALIZE: Detected explicit women-targeted opportunity — setting gender to She/Her');
+      finalGenderOptions = ['She/Her', 'They/Them'];
+      Logger.log('🔍 NORMALIZE: Detected explicit women-targeted opportunity — setting gender to She/Her, They/Them');
+    } else if (/\b(for men|men only|male (founders?|creatives?|artists?|writers?|graduates?|students?|professionals?|entrepreneurs?)|men'?s network)\b/.test(contentForGenderDetection)) {
+      finalGenderOptions = ['He/Him', 'They/Them'];
+      Logger.log('🔍 NORMALIZE: Detected explicit men-targeted opportunity — setting gender to He/Him, They/Them');
     }
     
     // Handle ethnicity expansion
