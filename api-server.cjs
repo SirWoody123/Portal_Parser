@@ -604,39 +604,88 @@ const parseTextFile = (textContent) => {
     }
   }
 
-  // PATCH30: Heuristic — detect explicit ethnic targeting that contradicts "All ethnicities"
+  // PATCH30: Content heuristics — detect explicit demographic targeting in content
   const contentForDemographicDetection = ((result.anythingElseImportant || '') + ' ' + (result.title || '') + ' ' + (result.description || '')).toLowerCase();
-  if (/\bblack writers?\b/.test(contentForDemographicDetection) || /\bfor black (authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?)\b/.test(contentForDemographicDetection)) {
-    result.demographic.ethnicity = ['African, Caribbean or Black British'];
-    console.log('🔍 TEXT PARSER: Detected explicit Black-targeted opportunity — setting ethnicity to African, Caribbean or Black British');
+
+  // Age heuristic
+  const detectedAges = [];
+  if (/\b(young people|young person|youth|under.?18|aged?\s*1[3-7]|13.?1[7]|teen(ager)?s?)\b/.test(contentForDemographicDetection)) detectedAges.push('Under 18');
+  if (/\b(18.?25|aged?\s*(18|19|20|21|22|23|24|25)|under.?25|young adults?|early career|recent graduate|graduate)\b/.test(contentForDemographicDetection)) {
+    detectedAges.push('18','19','20','21','22','23','24','25');
+  }
+  if (/\b(over.?25|25\+|all ages? (and|&) experience|mid.?career|senior)\b/.test(contentForDemographicDetection)) detectedAges.push('Over 25');
+  if (/\b(16.?(and|\+|plus)? ?(under|below)|under.?16|aged?\s*(1[0-6])|primary school|secondary school)\b/.test(contentForDemographicDetection)) detectedAges.push('16 and under');
+  if (detectedAges.length > 0) {
+    result.demographic.age = [...new Set(detectedAges)];
+    console.log('🔍 TEXT PARSER: Detected specific age targeting — narrowing to:', result.demographic.age.join(', '));
   }
 
-  // PATCH30: Heuristic — detect explicit gender targeting that contradicts "All genders"
+  // Gender heuristic
   if (/\b(creative women|women in business|for women|women only|female (founders?|creatives?|artists?|writers?|graduates?|students?|professionals?|entrepreneurs?)|women'?s network)\b/.test(contentForDemographicDetection)) {
     result.demographic.genderSexualPreference = ['She/Her', 'They/Them'];
     console.log('🔍 TEXT PARSER: Detected explicit women-targeted opportunity — setting gender to She/Her, They/Them');
   } else if (/\b(for men|men only|male (founders?|creatives?|artists?|writers?|graduates?|students?|professionals?|entrepreneurs?)|men'?s network)\b/.test(contentForDemographicDetection)) {
     result.demographic.genderSexualPreference = ['He/Him', 'They/Them'];
     console.log('🔍 TEXT PARSER: Detected explicit men-targeted opportunity — setting gender to He/Him, They/Them');
+  } else if (/\b(lgbtq\w*|queer|trans(gender)?|non.?binary|pride|gay|lesbian|bisexual)\b/.test(contentForDemographicDetection)) {
+    result.demographic.genderSexualPreference = ['LGBTQIA+', 'They/Them', 'Non-binary', 'Transgender'];
+    console.log('🔍 TEXT PARSER: Detected LGBTQIA+-targeted opportunity — setting gender to LGBTQIA+, They/Them, Non-binary, Transgender');
   }
 
-  // PATCH30: Heuristic — if content mentions specific disability terms, narrow from "All" to only those mentioned
+  // Ethnicity heuristic
+  const detectedEthnicities = [];
+  if (/\b(black (writers?|authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?|people|communities|voices)|for black\b|afro.?caribbean)\b/.test(contentForDemographicDetection)) {
+    detectedEthnicities.push('African, Caribbean or Black British');
+  }
+  if (/\b(south asian|british asian|asian (writers?|artists?|creatives?|graduates?|students?|professionals?|entrepreneurs?|founders?|people|communities|voices)|for asian\b|bangladeshi|pakistani|indian|sri lankan)\b/.test(contentForDemographicDetection)) {
+    detectedEthnicities.push('Asian or Asian British');
+  }
+  if (/\b(arab (writers?|artists?|creatives?|graduates?|students?|professionals?|communities|voices)|for arab\b|middle eastern|mena)\b/.test(contentForDemographicDetection)) {
+    detectedEthnicities.push('Arab');
+  }
+  if (/\b(mixed heritage|mixed race|dual heritage|multi.?racial|mixed ethnic)\b/.test(contentForDemographicDetection)) {
+    detectedEthnicities.push('Mixed or Multiple Ethnic group');
+  }
+  if (/\b(global majority|people of colour|person of colour|poc\b|bame\b|ethnic minorit\w*|underrepresented ethnic\w*)\b/.test(contentForDemographicDetection)) {
+    detectedEthnicities.push('African, Caribbean or Black British');
+    detectedEthnicities.push('Asian or Asian British');
+    detectedEthnicities.push('Mixed or Multiple Ethnic group');
+    detectedEthnicities.push('Other Ethnic Group');
+    detectedEthnicities.push('Arab');
+  }
+  if (detectedEthnicities.length > 0) {
+    result.demographic.ethnicity = [...new Set(detectedEthnicities)];
+    console.log('🔍 TEXT PARSER: Detected specific ethnicity targeting — narrowing to:', result.demographic.ethnicity.join(', '));
+  }
+
+  // Disability heuristic
   const neurodiversityTerms = /\b(neurodivers\w*|autis\w*|dyslexi\w*|dyspraxi\w*|adhd|add|asperger'?s?|dyscalculi\w*|dysgraphi\w*|tourette'?s?|sensory processing)\b/;
   const physicalDisabilityTerms = /\b(physical(ly)? disab\w*|wheelchair|mobility|blind|deaf|hearing impair\w*|visual(ly)? impair\w*|amputee|paralys\w*|parapleig\w*|cerebal palsy|limb (difference|loss))\b/;
   const mentalHealthTerms = /\b(mental health|anxiety|depression|ptsd|bipolar|schizophren\w*|eating disorder|ocd|obsessive.compulsive|psychosis|mental illness)\b/;
   const chronicIllnessTerms = /\b(chronic (illness|pain|condition|fatigue)|fibromyalgi\w*|crohn'?s?|lupus|epilep\w*|diabet\w*|multiple sclerosis|m\.?e\.?|cfs|long.?covid|endometriosis|arthritis)\b/;
   const carerTerms = /\b(carer|caregiver|caring responsibilit\w*|young carer)\b/;
-
   const detectedDisabilities = [];
   if (neurodiversityTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Neurodiversity');
   if (physicalDisabilityTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Physical disability');
   if (mentalHealthTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Mental health');
   if (chronicIllnessTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Chronic illness');
   if (carerTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Carer');
-
   if (detectedDisabilities.length > 0) {
     result.demographic.disability = detectedDisabilities;
-    console.log('🔍 TEXT PARSER: Detected specific disability targeting in content — narrowing to:', detectedDisabilities.join(', '));
+    console.log('🔍 TEXT PARSER: Detected specific disability targeting — narrowing to:', detectedDisabilities.join(', '));
+  }
+
+  // Socioeconomic heuristic
+  const detectedSocioEconomic = [];
+  if (/\b(low.?income|lower socio.?economic|disadvantaged|deprived|working class|social mobility|socio.?economic(ally)? disadvantaged|under.?privileged|poverty)\b/.test(contentForDemographicDetection)) {
+    detectedSocioEconomic.push('Only those from lower socio-economic background');
+  }
+  if (/\b(free school meals?|fsm|pupil premium|ema|educational maintenance)\b/.test(contentForDemographicDetection)) {
+    detectedSocioEconomic.push('Have or had free school meals');
+  }
+  if (detectedSocioEconomic.length > 0) {
+    result.demographic.lowerSocioEconomicBackground = detectedSocioEconomic;
+    console.log('🔍 TEXT PARSER: Detected specific socioeconomic targeting — narrowing to:', detectedSocioEconomic.join(', '));
   }
 
   console.log('🔍 TEXT PARSER: Final parsed result:', JSON.stringify(result, null, 2));
