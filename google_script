@@ -2054,6 +2054,26 @@ function processDocument(file) {
       finalDisabilityOptions = allDisabilityOptions; // Default to all
     }
     
+    // Heuristic: if content mentions specific disability terms, narrow down from "All" to only those mentioned
+    var contentForDisabilityDetection = ((data.anythingElseImportant || '') + ' ' + (data.title || '') + ' ' + (data.description || '')).toLowerCase();
+    var neurodiversityTerms = /\b(neurodivers\w*|autis\w*|dyslexi\w*|dyspraxi\w*|adhd|add|asperger'?s?|dyscalculi\w*|dysgraphi\w*|tourette'?s?|sensory processing)\b/;
+    var physicalDisabilityTerms = /\b(physical(ly)? disab\w*|wheelchair|mobility|blind|deaf|hearing impair\w*|visual(ly)? impair\w*|amputee|paralys\w*|parapleig\w*|cerebal palsy|limb (difference|loss))\b/;
+    var mentalHealthTerms = /\b(mental health|anxiety|depression|ptsd|bipolar|schizophren\w*|eating disorder|ocd|obsessive.compulsive|psychosis|mental illness)\b/;
+    var chronicIllnessTerms = /\b(chronic (illness|pain|condition|fatigue)|fibromyalgi\w*|crohn'?s?|lupus|epilep\w*|diabet\w*|multiple sclerosis|m\.?e\.?|cfs|long.?covid|endometriosis|arthritis)\b/;
+    var carerTerms = /\b(carer|caregiver|caring responsibilit\w*|young carer)\b/;
+    
+    var detectedDisabilities = [];
+    if (neurodiversityTerms.test(contentForDisabilityDetection)) detectedDisabilities.push('Neurodiversity');
+    if (physicalDisabilityTerms.test(contentForDisabilityDetection)) detectedDisabilities.push('Physical disability');
+    if (mentalHealthTerms.test(contentForDisabilityDetection)) detectedDisabilities.push('Mental health');
+    if (chronicIllnessTerms.test(contentForDisabilityDetection)) detectedDisabilities.push('Chronic illness');
+    if (carerTerms.test(contentForDisabilityDetection)) detectedDisabilities.push('Carer');
+    
+    if (detectedDisabilities.length > 0) {
+      finalDisabilityOptions = detectedDisabilities;
+      Logger.log('🔍 NORMALIZE: Detected specific disability targeting in content — narrowing to: ' + detectedDisabilities.join(', '));
+    }
+    
     // Handle socioeconomic expansion
     var finalSocioEconomicOptions = [];
     if (socioEconomicMatches.includes('All backgrounds')) {

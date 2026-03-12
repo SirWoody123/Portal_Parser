@@ -620,6 +620,25 @@ const parseTextFile = (textContent) => {
     console.log('🔍 TEXT PARSER: Detected explicit men-targeted opportunity — setting gender to He/Him, They/Them');
   }
 
+  // PATCH30: Heuristic — if content mentions specific disability terms, narrow from "All" to only those mentioned
+  const neurodiversityTerms = /\b(neurodivers\w*|autis\w*|dyslexi\w*|dyspraxi\w*|adhd|add|asperger'?s?|dyscalculi\w*|dysgraphi\w*|tourette'?s?|sensory processing)\b/;
+  const physicalDisabilityTerms = /\b(physical(ly)? disab\w*|wheelchair|mobility|blind|deaf|hearing impair\w*|visual(ly)? impair\w*|amputee|paralys\w*|parapleig\w*|cerebal palsy|limb (difference|loss))\b/;
+  const mentalHealthTerms = /\b(mental health|anxiety|depression|ptsd|bipolar|schizophren\w*|eating disorder|ocd|obsessive.compulsive|psychosis|mental illness)\b/;
+  const chronicIllnessTerms = /\b(chronic (illness|pain|condition|fatigue)|fibromyalgi\w*|crohn'?s?|lupus|epilep\w*|diabet\w*|multiple sclerosis|m\.?e\.?|cfs|long.?covid|endometriosis|arthritis)\b/;
+  const carerTerms = /\b(carer|caregiver|caring responsibilit\w*|young carer)\b/;
+
+  const detectedDisabilities = [];
+  if (neurodiversityTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Neurodiversity');
+  if (physicalDisabilityTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Physical disability');
+  if (mentalHealthTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Mental health');
+  if (chronicIllnessTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Chronic illness');
+  if (carerTerms.test(contentForDemographicDetection)) detectedDisabilities.push('Carer');
+
+  if (detectedDisabilities.length > 0) {
+    result.demographic.disability = detectedDisabilities;
+    console.log('🔍 TEXT PARSER: Detected specific disability targeting in content — narrowing to:', detectedDisabilities.join(', '));
+  }
+
   console.log('🔍 TEXT PARSER: Final parsed result:', JSON.stringify(result, null, 2));
   return result;
 };
