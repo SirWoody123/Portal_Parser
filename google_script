@@ -2018,6 +2018,13 @@ function processDocument(file) {
       finalEthnicityOptions = allEthnicityOptions; // Default to all
     }
     
+    // Heuristic: detect explicit ethnic targeting in content that contradicts "All ethnicities"
+    var contentForEthnicityDetection = ((data.anythingElseImportant || '') + ' ' + (data.title || '') + ' ' + (data.description || '')).toLowerCase();
+    if (/\bblack writers?\b/.test(contentForEthnicityDetection) || /\bfor black (authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?)\b/.test(contentForEthnicityDetection)) {
+      finalEthnicityOptions = ['African, Caribbean or Black British'];
+      Logger.log('🔍 NORMALIZE: Detected explicit Black-targeted opportunity — setting ethnicity to African, Caribbean or Black British');
+    }
+    
     // Handle disability expansion
     var finalDisabilityOptions = [];
     if (disabilityMatches.includes('All disability')) {

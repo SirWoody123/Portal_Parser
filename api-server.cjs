@@ -604,6 +604,13 @@ const parseTextFile = (textContent) => {
     }
   }
 
+  // PATCH30: Heuristic — detect explicit ethnic targeting that contradicts "All ethnicities"
+  const contentForEthnicityDetection = ((result.anythingElseImportant || '') + ' ' + (result.title || '') + ' ' + (result.description || '')).toLowerCase();
+  if (/\bblack writers?\b/.test(contentForEthnicityDetection) || /\bfor black (authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?)\b/.test(contentForEthnicityDetection)) {
+    result.demographic.ethnicity = ['African, Caribbean or Black British'];
+    console.log('🔍 TEXT PARSER: Detected explicit Black-targeted opportunity — setting ethnicity to African, Caribbean or Black British');
+  }
+
   console.log('🔍 TEXT PARSER: Final parsed result:', JSON.stringify(result, null, 2));
   return result;
 };
