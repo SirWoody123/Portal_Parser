@@ -2161,7 +2161,7 @@ function processDocument(file) {
       author: str(data.author),
       bannerPic: str(data.bannerPic),
       bespokeOnly: bool(data.bespokeOnly),
-      opportunityType: mappedCat,
+      opportunityType: mappedCatLabel || mappedCat,
       category: mappedCatLabel || mappedCat,
       categoryTitle: mappedCatLabel || str(data.categoryTitle),
       companyID: str(data.companyID) || 'S7IvlojyomcTNsUXlrqC',

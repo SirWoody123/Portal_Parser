@@ -908,7 +908,7 @@ const transformData = (data) => {
     bannerPic: data.bannerPic || '',
     category: resolvedCatLabel || resolvedCatName,
     categoryTitle: resolvedCatLabel,
-    opportunityType: resolvedCatName,
+    opportunityType: resolvedCatLabel || resolvedCatName,
     companyID: fixedCompanyID,
     companyVerify: data.companyVerify ?? true,
     courseLocation: data.courseLocation || '',
