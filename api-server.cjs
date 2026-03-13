@@ -870,7 +870,7 @@ const transformData = (data) => {
   // PATCH30: Map category label ↔ name so both fields are always correct
   const allowedCategories = [
     { label: 'Apprenticeship', name: 'apprenticeship' },
-    { label: 'Competition/Grant', name: 'competition-grant' },
+    { label: 'Competition/Grant', name: 'competition/grant' },
     { label: 'Course', name: 'course' },
     { label: 'Event', name: 'event' },
     { label: 'Freelance role', name: 'freelance-role' },
@@ -906,9 +906,9 @@ const transformData = (data) => {
     applicationDeadline: sanitizedDeadline,
     author: data.author || '',
     bannerPic: data.bannerPic || '',
-    category: resolvedCatLabel || resolvedCatName,
+    category: resolvedCatName,
     categoryTitle: resolvedCatLabel,
-    opportunityType: resolvedCatLabel || resolvedCatName,
+    opportunityType: resolvedCatName,
     companyID: fixedCompanyID,
     companyVerify: data.companyVerify ?? true,
     courseLocation: data.courseLocation || '',
