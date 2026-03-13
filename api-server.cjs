@@ -906,7 +906,7 @@ const transformData = (data) => {
     applicationDeadline: sanitizedDeadline,
     author: data.author || '',
     bannerPic: data.bannerPic || '',
-    category: resolvedCatName,
+    category: resolvedCatLabel || resolvedCatName,
     categoryTitle: resolvedCatLabel,
     opportunityType: resolvedCatName,
     companyID: fixedCompanyID,

@@ -2162,7 +2162,7 @@ function processDocument(file) {
       bannerPic: str(data.bannerPic),
       bespokeOnly: bool(data.bespokeOnly),
       opportunityType: mappedCat,
-      category: mappedCat,
+      category: mappedCatLabel || mappedCat,
       categoryTitle: mappedCatLabel || str(data.categoryTitle),
       companyID: str(data.companyID) || 'S7IvlojyomcTNsUXlrqC',
       companyVerify: bool(data.companyVerify) || true,
