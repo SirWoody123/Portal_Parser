@@ -561,6 +561,16 @@ const parseTextFile = (textContent) => {
       // === APPRENTICESHIP & SALARY FIELDS ===
       case 'Salary':
         result.salary = value;
+        // Salary validation: warn if figures look suspiciously truncated
+        const salaryNums = value.match(/[\d,]+\.?\d*/g);
+        if (salaryNums) {
+          for (const num of salaryNums) {
+            const parsed = parseFloat(num.replace(/,/g, ''));
+            if (parsed > 0 && parsed < 5000) {
+              console.log(`⚠️ SALARY WARNING: Figure "${num}" looks suspiciously low — LLM may have truncated leading digits. Raw value: "${value}"`);
+            }
+          }
+        }
         console.log(`🔍 TEXT PARSER: Set salary: ${value}`);
         break;
         

@@ -1186,6 +1186,16 @@ function parseTextFileInGoogleScript(textContent) {
     switch (key) {
       case 'Salary':
         result.salary = value;
+        // Salary validation: warn if figures look suspiciously truncated
+        var salaryNums = value.match(/[\d,]+\.?\d*/g);
+        if (salaryNums) {
+          for (var si = 0; si < salaryNums.length; si++) {
+            var parsedSalary = parseFloat(salaryNums[si].replace(/,/g, ''));
+            if (parsedSalary > 0 && parsedSalary < 5000) {
+              Logger.log('⚠️ SALARY WARNING: Figure "' + salaryNums[si] + '" looks suspiciously low — LLM may have truncated leading digits. Raw value: "' + value + '"');
+            }
+          }
+        }
         break;
         
       case 'Length of internship & start date/ month':
