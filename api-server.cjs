@@ -232,6 +232,10 @@ const parseTextFile = (textContent) => {
     remote: false,
     ukWide: false,
     opportunityType: 'Opportunity',
+    salary: '',
+    lengthOfApprenticeship: '',
+    levelOfApprenticeship: '',
+    lengthOfInternship: '',
     // Enhanced event-specific fields
     eventDate: '',
     eventTime: '',
@@ -554,6 +558,31 @@ const parseTextFile = (textContent) => {
         console.log(`🔍 TEXT PARSER: Added additional important information`);
         break;
         
+      // === APPRENTICESHIP & SALARY FIELDS ===
+      case 'Salary':
+        result.salary = value;
+        console.log(`🔍 TEXT PARSER: Set salary: ${value}`);
+        break;
+        
+      case 'Length of apprenticeship':
+        result.lengthOfApprenticeship = value;
+        result.opportunityType = 'Apprenticeship';
+        console.log(`🔍 TEXT PARSER: Set lengthOfApprenticeship: ${value}, opportunityType to Apprenticeship`);
+        break;
+        
+      case 'Level of apprenticeship':
+        result.levelOfApprenticeship = value;
+        result.opportunityType = 'Apprenticeship';
+        console.log(`🔍 TEXT PARSER: Set levelOfApprenticeship: ${value}, opportunityType to Apprenticeship`);
+        break;
+        
+      case 'Length of internship & start date/ month':
+      case 'Length of internship':
+        result.lengthOfInternship = value;
+        result.opportunityType = 'Internship';
+        console.log(`🔍 TEXT PARSER: Set lengthOfInternship: ${value}, opportunityType to Internship`);
+        break;
+        
       default:
         console.log(`🔍 TEXT PARSER: Unhandled field "${key.trim()}" = "${value}"`);
         break;
@@ -634,7 +663,7 @@ const parseTextFile = (textContent) => {
 
   // Ethnicity heuristic
   const detectedEthnicities = [];
-  if (/\b(black (writers?|authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?|people|communities|voices)|for black\b|afro.?caribbean)\b/.test(contentForDemographicDetection)) {
+  if (/\b(black (writers?|authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?|people|communities|voices|heritage|backgrounds?|young people)|for black\b|afro.?caribbean|black british)\b/.test(contentForDemographicDetection)) {
     detectedEthnicities.push('African, Caribbean or Black British');
   }
   if (/\b(south asian|british asian|asian (writers?|artists?|creatives?|graduates?|students?|professionals?|entrepreneurs?|founders?|people|communities|voices)|for asian\b|bangladeshi|pakistani|indian|sri lankan)\b/.test(contentForDemographicDetection)) {
@@ -920,6 +949,10 @@ const transformData = (data) => {
     id: data.id || '',
     keywords: Array.isArray(data.keywords) ? data.keywords : [],
     lengthOfCourse: data.lengthOfCourse || '',
+    lengthOfApprenticeship: data.lengthOfApprenticeship || '',
+    lengthOfInternship: data.lengthOfInternship || '',
+    levelOfApprenticeship: data.levelOfApprenticeship || '',
+    salary: data.salary || '',
     link: data.link || '',
     paidOrFreeCourses: data.paidOrFreeCourses || '',
     publishedAt: data.publishedAt || '',

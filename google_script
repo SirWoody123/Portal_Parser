@@ -1134,6 +1134,7 @@ function parseTextFileInGoogleScript(textContent) {
   status: 'scouted', // Set status to scouted by default - PATCH28
     salary: '',
     lengthOfApprenticeship: '',
+    levelOfApprenticeship: '', // Added for apprenticeship support
     lengthOfInternship: '',
     lengthOfCourse: '', // Added for course support
     courseType: '', // Added for course support
@@ -1190,6 +1191,19 @@ function parseTextFileInGoogleScript(textContent) {
       case 'Length of internship & start date/ month':
       case 'Length of internship':
         result.lengthOfInternship = value;
+        break;
+        
+      case 'Length of apprenticeship':
+        result.lengthOfApprenticeship = value;
+        // Also set opportunityType to Apprenticeship if we see apprenticeship-related fields
+        result.opportunityType = 'Apprenticeship';
+        Logger.log('🔍 TEXT PARSER: Set opportunityType to Apprenticeship, lengthOfApprenticeship: ' + value);
+        break;
+        
+      case 'Level of apprenticeship':
+        result.levelOfApprenticeship = value;
+        result.opportunityType = 'Apprenticeship';
+        Logger.log('🔍 TEXT PARSER: Set opportunityType to Apprenticeship, levelOfApprenticeship: ' + value);
         break;
         
       case 'Length of course':
@@ -2058,7 +2072,7 @@ function processDocument(file) {
     
     // Heuristic: detect explicit ethnic targeting in content that contradicts "All ethnicities"
     var detectedEthnicities = [];
-    if (/\b(black (writers?|authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?|people|communities|voices)|for black\b|afro.?caribbean)\b/.test(contentForHeuristics)) {
+    if (/\b(black (writers?|authors?|artists?|creatives?|poets?|filmmakers?|musicians?|designers?|graduates?|students?|professionals?|entrepreneurs?|founders?|people|communities|voices|heritage|backgrounds?|young people)|for black\b|afro.?caribbean|black british)\b/.test(contentForHeuristics)) {
       detectedEthnicities.push('African, Caribbean or Black British');
     }
     if (/\b(south asian|british asian|asian (writers?|artists?|creatives?|graduates?|students?|professionals?|entrepreneurs?|founders?|people|communities|voices)|for asian\b|bangladeshi|pakistani|indian|sri lankan)\b/.test(contentForHeuristics)) {
@@ -2180,6 +2194,10 @@ function processDocument(file) {
       id: id(data.id),
       keywords: arr(data.keywords),
       lengthOfCourse: str(data.lengthOfCourse),
+      lengthOfApprenticeship: str(data.lengthOfApprenticeship),
+      lengthOfInternship: str(data.lengthOfInternship),
+      levelOfApprenticeship: str(data.levelOfApprenticeship),
+      salary: str(data.salary),
       link: str(data.link),
       location: str(data.location),
       locationName: str(data.locationName),
