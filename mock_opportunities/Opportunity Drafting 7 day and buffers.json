@@ -1,6 +1,69 @@
 {
-  "name": "Opportunity Drafting",
+  "name": "Opportunity Drafting 7 day and buffers",
   "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/10 0-7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1408,
+        480
+      ],
+      "id": "3f6369fa-d6a7-4404-8675-a29f48eda61d",
+      "name": "00-08, Mon-Fri3",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/10 0-7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1328,
+        608
+      ],
+      "id": "0282bc39-cf82-49d9-9541-e3d65a28da8d",
+      "name": "00-08, Mon-Fri",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/10 0-7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1280,
+        768
+      ],
+      "id": "edab88c0-0358-470a-b4b6-cce3fd339fe9",
+      "name": "00-08, Mon-Fri4",
+      "disabled": true
+    },
     {
       "parameters": {
         "url": "={{ $json.Link }}",
@@ -67,10 +130,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -832,
-        608
+        704,
+        1568
       ],
-      "id": "d67130c6-1929-4e94-b185-d175e8d8e95d",
+      "id": "220d471f-9fa4-4cd7-b855-f88102874c4b",
       "name": "Get URL",
       "onError": "continueErrorOutput"
     },
@@ -103,10 +166,10 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        -1056,
-        608
+        480,
+        1568
       ],
-      "id": "186926b0-fa78-4171-b90e-3b50319f7220",
+      "id": "68774424-6dcb-4aa1-beef-a8e5efee7d9b",
       "name": "Get To Upload",
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -201,6 +264,16 @@
               "removed": true
             },
             {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
               "id": "Document Name",
               "displayName": "Document Name",
               "required": false,
@@ -240,10 +313,10 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
       "position": [
-        112,
-        464
+        1648,
+        1424
       ],
-      "id": "71456fb3-c587-41a6-8989-22bd2329d166",
+      "id": "78e3f6f6-c8c5-45d3-89b4-ce4a457ce6df",
       "name": "Update row in sheet",
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -264,10 +337,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
       "position": [
-        -608,
-        352
+        928,
+        1312
       ],
-      "id": "86c0ad7b-e16f-4d4c-b89a-aabb3e9f622b",
+      "id": "267b3d3b-6de9-45e2-91af-7b68b670a80a",
       "name": "Extract Data"
     },
     {
@@ -277,10 +350,10 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        -448,
-        576
+        1088,
+        1536
       ],
-      "id": "34d486e2-43f7-4a9b-8118-2c9d3cc22db2",
+      "id": "e888f220-9b1e-4357-8507-8b0f8428b8eb",
       "name": "Structured Output Parser"
     },
     {
@@ -303,10 +376,10 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        -80,
-        464
+        1456,
+        1424
       ],
-      "id": "797e19f0-6543-4fec-a063-2b827efbbc37",
+      "id": "b28c161f-405e-401f-bf75-921cddfdb859",
       "name": "Save Output",
       "credentials": {
         "googleDriveOAuth2Api": {
@@ -400,6 +473,16 @@
               "removed": true
             },
             {
+              "id": "Priority",
+              "displayName": "Priority",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
               "id": "Document Name",
               "displayName": "Document Name",
               "required": false,
@@ -429,10 +512,10 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
       "position": [
-        -512,
-        752
+        1024,
+        1712
       ],
-      "id": "ebb528cf-0854-4659-9974-4c69671b91ac",
+      "id": "7361f3dd-fbff-4eb5-ba34-fa1fea4251b5",
       "name": "Record Error",
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -449,10 +532,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
       "position": [
-        -576,
-        576
+        960,
+        1536
       ],
-      "id": "13e08430-e8f2-4bbb-875e-683e81110767",
+      "id": "6dccbca0-03db-4b43-b6ab-d6d0892294a7",
       "name": "OpenAI 4.1-mini",
       "credentials": {
         "openAiApi": {
@@ -466,10 +549,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -1280,
-        608
+        256,
+        1568
       ],
-      "id": "14cf49c2-8ca3-4730-8133-de0c58e0cb86",
+      "id": "2a1f9554-2bf8-4425-84a3-e33eaf70be36",
       "name": "When clicking ‘Execute workflow’"
     },
     {
@@ -486,11 +569,53 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -1408,
-        480
+        -176,
+        928
       ],
-      "id": "7517d601-9099-4d3d-a1c1-43ce40146573",
-      "name": "00-08, Mon-Fri3",
+      "id": "8569581b-85ad-40f0-926b-d1faa7b93485",
+      "name": "00-08, Mon-Fri5",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/10 0-7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -96,
+        1056
+      ],
+      "id": "0a1d8c90-51fe-4ea8-9b66-a83700453b57",
+      "name": "00-08, Mon-Fri1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/10 0-7 * * 1-5"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -48,
+        1216
+      ],
+      "id": "e4624fec-1d36-4fa0-b2cb-37e4be40e74a",
+      "name": "00-08, Mon-Fri6",
       "disabled": true
     }
   ],
@@ -587,11 +712,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "a2599957-049e-4f3e-93fa-7c8b6bb94554",
+  "versionId": "418cd10d-6577-4f61-bdbb-bd99c3977971",
   "meta": {
     "instanceId": "9a0f934c68cbf0a7c199330b8810b13377755552ad8df913d541de113fe4bcb1"
   },
-  "id": "SsB9jLadfIXmaMV3",
+  "id": "hUUmEX9Iv7VJ5rXs",
   "tags": [
     {
       "updatedAt": "2025-07-10T05:31:21.799Z",
