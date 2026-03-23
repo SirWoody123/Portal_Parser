@@ -1225,8 +1225,9 @@ function parseTextFileInGoogleScript(textContent) {
         
       case 'Course type':
         result.courseType = value;
+        result.paidOrFreeCourses = value;
         result.opportunityType = 'Course';
-        Logger.log('🔍 TEXT PARSER: Set opportunityType to Course, courseType: ' + value);
+        Logger.log('🔍 TEXT PARSER: Set opportunityType to Course, courseType/paidOrFreeCourses: ' + value);
         break;
         
       case 'Application deadline':

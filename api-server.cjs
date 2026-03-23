@@ -236,6 +236,8 @@ const parseTextFile = (textContent) => {
     lengthOfApprenticeship: '',
     levelOfApprenticeship: '',
     lengthOfInternship: '',
+    lengthOfCourse: '',
+    paidOrFreeCourses: '',
     // Enhanced event-specific fields
     eventDate: '',
     eventTime: '',
@@ -591,6 +593,19 @@ const parseTextFile = (textContent) => {
         result.lengthOfInternship = value;
         result.opportunityType = 'Internship';
         console.log(`🔍 TEXT PARSER: Set lengthOfInternship: ${value}, opportunityType to Internship`);
+        break;
+        
+      // === COURSE FIELDS ===
+      case 'Length of course':
+        result.lengthOfCourse = value;
+        result.opportunityType = 'Course';
+        console.log(`🔍 TEXT PARSER: Set lengthOfCourse: ${value}, opportunityType to Course`);
+        break;
+        
+      case 'Course type':
+        result.paidOrFreeCourses = value;
+        result.opportunityType = 'Course';
+        console.log(`🔍 TEXT PARSER: Set paidOrFreeCourses: ${value}, opportunityType to Course`);
         break;
         
       default:
