@@ -244,7 +244,7 @@ const parseTextFile = (textContent) => {
     eventTimeEnd: '',
     eventName: '',
     anythingElseImportant: '',
-    // Additional event details for comprehensive support
+     // Additional event details for comprehensive support
     eventDetails: {
       eventTitle: '',
       eventDescription: '',
@@ -278,7 +278,8 @@ const parseTextFile = (textContent) => {
     const line = lines[i];
     if (!line.includes(':')) continue;
 
-    const [key, ...valueParts] = line.split(':');
+    const [rawKey, ...valueParts] = line.split(':');
+    const key = rawKey.trim().replace(/^[-–—•*]+\s*/, ''); // Strip leading dashes/bullets
     let value = valueParts.join(':').trim();
 
     // Collect continuation lines (no colon) as part of the current value

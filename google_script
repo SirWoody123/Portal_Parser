@@ -1161,7 +1161,7 @@ function parseTextFileInGoogleScript(textContent) {
     if (!line.includes(':')) continue;
     
     var parts = line.split(':');
-    var key = parts[0].trim();
+    var key = parts[0].trim().replace(/^[-–—•*]+\s*/, ''); // Strip leading dashes/bullets
     var value = parts.slice(1).join(':').trim();
     
     // Check for multi-line sections like "Important details:"
@@ -2263,6 +2263,8 @@ function processDocument(file) {
     throw new Error('Could not extract text content from ' + file.getName());
   }
 
+  Logger.log('🔍 PATCH35 DEBUG: Raw content length: ' + content.length + ', first 500 chars: ' + content.substring(0, 500));
+
   var parsedData = null;
   var fileName = file.getName().toLowerCase();
   
@@ -2280,10 +2282,13 @@ function processDocument(file) {
   }
   
   // NEW: Try to parse as text file with key-value format
-  if (!parsedData && fileName.endsWith('.txt')) {
+  // Also try for Google Docs (n8n createFromText may create Google Docs with .txt name)
+  var isTextParseable = fileName.endsWith('.txt') || file.getMimeType() === 'application/vnd.google-apps.document';
+  if (!parsedData && isTextParseable) {
     try {
       parsedData = parseTextFileInGoogleScript(content);
       Logger.log('📝 Parsed text file opportunity data from file.');
+      Logger.log('🔍 PATCH35 DEBUG: After parsing - link: "' + (parsedData.link || '') + '", location: "' + (parsedData.location || '') + '", opportunityType: "' + (parsedData.opportunityType || '') + '", anythingElseImportant length: ' + (parsedData.anythingElseImportant || '').length);
     } catch (e) {
       Logger.log('Text parsing failed, falling back to default: ' + e.toString());
     }
@@ -2382,10 +2387,16 @@ function processDocument(file) {
 function extractTextContent(file) {
   var mimeType = file.getMimeType();
   var fileName = file.getName().toLowerCase();
+  Logger.log('🔍 EXTRACT: File "' + file.getName() + '" MIME type: ' + mimeType);
 
   try {
     if (mimeType === MimeType.PLAIN_TEXT) {
       return file.getBlob().getDataAsString('UTF-8');
+    } else if (mimeType === 'application/vnd.google-apps.document') {
+      // Handle Google Docs (created by n8n createFromText or manually)
+      var content = DocumentApp.openById(file.getId()).getBody().getText();
+      Logger.log('🔍 EXTRACT: Extracted ' + content.length + ' chars from Google Doc');
+      return content;
     } else if (mimeType === MimeType.WORD || fileName.endsWith('.docx')) {
       // Convert .docx to Google Docs temporarily
       var tempDoc = Drive.Files.insert({
@@ -2393,10 +2404,11 @@ function extractTextContent(file) {
         mimeType: MimeType.GOOGLE_DOCS
       }, file.getBlob());
       
-      var content = DocumentApp.openById(tempDoc.id).getBody().getText();
+      var wordContent = DocumentApp.openById(tempDoc.id).getBody().getText();
       Drive.Files.remove(tempDoc.id); // Clean up
-      return content;
+      return wordContent;
     }
+    Logger.log('⚠️ EXTRACT: Unsupported MIME type: ' + mimeType + ' for file: ' + file.getName());
     return null;
   } catch (e) {
     Logger.log('Error extracting text: ' + e.toString());
@@ -2463,6 +2475,7 @@ function isSupportedFileType(file) {
   var fileName = file.getName().toLowerCase();
   return (mimeType === MimeType.PLAIN_TEXT || 
           mimeType === MimeType.WORD || 
+          mimeType === 'application/vnd.google-apps.document' ||
           fileName.endsWith('.docx') ||
           fileName.endsWith('.txt'));
 }
