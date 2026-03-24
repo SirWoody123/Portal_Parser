@@ -970,6 +970,12 @@ function parseApplicationDeadline(dateString) {
   // Remove ordinal suffixes (1st, 2nd, 3rd, 4th, etc.)
   cleanDate = cleanDate.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
   
+  // PATCH39: Strip leading time prefix like "11:59pm, " or "23:59, " and trailing timezone like " BST", " GMT"
+  cleanDate = cleanDate.replace(/^\d{1,2}[:.]\d{2}\s*(am|pm)?\s*[,\-–—]\s*/i, '').trim();
+  cleanDate = cleanDate.replace(/\s+(BST|GMT|UTC|CET|EST|PST|IST)$/i, '').trim();
+  
+  Logger.log('🔍 DATE PARSER: After cleanup: "' + cleanDate + '"');
+  
   try {
     // Handle common patterns
     // "5th December 2025" -> "5 December 2025" -> "2025-12-05T23:59:59Z"
@@ -980,6 +986,14 @@ function parseApplicationDeadline(dateString) {
     
     var date = null;
     
+    // PATCH39: Shared months map with full names AND abbreviations
+    var months = {
+      'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
+      'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11,
+      'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'jun': 5,
+      'jul': 6, 'aug': 7, 'sep': 8, 'sept': 8, 'oct': 9, 'nov': 10, 'dec': 11
+    };
+    
     // Pattern 1: Extract first date from complex strings like "14 December 2025 for Term 2"
     var complexDatePattern = /(\d{1,2})\s+(\w+)\s+(\d{4})/i;
     var complexMatch = cleanDate.match(complexDatePattern);
@@ -987,11 +1001,6 @@ function parseApplicationDeadline(dateString) {
       var day = parseInt(complexMatch[1]);
       var monthName = complexMatch[2];
       var year = parseInt(complexMatch[3]);
-      
-      var months = {
-        'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
-        'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
-      };
       
       var monthIndex = months[monthName.toLowerCase()];
       if (monthIndex !== undefined) {
@@ -1008,11 +1017,6 @@ function parseApplicationDeadline(dateString) {
         var day = parseInt(noYearMatch[1]);
         var monthName = noYearMatch[2];
         var currentYear = new Date().getFullYear();
-        
-        var months = {
-          'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
-          'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
-        };
         
         var monthIndex = months[monthName.toLowerCase()];
         if (monthIndex !== undefined) {
@@ -1037,11 +1041,6 @@ function parseApplicationDeadline(dateString) {
         var day = parseInt(ordinalMatch[1]);
         var monthName = ordinalMatch[3];
         var year = parseInt(ordinalMatch[4]);
-        
-        var months = {
-          'january': 0, 'february': 1, 'march': 2, 'april': 3, 'may': 4, 'june': 5,
-          'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
-        };
         
         var monthIndex = months[monthName.toLowerCase()];
         if (monthIndex !== undefined) {
