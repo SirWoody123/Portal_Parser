@@ -10,8 +10,9 @@
     // Allowed categories: label and value (frontend expects value)
     var allowedCategories = [
       { label: 'Apprenticeship', name: 'apprenticeship' },
-  { label: 'Competition/Grant', name: 'competition/grant' },
+      { label: 'Competition/Grant', name: 'competition/grant' },
       { label: 'Course', name: 'course' },
+      { label: 'Event', name: 'event' },
       { label: 'Freelance role', name: 'freelance-role' },
       { label: 'Internship', name: 'internship' },
       { label: 'Junior full-time role', name: 'junior-full-time-role' },
