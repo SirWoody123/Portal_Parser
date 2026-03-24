@@ -562,10 +562,28 @@ const parseTextFile = (textContent) => {
         break;
         
       // === APPRENTICESHIP & SALARY FIELDS ===
-      case 'Salary':
-        result.salary = value;
+      case 'Salary': {
+        // PATCH38: Strip leading category/type prefix from salary
+        // LLM sometimes outputs "Salary: Freelance, negotiable" — strip the category word
+        let salaryClean = value;
+        const categoryPrefixes = ['competition/grant', 'junior full-time role', 'junior part-time role',
+          'runner role', 'training scheme', 'work experience', 'freelance', 'apprenticeship',
+          'internship', 'course', 'event', 'mentoring', 'competition', 'grant', 'opportunity'];
+        const salaryLower = salaryClean.toLowerCase();
+        for (const prefix of categoryPrefixes) {
+          if (salaryLower.startsWith(prefix)) {
+            salaryClean = salaryClean.substring(prefix.length).replace(/^[\s,:\-–—\/]+/, '').trim();
+            console.log(`🔍 SALARY CLEAN: Stripped category prefix "${prefix}" from salary. Result: "${salaryClean}"`);
+            break;
+          }
+        }
+        // Capitalise first letter if the remaining value is a word like "negotiable"
+        if (salaryClean && /^[a-z]/.test(salaryClean)) {
+          salaryClean = salaryClean.charAt(0).toUpperCase() + salaryClean.slice(1);
+        }
+        result.salary = salaryClean;
         // Salary validation: warn if figures look suspiciously truncated
-        const salaryNums = value.match(/[\d,]+\.?\d*/g);
+        const salaryNums = salaryClean.match(/[\d,]+\.?\d*/g);
         if (salaryNums) {
           for (const num of salaryNums) {
             const parsed = parseFloat(num.replace(/,/g, ''));
@@ -574,8 +592,9 @@ const parseTextFile = (textContent) => {
             }
           }
         }
-        console.log(`🔍 TEXT PARSER: Set salary: ${value}`);
+        console.log(`🔍 TEXT PARSER: Set salary: ${salaryClean} (raw: ${value})`);
         break;
+      }
         
       case 'Length of apprenticeship':
         result.lengthOfApprenticeship = value;

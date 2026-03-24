@@ -1185,9 +1185,28 @@ function parseTextFileInGoogleScript(textContent) {
     
     switch (key) {
       case 'Salary':
-        result.salary = value;
+        // PATCH38: Strip leading category/type prefix from salary
+        // LLM sometimes outputs "Salary: Freelance, negotiable" — strip the category word
+        var salaryClean = value;
+        var categoryPrefixes = ['competition/grant', 'junior full-time role', 'junior part-time role',
+          'runner role', 'training scheme', 'work experience', 'freelance', 'apprenticeship',
+          'internship', 'course', 'event', 'mentoring', 'competition', 'grant', 'opportunity'];
+        var salaryLower = salaryClean.toLowerCase();
+        for (var pi = 0; pi < categoryPrefixes.length; pi++) {
+          if (salaryLower.indexOf(categoryPrefixes[pi]) === 0) {
+            // Strip the prefix and any trailing comma/dash/colon/space
+            salaryClean = salaryClean.substring(categoryPrefixes[pi].length).replace(/^[\s,:\-–—\/]+/, '').trim();
+            Logger.log('🔍 SALARY CLEAN: Stripped category prefix "' + categoryPrefixes[pi] + '" from salary. Result: "' + salaryClean + '"');
+            break;
+          }
+        }
+        // Capitalise first letter if the remaining value is a word like "negotiable"
+        if (salaryClean && /^[a-z]/.test(salaryClean)) {
+          salaryClean = salaryClean.charAt(0).toUpperCase() + salaryClean.slice(1);
+        }
+        result.salary = salaryClean;
         // Salary validation: warn if figures look suspiciously truncated
-        var salaryNums = value.match(/[\d,]+\.?\d*/g);
+        var salaryNums = salaryClean.match(/[\d,]+\.?\d*/g);
         if (salaryNums) {
           for (var si = 0; si < salaryNums.length; si++) {
             var parsedSalary = parseFloat(salaryNums[si].replace(/,/g, ''));
