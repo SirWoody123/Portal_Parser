@@ -942,14 +942,30 @@ const transformData = (data) => {
   let resolvedCatName = '';
   let resolvedCatLabel = '';
   if (rawCat) {
-    // Try matching as a name first, then as a label
-    let catMatch = allowedCategories.find(c => c.name.toLowerCase() === rawCat.toLowerCase());
-    if (!catMatch) catMatch = allowedCategories.find(c => c.label.toLowerCase() === rawCat.toLowerCase());
+    // Canonicalize helper: lower, replace non-alphanumeric with space, collapse spaces
+    function canonicalize(s) {
+      return String(s || '')
+        .toLowerCase()
+        .replace(/[\u2010-\u2015\-_/\\]+/g, ' ') // treat various dashes/slashes as spaces
+        .replace(/[^a-z0-9\s]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    const rawCanon = canonicalize(rawCat);
+    // Try exact name match first
+    let catMatch = allowedCategories.find(c => canonicalize(c.name) === rawCanon);
+    if (!catMatch) catMatch = allowedCategories.find(c => canonicalize(c.label) === rawCanon);
+    if (!catMatch) {
+      // Try direct lower-case match as a fallback (keeps previous behaviour)
+      catMatch = allowedCategories.find(c => c.name.toLowerCase() === rawCat.toLowerCase()) ||
+                 allowedCategories.find(c => c.label.toLowerCase() === rawCat.toLowerCase());
+    }
     if (catMatch) {
       resolvedCatName = catMatch.name;
       resolvedCatLabel = catMatch.label;
     } else {
-      // Fallback: slugify the raw value as name
+      // Fallback: generate a normalized slug using hyphen (preserve previous fallback behaviour)
       resolvedCatName = rawCat.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       resolvedCatLabel = rawCat;
     }

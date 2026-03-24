@@ -1856,8 +1856,25 @@ function processDocument(file) {
     }
 
     var rawCat = str(data.category) || str(data.opportunityType);
-    var mappedCat = mapCategory(rawCat);
-    
+    // Improved category canonicalization
+    function canonicalize(s) {
+      return String(s || '')
+        .toLowerCase()
+        .replace(/[\u2010-\u2015\-_/\\]+/g, ' ')
+        .replace(/[^a-z0-9\s]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    var mappedCat = '';
+    if (rawCat && rawCat.trim()) {
+      var rawCanon = canonicalize(rawCat);
+      var found = allowedCategories.find(function(opt) { return canonicalize(opt.name) === rawCanon; }) ||
+                  allowedCategories.find(function(opt) { return canonicalize(opt.label) === rawCanon; });
+      if (found) mappedCat = found.name;
+      else mappedCat = mapCategory(rawCat);
+    }
+
     // Only if not matched, try to infer from filename or tags
     if (!mappedCat) {
       var title = str(data.title).toLowerCase();

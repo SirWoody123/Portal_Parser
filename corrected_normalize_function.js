@@ -10,7 +10,7 @@
     // Allowed categories: label and value (frontend expects value)
     var allowedCategories = [
       { label: 'Apprenticeship', name: 'apprenticeship' },
-      { label: 'Competition/Grant', name: 'competition-grant' },
+  { label: 'Competition/Grant', name: 'competition/grant' },
       { label: 'Course', name: 'course' },
       { label: 'Freelance role', name: 'freelance-role' },
       { label: 'Internship', name: 'internship' },
@@ -57,7 +57,7 @@
       else if (title.includes('training') || idVal.includes('training') || keywords.includes('training')) mappedCat = 'training-scheme';
       else if (title.includes('runner') || idVal.includes('runner') || keywords.includes('runner')) mappedCat = 'runner-role';
       else if (title.includes('freelance') || idVal.includes('freelance') || keywords.includes('freelance')) mappedCat = 'freelance-role';
-      else if (title.includes('competition') || idVal.includes('competition') || keywords.includes('competition') || title.includes('grant') || idVal.includes('grant') || keywords.includes('grant')) mappedCat = 'competition-grant';
+  else if (title.includes('competition') || idVal.includes('competition') || keywords.includes('competition') || title.includes('grant') || idVal.includes('grant') || keywords.includes('grant')) mappedCat = 'competition/grant';
       else if (title.includes('junior') && title.includes('full') && title.includes('time')) mappedCat = 'junior-full-time-role';
       else if (title.includes('junior') && title.includes('part') && title.includes('time')) mappedCat = 'junior-part-time-role';
       else if (title.includes('mentor') || idVal.includes('mentor') || keywords.includes('mentor')) mappedCat = 'mentoring';
