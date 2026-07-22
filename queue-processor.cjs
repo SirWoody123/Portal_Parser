@@ -47,19 +47,22 @@ const STATUS = {
 // ─── Google Sheets auth ───────────────────────────────────────────────────────
 
 function getSheetsClient() {
-  // Railway stores private keys with literal \n — decode them reliably
-  let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
-  // Strip surrounding quotes if Railway added them
-  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-    privateKey = privateKey.slice(1, -1);
-  }
-  privateKey = privateKey.replace(/\\n/g, '\n');
-
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
+  let credentials;
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
+    // Most reliable approach for Railway — decode base64 JSON
+    credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
+  } else {
+    // Fallback for local .env
+    let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
+    privateKey = privateKey.replace(/\\n/g, '\n');
+    credentials = {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       private_key: privateKey,
-    },
+    };
+  }
+  const auth = new google.auth.GoogleAuth({
+    credentials,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
   return google.sheets({ version: 'v4', auth });
