@@ -8,9 +8,14 @@
     "dev": "node api-server.cjs"
   },
   "dependencies": {
-    "express": "^4.19.2",
+    "@anthropic-ai/sdk": "^0.112.5",
+    "axios": "^1.18.1",
     "cors": "^2.8.5",
-    "firebase-admin": "^12.1.0"
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.1.0",
+    "googleapis": "^173.0.0",
+    "node-cron": "^4.6.0"
   },
   "engines": {
     "node": ">=18.0.0"

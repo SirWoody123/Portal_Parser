@@ -1236,4 +1236,12 @@ app.listen(config.port, () => {
   console.log(`🚀 API Bridge server listening at http://localhost:${config.port}`);
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
   console.log(`🔗 Master portal Firebase: ${config.firebaseProjectUrl}`);
+
+  // Start queue processor cron job if Google Sheets credentials are present
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+    const { startQueueProcessor } = require('./queue-processor.cjs');
+    startQueueProcessor();
+  } else {
+    console.log('⚠️  QUEUE PROCESSOR: Skipping — GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_PRIVATE_KEY not set.');
+  }
 });
