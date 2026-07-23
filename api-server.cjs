@@ -1245,21 +1245,35 @@ app.get('/queue-review', async (req, res) => {
     // Load credentials same way as queue-processor.cjs
     let credentials;
     if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
+      console.log('📋 Using GOOGLE_SERVICE_ACCOUNT_BASE64');
       credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
     } else {
+      console.log('📋 Using GOOGLE_PRIVATE_KEY (fallback)');
       let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
       if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
       privateKey = privateKey.replace(/\\n/g, '\n');
 
       if (privateKey.trim().startsWith('{')) {
-        credentials = JSON.parse(privateKey);
+        console.log('📋 GOOGLE_PRIVATE_KEY is JSON, parsing...');
+        try {
+          credentials = JSON.parse(privateKey);
+        } catch (e) {
+          console.log('📋 JSON parse failed, escaping literal newlines...');
+          const fixed = privateKey.replace(/"-----BEGIN[\s\S]*?-----END[^"]*"/g, (match) => {
+            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+          });
+          credentials = JSON.parse(fixed);
+        }
       } else {
+        console.log('📋 GOOGLE_PRIVATE_KEY is PEM');
         credentials = {
           client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
           private_key: privateKey,
         };
       }
     }
+
+    console.log('📋 Credentials loaded, client_email:', credentials.client_email);
 
     const sheets = google.sheets({ version: 'v4', auth: new google.auth.GoogleAuth({
       credentials,
