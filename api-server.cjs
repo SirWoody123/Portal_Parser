@@ -1241,11 +1241,28 @@ console.log('Starting server...');
 app.get('/queue-review', async (req, res) => {
   try {
     const { google } = require('googleapis');
+
+    // Load credentials same way as queue-processor.cjs
+    let credentials;
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
+      credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
+    } else {
+      let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
+      privateKey = privateKey.replace(/\\n/g, '\n');
+
+      if (privateKey.trim().startsWith('{')) {
+        credentials = JSON.parse(privateKey);
+      } else {
+        credentials = {
+          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+          private_key: privateKey,
+        };
+      }
+    }
+
     const sheets = google.sheets({ version: 'v4', auth: new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-      },
+      credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     })});
 
@@ -1300,11 +1317,28 @@ app.post('/update-queue', async (req, res) => {
     }
 
     const { google } = require('googleapis');
+
+    // Load credentials same way as queue-processor.cjs
+    let credentials;
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
+      credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
+    } else {
+      let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
+      privateKey = privateKey.replace(/\\n/g, '\n');
+
+      if (privateKey.trim().startsWith('{')) {
+        credentials = JSON.parse(privateKey);
+      } else {
+        credentials = {
+          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+          private_key: privateKey,
+        };
+      }
+    }
+
     const sheets = google.sheets({ version: 'v4', auth: new google.auth.GoogleAuth({
-      credentials: {
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-        private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-      },
+      credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     })});
 
