@@ -58,10 +58,18 @@ function getSheetsClient() {
     let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
     if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
     privateKey = privateKey.replace(/\\n/g, '\n');
-    credentials = {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: privateKey,
-    };
+
+    // If the key looks like JSON (full service account), parse it
+    if (privateKey.trim().startsWith('{')) {
+      console.log('🔑 QUEUE: GOOGLE_PRIVATE_KEY is JSON — parsing full service account.');
+      credentials = JSON.parse(privateKey);
+    } else {
+      // PEM format key
+      credentials = {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: privateKey,
+      };
+    }
   }
   console.log('🔑 QUEUE: client_email:', credentials.client_email, '| key starts with:', JSON.stringify((credentials.private_key || '').slice(0, 30)), '| key length:', (credentials.private_key || '').length);
   const auth = new google.auth.GoogleAuth({
