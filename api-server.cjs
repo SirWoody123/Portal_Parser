@@ -1232,6 +1232,132 @@ app.get('/health', (req, res) => {
 });
 
 console.log('Starting server...');
+
+// ─── Review App Endpoints ────────────────────────────────────────────────────
+
+app.get('/queue-review', async (req, res) => {
+  try {
+    const { google } = require('googleapis');
+    const sheets = google.sheets({ version: 'v4', auth: new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    })});
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: '1N05E3Tahh9APAA-vysvD3HlP3ChISTgPwao9Te5mW18',
+      range: 'Queue!A2:M1000',
+    });
+
+    const rows = response.data.values || [];
+    const COL = { STATUS: 0, COMPANY_ID: 1, INDUSTRY: 2, OPPORTUNITY: 3, DATE: 4, LINK: 5, LOCATION: 6, PUBLISH_DATE: 7, OPP_NAME: 8, DRAFTED_CONTENT: 9, DEMOGRAPHICS: 10, DRAFTED_DATE: 11, ERROR_NOTES: 12 };
+    const opportunities = [];
+
+    rows.forEach((row, idx) => {
+      const rowIndex = idx + 2;
+      if ((row[COL.STATUS] || '').trim() === 'Ready for Review') {
+        opportunities.push({
+          rowIndex,
+          status: row[COL.STATUS] || '',
+          companyId: row[COL.COMPANY_ID] || '',
+          industry: row[COL.INDUSTRY] || '',
+          opportunityType: row[COL.OPPORTUNITY] || '',
+          applicationDeadline: row[COL.DATE] || '',
+          link: row[COL.LINK] || '',
+          location: row[COL.LOCATION] || '',
+          publishDate: row[COL.PUBLISH_DATE] || '',
+          title: row[COL.OPP_NAME] || '',
+          draftedContent: row[COL.DRAFTED_CONTENT] || '',
+          demographics: row[COL.DEMOGRAPHICS] || '',
+          draftedDate: row[COL.DRAFTED_DATE] || '',
+          errorNotes: row[COL.ERROR_NOTES] || '',
+        });
+      }
+    });
+
+    res.json({ opportunities });
+  } catch (err) {
+    console.error('❌ /queue-review error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch queue', details: err.message });
+  }
+});
+
+app.post('/update-queue', async (req, res) => {
+  try {
+    const { rowIndex, editedOpportunity } = req.body;
+
+    if (!rowIndex || typeof rowIndex !== 'number' || rowIndex < 2 || rowIndex > 1000) {
+      return res.status(400).json({ error: 'Invalid rowIndex' });
+    }
+
+    if (!editedOpportunity || typeof editedOpportunity !== 'object') {
+      return res.status(400).json({ error: 'Invalid editedOpportunity' });
+    }
+
+    const { google } = require('googleapis');
+    const sheets = google.sheets({ version: 'v4', auth: new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    })});
+
+    // Format demographics for sheet
+    const demographic = editedOpportunity.demographic || {};
+    const demographicsStr = [
+      demographic.age?.length ? `Age: ${demographic.age.join(', ')}` : '',
+      demographic.genderSexualPreference?.length ? `Gender: ${demographic.genderSexualPreference.join(', ')}` : '',
+      demographic.ethnicity?.length ? `Ethnicity: ${demographic.ethnicity.join(', ')}` : '',
+      demographic.disability?.length ? `Disability: ${demographic.disability.join(', ')}` : '',
+      demographic.lowerSocioEconomicBackground?.length ? `Economic Background: ${demographic.lowerSocioEconomicBackground.join(', ')}` : '',
+      editedOpportunity.remote ? `Remote: ${editedOpportunity.remote ? 'Yes' : 'No'}` : '',
+      editedOpportunity.ukWide ? `UK Wide: ${editedOpportunity.ukWide ? 'Yes' : 'No'}` : '',
+    ].filter(Boolean).join('\n');
+
+    const today = new Date().toLocaleDateString('en-GB');
+
+    // Update sheet
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: '1N05E3Tahh9APAA-vysvD3HlP3ChISTgPwao9Te5mW18',
+      range: `Queue!A${rowIndex}:M${rowIndex}`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[
+          'Drafted',
+          editedOpportunity.companyID || '',
+          editedOpportunity.industry || '',
+          editedOpportunity.opportunityType || '',
+          editedOpportunity.applicationDeadline || '',
+          editedOpportunity.link || '',
+          editedOpportunity.location || '',
+          editedOpportunity.publishDate || '',
+          editedOpportunity.title || '',
+          JSON.stringify(editedOpportunity),
+          demographicsStr,
+          today,
+          '',
+        ]],
+      },
+    });
+
+    // Transform and write to Firebase
+    const transformedData = transformData(editedOpportunity);
+    const docRef = await db.collection('announcements').doc('announcements').collection('list').add(transformedData);
+
+    res.json({
+      success: true,
+      masterPortalDocId: docRef.id,
+      rowUpdated: rowIndex,
+    });
+  } catch (err) {
+    console.error('❌ /update-queue error:', err.message);
+    res.status(500).json({ error: 'Failed to update queue', details: err.message });
+  }
+});
+
 app.listen(config.port, () => {
   console.log(`🚀 API Bridge server listening at http://localhost:${config.port}`);
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
