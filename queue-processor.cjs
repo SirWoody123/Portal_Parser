@@ -345,7 +345,7 @@ function startQueueProcessor() {
   console.log('⏱ QUEUE PROCESSOR: Starting — will check every 15 minutes.');
   // Run immediately on start, then every 15 minutes
   processQueue();
-  cron.schedule('*/15 * * * *', processQueue);
+  cron.schedule('0 9 * * *', processQueue); // Daily at 9am UTC
 }
 
 module.exports = { startQueueProcessor, processQueue };
