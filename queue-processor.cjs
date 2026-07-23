@@ -50,9 +50,11 @@ function getSheetsClient() {
   let credentials;
   if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
     // Most reliable approach for Railway — decode base64 JSON
+    console.log('🔑 QUEUE: Using GOOGLE_SERVICE_ACCOUNT_BASE64 credentials.');
     credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
   } else {
     // Fallback for local .env
+    console.log('🔑 QUEUE: GOOGLE_SERVICE_ACCOUNT_BASE64 not set — falling back to GOOGLE_PRIVATE_KEY.');
     let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
     if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
     privateKey = privateKey.replace(/\\n/g, '\n');
@@ -61,6 +63,7 @@ function getSheetsClient() {
       private_key: privateKey,
     };
   }
+  console.log('🔑 QUEUE: client_email:', credentials.client_email, '| key starts with:', JSON.stringify((credentials.private_key || '').slice(0, 30)), '| key length:', (credentials.private_key || '').length);
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
