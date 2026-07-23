@@ -1238,10 +1238,16 @@ app.listen(config.port, () => {
   console.log(`🔗 Master portal Firebase: ${config.firebaseProjectUrl}`);
 
   // Start queue processor cron job if Google Sheets credentials are present
-  if (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+  // Accept either: (1) separate GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY (PEM)
+  //            or (2) full service account JSON in GOOGLE_SERVICE_ACCOUNT_BASE64 or GOOGLE_PRIVATE_KEY
+  const hasGoogleSheetsCreds = process.env.GOOGLE_SERVICE_ACCOUNT_BASE64 ||
+    (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) ||
+    (process.env.GOOGLE_PRIVATE_KEY && process.env.GOOGLE_PRIVATE_KEY.trim().startsWith('{'));
+
+  if (hasGoogleSheetsCreds) {
     const { startQueueProcessor } = require('./queue-processor.cjs');
     startQueueProcessor();
   } else {
-    console.log('⚠️  QUEUE PROCESSOR: Skipping — GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_PRIVATE_KEY not set.');
+    console.log('⚠️  QUEUE PROCESSOR: Skipping — no Google Sheets credentials found.');
   }
 });
