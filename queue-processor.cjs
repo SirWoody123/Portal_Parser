@@ -62,7 +62,17 @@ function getSheetsClient() {
     // If the key looks like JSON (full service account), parse it
     if (privateKey.trim().startsWith('{')) {
       console.log('🔑 QUEUE: GOOGLE_PRIVATE_KEY is JSON — parsing full service account.');
-      credentials = JSON.parse(privateKey);
+      try {
+        credentials = JSON.parse(privateKey);
+      } catch (e) {
+        // If JSON parse fails, the private_key field likely has literal newlines instead of \n.
+        // Find and escape them: look for -----BEGIN...-----END wrapped in quotes with unescaped newlines
+        console.log('🔑 QUEUE: JSON parse failed, trying to fix literal newlines...');
+        const fixedKey = privateKey.replace(/"-----BEGIN[\s\S]*?-----END[^"]*"/g, (match) => {
+          return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+        });
+        credentials = JSON.parse(fixedKey);
+      }
     } else {
       // PEM format key
       credentials = {
