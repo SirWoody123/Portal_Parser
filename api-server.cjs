@@ -1238,6 +1238,15 @@ console.log('Starting server...');
 
 // ─── Review App Endpoints ────────────────────────────────────────────────────
 
+app.get('/debug-creds', (req, res) => {
+  res.json({
+    hasBase64: !!process.env.GOOGLE_SERVICE_ACCOUNT_BASE64,
+    hasPrivateKey: !!process.env.GOOGLE_PRIVATE_KEY,
+    hasEmail: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    privateKeyStart: (process.env.GOOGLE_PRIVATE_KEY || '').substring(0, 50),
+  });
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const { google } = require('googleapis');
