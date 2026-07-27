@@ -159,6 +159,20 @@ const TAG_NAME_TO_ID = {
   "Healthcare": "xkAmPOEAk8244rXIXpdb",
   "Free breakfast": "bu1QkOIorG4fjYpxhc5e"
 };
+
+// Restores PATCH21 behaviour from the legacy google_script (Apps Script), which used to run
+// this expansion before sending data to this API. That script is no longer part of the
+// pipeline (Queue sheet -> queue-processor.cjs -> review app now calls this API directly),
+// so without this table, catch-all demographic values silently resolved to zero tags.
+const DEMOGRAPHIC_ALL_EXPANSIONS = {
+  "All ages": ["21", "22", "23", "24", "25", "Over 18", "Under 18", "Over 25", "16 and under"],
+  "All genders & preferences": ["He/Him", "She/Her", "They/Them", "Non-binary", "Transgender", "Intersex", "Other", "Prefer not to say"],
+  "All ethnicities": ["White or White British", "African, Caribbean or Black British", "Asian or Asian British", "Mixed or Multiple Ethnic group", "Other Ethnic Group", "Arab", "Prefer not to say"],
+  "All disability": ["Chronic illness", "Hearing impairment", "Neurodiversity", "Physical disability", "Visual impairment"],
+  // Raw tag IDs (not names) — matches the legacy script's allSocioEconomicOptions exactly.
+  "All backgrounds": ["20fXkU9RdlTlpfcS5K5D", "V9J6aDjeQc7hIePqgsCh"],
+};
+
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
@@ -825,6 +839,20 @@ const transformData = (data) => {
   // Helper to add a tag if it resolves to a valid ID (PATCH25: Enhanced debugging + Handle multiple IDs)
   function addTag(tag) {
     if (typeof tag === 'string') {
+      const expansion = DEMOGRAPHIC_ALL_EXPANSIONS[tag];
+      if (expansion) {
+        console.log(`🔁 EXPANSION: "${tag}" expands to ${expansion.length} individual values:`, expansion);
+        expansion.forEach(item => {
+          // Socio-economic expansion uses raw tag IDs directly; everything else is tag names.
+          if (looksLikeId(item)) {
+            allTags.add(item);
+          } else {
+            addTag(item);
+          }
+        });
+        return;
+      }
+
       console.log(`🔍 PATCH25 DEBUG: Processing tag "${tag}"`);
       const tagResult = getTagCode(tag);
       console.log(`🔍 PATCH25 DEBUG: getTagCode("${tag}") returned:`, tagResult);
