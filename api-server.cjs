@@ -1446,6 +1446,35 @@ app.post('/update-queue', async (req, res) => {
   }
 });
 
+// Shared-storage replacement for the review app's browser localStorage schedule map.
+// Lives in its own collection, isolated from `announcements` — never read by the real portal.
+const SCHEDULE_STATE_COLLECTION = 'queueScheduleState';
+const SCHEDULE_STATE_DOC = 'map';
+
+app.get('/schedule-state', async (req, res) => {
+  try {
+    const doc = await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).get();
+    res.json({ scheduleState: doc.exists ? (doc.data().scheduleState || {}) : {} });
+  } catch (err) {
+    console.error('❌ /schedule-state GET error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch schedule state', details: err.message });
+  }
+});
+
+app.post('/schedule-state', async (req, res) => {
+  try {
+    const { scheduleState } = req.body;
+    if (!scheduleState || typeof scheduleState !== 'object' || Array.isArray(scheduleState)) {
+      return res.status(400).json({ error: 'Invalid scheduleState' });
+    }
+    await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).set({ scheduleState });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ /schedule-state POST error:', err.message);
+    res.status(500).json({ error: 'Failed to save schedule state', details: err.message });
+  }
+});
+
 app.listen(config.port, () => {
   console.log(`🚀 API Bridge server listening at http://localhost:${config.port}`);
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
