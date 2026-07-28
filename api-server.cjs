@@ -1369,7 +1369,11 @@ app.post('/update-queue', async (req, res) => {
 
     const { google } = require('googleapis');
 
-    // Load credentials same way as queue-processor.cjs
+    // Load credentials same way as /queue-review and queue-processor.cjs. GOOGLE_PRIVATE_KEY
+    // is stored as a full service-account JSON blob with literal (unescaped) newlines inside
+    // private_key, which always fails a plain JSON.parse — the inner try/catch fixes that.
+    // This endpoint was previously missing that fallback, so every publish threw here and was
+    // swallowed by the outer catch as a bare 500.
     let credentials;
     if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
       credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
@@ -1379,7 +1383,14 @@ app.post('/update-queue', async (req, res) => {
       privateKey = privateKey.replace(/\\n/g, '\n');
 
       if (privateKey.trim().startsWith('{')) {
-        credentials = JSON.parse(privateKey);
+        try {
+          credentials = JSON.parse(privateKey);
+        } catch (e) {
+          const fixed = privateKey.replace(/"-----BEGIN[\s\S]*?-----END[^"]*"/g, (match) => {
+            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+          });
+          credentials = JSON.parse(fixed);
+        }
       } else {
         credentials = {
           client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
