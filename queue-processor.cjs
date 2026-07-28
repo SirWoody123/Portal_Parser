@@ -203,17 +203,14 @@ function formatDemographics(extracted) {
 
 // ─── Format drafted content for the sheet cell ───────────────────────────────
 
+// This becomes the review app's "Short summary" field, and from there flows straight through
+// to the real portal's public description — it used to also bundle Category/Application
+// deadline/Location/Link into the same text, which now duplicate the review app's own
+// dedicated fields for those and were never meant to be public-facing copy. Just the clean
+// description now. (extracted.anythingElseImportant has no dedicated Queue sheet column yet,
+// so it doesn't currently survive this round-trip — needs its own column in a future pass.)
 function formatDraftedContent(row, extracted) {
-  return [
-    `Category: ${row.opportunity}`,
-    ``,
-    `${extracted.description || ''}`,
-    ``,
-    `Application deadline: ${row.date}`,
-    `Location: ${row.location}`,
-    `Link: ${row.link}${row.link.includes('?') ? '&' : '?'}utm_source=www.meet-eric.com`,
-    extracted.anythingElseImportant ? `\nAnything else important: ${extracted.anythingElseImportant}` : '',
-  ].filter(l => l !== undefined).join('\n').trim();
+  return (extracted.description || '').trim();
 }
 
 // ─── Main processor ───────────────────────────────────────────────────────────
