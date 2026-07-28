@@ -204,12 +204,18 @@ const serviceAccount = {
   client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(process.env.FIREBASE_CLIENT_EMAIL)}`,
 };
 
+// Confirmed via an existing bannerPic URL from the eric-dev-c6144 dev project
+// (same <project-id>.appspot.com convention) — override with FIREBASE_STORAGE_BUCKET
+// in Railway if this guess turns out wrong for the production project.
+const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || 'neweric-744ee.appspot.com';
+
 try {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: config.firebaseProjectUrl,
+    storageBucket,
   });
-  console.log(`Firebase initialized with project: ${config.firebaseProjectUrl}`);
+  console.log(`Firebase initialized with project: ${config.firebaseProjectUrl}, storage bucket: ${storageBucket}`);
 } catch (error) {
   console.error('Firebase initialization error:', error);
   process.exit(1);
@@ -225,7 +231,7 @@ app.use(cors({
   origin: ['https://sirwoody123.github.io', 'http://localhost:3000', 'http://localhost:5173'],
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // banner images come in as base64 JSON
 app.use(express.text({ type: 'text/plain' })); // Support text input
 
 /**
@@ -1483,6 +1489,56 @@ app.post('/schedule-state', async (req, res) => {
   } catch (err) {
     console.error('❌ /schedule-state POST error:', err.message);
     res.status(500).json({ error: 'Failed to save schedule state', details: err.message });
+  }
+});
+
+// Uploads a banner image and returns a public download URL in the same
+// https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media&token={token}
+// format the real portal's own client-side saveAnnouncementsBanner() produces (api/announcements.ts),
+// so bannerPic values look identical regardless of which side wrote them.
+app.post('/upload-banner', async (req, res) => {
+  try {
+    const { imageBase64, filename } = req.body;
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return res.status(400).json({ error: 'Invalid imageBase64' });
+    }
+    if (!filename || typeof filename !== 'string') {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    // Accepts a data URL (data:image/jpeg;base64,...) or raw base64.
+    const match = imageBase64.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+    const contentType = match ? match[1] : 'image/jpeg';
+    const base64Data = match ? match[2] : imageBase64;
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    if (buffer.length > 8 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image too large (max 8MB)' });
+    }
+
+    const { randomUUID } = require('crypto');
+    const token = randomUUID();
+    // Matches api/announcements.ts's saveAnnouncementsBanner(): literal "announcements" folder,
+    // then {type}, then {companyId} — same fixedCompanyID used everywhere else in transformData().
+    const type = 'announcements';
+    const companyId = 'S7IvlojyomcTNsUXlrqC';
+    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '');
+    const storagePath = `announcements/${type}/${companyId}/${Date.now()}${safeFilename}`;
+
+    const bucket = admin.storage().bucket();
+    const file = bucket.file(storagePath);
+    await file.save(buffer, {
+      metadata: {
+        contentType,
+        metadata: { firebaseStorageDownloadTokens: token },
+      },
+    });
+
+    const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
+    res.json({ success: true, url });
+  } catch (err) {
+    console.error('❌ /upload-banner error:', err.message);
+    res.status(500).json({ error: 'Failed to upload banner image', details: err.message });
   }
 });
 
