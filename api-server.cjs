@@ -234,6 +234,48 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' })); // banner images come in as base64 JSON
 app.use(express.text({ type: 'text/plain' })); // Support text input
 
+const QUEUE_SPREADSHEET_ID = '1N05E3Tahh9APAA-vysvD3HlP3ChISTgPwao9Te5mW18';
+
+// GOOGLE_PRIVATE_KEY is stored as a full service-account JSON blob with literal (unescaped)
+// newlines inside private_key, which always fails a plain JSON.parse — the inner try/catch
+// re-escapes them. Shared by every endpoint/job that talks to the Queue sheet; previously
+// duplicated per-endpoint, which is how /update-queue ended up missing this fallback and
+// silently 500-ing on every publish (see git history on that endpoint).
+function loadGoogleCredentials() {
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
+    return JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
+  }
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+  if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
+  privateKey = privateKey.replace(/\\n/g, '\n');
+
+  if (privateKey.trim().startsWith('{')) {
+    try {
+      return JSON.parse(privateKey);
+    } catch (e) {
+      const fixed = privateKey.replace(/"-----BEGIN[\s\S]*?-----END[^"]*"/g, (match) => {
+        return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+      });
+      return JSON.parse(fixed);
+    }
+  }
+  return {
+    client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    private_key: privateKey,
+  };
+}
+
+function getSheetsClient() {
+  const { google } = require('googleapis');
+  return google.sheets({
+    version: 'v4',
+    auth: new google.auth.GoogleAuth({
+      credentials: loadGoogleCredentials(),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    }),
+  });
+}
+
 /**
  * Parses text file format into JSON structure expected by transformData().
  * Handles key: value pairs and converts demographic text values into proper arrays.
@@ -1283,48 +1325,10 @@ app.get('/debug-creds', (req, res) => {
 
 app.get('/queue-review', async (req, res) => {
   try {
-    const { google } = require('googleapis');
-
-    // Load credentials same way as queue-processor.cjs
-    let credentials;
-    if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
-      console.log('📋 Using GOOGLE_SERVICE_ACCOUNT_BASE64');
-      credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
-    } else {
-      console.log('📋 Using GOOGLE_PRIVATE_KEY (fallback)');
-      let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
-      if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
-      privateKey = privateKey.replace(/\\n/g, '\n');
-
-      if (privateKey.trim().startsWith('{')) {
-        console.log('📋 GOOGLE_PRIVATE_KEY is JSON, parsing...');
-        try {
-          credentials = JSON.parse(privateKey);
-        } catch (e) {
-          console.log('📋 JSON parse failed, escaping literal newlines...');
-          const fixed = privateKey.replace(/"-----BEGIN[\s\S]*?-----END[^"]*"/g, (match) => {
-            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-          });
-          credentials = JSON.parse(fixed);
-        }
-      } else {
-        console.log('📋 GOOGLE_PRIVATE_KEY is PEM');
-        credentials = {
-          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-          private_key: privateKey,
-        };
-      }
-    }
-
-    console.log('📋 Credentials loaded, client_email:', credentials.client_email);
-
-    const sheets = google.sheets({ version: 'v4', auth: new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    })});
+    const sheets = getSheetsClient();
 
     const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: '1N05E3Tahh9APAA-vysvD3HlP3ChISTgPwao9Te5mW18',
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
       range: 'Queue!A2:M1000',
     });
 
@@ -1361,6 +1365,54 @@ app.get('/queue-review', async (req, res) => {
   }
 });
 
+// Marks a Queue row as "Drafted" and writes the transformed opportunity into the real
+// portal's Firestore collection. Shared by the /update-queue route (copywriter clicks
+// Publish) and the due-schedule cron (nobody's browser needs to be open).
+async function publishOpportunityToPortal({ rowIndex, editedOpportunity }) {
+  const sheets = getSheetsClient();
+
+  const demographic = editedOpportunity.demographic || {};
+  const demographicsStr = [
+    demographic.age?.length ? `Age: ${demographic.age.join(', ')}` : '',
+    demographic.genderSexualPreference?.length ? `Gender: ${demographic.genderSexualPreference.join(', ')}` : '',
+    demographic.ethnicity?.length ? `Ethnicity: ${demographic.ethnicity.join(', ')}` : '',
+    demographic.disability?.length ? `Disability: ${demographic.disability.join(', ')}` : '',
+    demographic.lowerSocioEconomicBackground?.length ? `Economic Background: ${demographic.lowerSocioEconomicBackground.join(', ')}` : '',
+    editedOpportunity.remote ? `Remote: ${editedOpportunity.remote ? 'Yes' : 'No'}` : '',
+    editedOpportunity.ukWide ? `UK Wide: ${editedOpportunity.ukWide ? 'Yes' : 'No'}` : '',
+  ].filter(Boolean).join('\n');
+
+  const today = new Date().toLocaleDateString('en-GB');
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: QUEUE_SPREADSHEET_ID,
+    range: `Queue!A${rowIndex}:M${rowIndex}`,
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [[
+        'Drafted',
+        editedOpportunity.companyID || '',
+        editedOpportunity.industry || '',
+        editedOpportunity.opportunityType || '',
+        editedOpportunity.applicationDeadline || '',
+        editedOpportunity.link || '',
+        editedOpportunity.location || '',
+        editedOpportunity.publishDate || '',
+        editedOpportunity.title || '',
+        JSON.stringify(editedOpportunity),
+        demographicsStr,
+        today,
+        '',
+      ]],
+    },
+  });
+
+  const transformedData = transformData(editedOpportunity);
+  const docRef = await db.collection('announcements').doc('announcements').collection('list').add(transformedData);
+
+  return { masterPortalDocId: docRef.id };
+}
+
 app.post('/update-queue', async (req, res) => {
   try {
     const { rowIndex, editedOpportunity } = req.body;
@@ -1373,88 +1425,11 @@ app.post('/update-queue', async (req, res) => {
       return res.status(400).json({ error: 'Invalid editedOpportunity' });
     }
 
-    const { google } = require('googleapis');
-
-    // Load credentials same way as /queue-review and queue-processor.cjs. GOOGLE_PRIVATE_KEY
-    // is stored as a full service-account JSON blob with literal (unescaped) newlines inside
-    // private_key, which always fails a plain JSON.parse — the inner try/catch fixes that.
-    // This endpoint was previously missing that fallback, so every publish threw here and was
-    // swallowed by the outer catch as a bare 500.
-    let credentials;
-    if (process.env.GOOGLE_SERVICE_ACCOUNT_BASE64) {
-      credentials = JSON.parse(Buffer.from(process.env.GOOGLE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8'));
-    } else {
-      let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
-      if (privateKey.startsWith('"') && privateKey.endsWith('"')) privateKey = privateKey.slice(1, -1);
-      privateKey = privateKey.replace(/\\n/g, '\n');
-
-      if (privateKey.trim().startsWith('{')) {
-        try {
-          credentials = JSON.parse(privateKey);
-        } catch (e) {
-          const fixed = privateKey.replace(/"-----BEGIN[\s\S]*?-----END[^"]*"/g, (match) => {
-            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-          });
-          credentials = JSON.parse(fixed);
-        }
-      } else {
-        credentials = {
-          client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-          private_key: privateKey,
-        };
-      }
-    }
-
-    const sheets = google.sheets({ version: 'v4', auth: new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    })});
-
-    // Format demographics for sheet
-    const demographic = editedOpportunity.demographic || {};
-    const demographicsStr = [
-      demographic.age?.length ? `Age: ${demographic.age.join(', ')}` : '',
-      demographic.genderSexualPreference?.length ? `Gender: ${demographic.genderSexualPreference.join(', ')}` : '',
-      demographic.ethnicity?.length ? `Ethnicity: ${demographic.ethnicity.join(', ')}` : '',
-      demographic.disability?.length ? `Disability: ${demographic.disability.join(', ')}` : '',
-      demographic.lowerSocioEconomicBackground?.length ? `Economic Background: ${demographic.lowerSocioEconomicBackground.join(', ')}` : '',
-      editedOpportunity.remote ? `Remote: ${editedOpportunity.remote ? 'Yes' : 'No'}` : '',
-      editedOpportunity.ukWide ? `UK Wide: ${editedOpportunity.ukWide ? 'Yes' : 'No'}` : '',
-    ].filter(Boolean).join('\n');
-
-    const today = new Date().toLocaleDateString('en-GB');
-
-    // Update sheet
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: '1N05E3Tahh9APAA-vysvD3HlP3ChISTgPwao9Te5mW18',
-      range: `Queue!A${rowIndex}:M${rowIndex}`,
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: [[
-          'Drafted',
-          editedOpportunity.companyID || '',
-          editedOpportunity.industry || '',
-          editedOpportunity.opportunityType || '',
-          editedOpportunity.applicationDeadline || '',
-          editedOpportunity.link || '',
-          editedOpportunity.location || '',
-          editedOpportunity.publishDate || '',
-          editedOpportunity.title || '',
-          JSON.stringify(editedOpportunity),
-          demographicsStr,
-          today,
-          '',
-        ]],
-      },
-    });
-
-    // Transform and write to Firebase
-    const transformedData = transformData(editedOpportunity);
-    const docRef = await db.collection('announcements').doc('announcements').collection('list').add(transformedData);
+    const { masterPortalDocId } = await publishOpportunityToPortal({ rowIndex, editedOpportunity });
 
     res.json({
       success: true,
-      masterPortalDocId: docRef.id,
+      masterPortalDocId,
       rowUpdated: rowIndex,
     });
   } catch (err) {
@@ -1489,6 +1464,207 @@ app.post('/schedule-state', async (req, res) => {
   } catch (err) {
     console.error('❌ /schedule-state POST error:', err.message);
     res.status(500).json({ error: 'Failed to save schedule state', details: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------------
+// Publish-when-due scheduler. The review app's own "publish when due" effect only
+// runs while a browser tab has it open, so a scheduled opportunity could sit past its
+// date forever if nobody opens the app that day. This mirrors that same logic
+// server-side on a cron so it happens regardless.
+//
+// scheduleState entries (queueScheduleState/map) are now full opportunity snapshots
+// (App.jsx's handleSaveDraft stores the whole edited object, not a field whitelist),
+// so — unlike the client, which merges a fresh /queue-review sheet read with the
+// schedule-state entry — this can publish straight from schedule-state alone.
+//
+// buildServerPublishPayload/isDescriptionUsable/validateServerPublishPayload mirror
+// App.jsx's buildPublishPayload/isDescriptionUsable/validatePublishPayload. Keep them
+// in sync if either side changes — there's no shared package between the two repos.
+// ---------------------------------------------------------------------------------
+
+function toArray(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value !== 'string') return [];
+  return value.split(',').map(item => item.trim()).filter(Boolean);
+}
+
+function toBool(value) {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return normalized === 'yes' || normalized === 'true' || normalized === '1';
+  }
+  return Boolean(value);
+}
+
+function parseDemographicsBlock(raw) {
+  const result = { age: [], genderSexualPreference: [], ethnicity: [], disability: [], lowerSocioEconomicBackground: [] };
+  if (!raw || typeof raw !== 'string') return result;
+  const lines = raw.split('\n').map(line => line.trim()).filter(Boolean);
+  for (const line of lines) {
+    const [k, ...rest] = line.split(':');
+    if (!k || rest.length === 0) continue;
+    const key = k.trim().toLowerCase();
+    const val = rest.join(':').trim();
+    if (key === 'age') result.age = toArray(val);
+    if (key === 'gender' || key === 'gender & sexual preference') result.genderSexualPreference = toArray(val);
+    if (key === 'ethnicity') result.ethnicity = toArray(val);
+    if (key === 'disability') result.disability = toArray(val);
+    if (key === 'economic background' || key === 'lower socio economic background') {
+      result.lowerSocioEconomicBackground = toArray(val);
+    }
+  }
+  return result;
+}
+
+function toISODateUTC(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function normalizeDateForBackend(raw) {
+  if (!raw) return '';
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(raw)) return raw;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return `${raw}T00:00:00.000Z`;
+  const dmyMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) {
+    const dd = String(Number(dmyMatch[1])).padStart(2, '0');
+    const mm = String(Number(dmyMatch[2])).padStart(2, '0');
+    const yyyy = dmyMatch[3];
+    return `${yyyy}-${mm}-${dd}T00:00:00.000Z`;
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return `${toISODateUTC(parsed)}T00:00:00.000Z`;
+}
+
+function buildServerPublishPayload(opp) {
+  const fallbackDemo = parseDemographicsBlock(opp.demographics);
+  const currentDemo = opp.demographic || {};
+  return {
+    ...opp,
+    companyID: opp.companyID || opp.companyId || '',
+    applicationDeadline: normalizeDateForBackend(opp.applicationDeadline),
+    publishDate: normalizeDateForBackend(opp.publishDate),
+    publishedAt: normalizeDateForBackend(opp.publishDate),
+    description: opp.draftedContent || opp.description || '',
+    schedulePost: opp.schedulePost || '',
+    remote: toBool(opp.remote),
+    ukWide: toBool(opp.ukWide),
+    status: 'live',
+    eventDate: normalizeDateForBackend(opp.eventDate),
+    ...(opp.eventDetails ? {
+      eventName: opp.eventDetails.eventTitle || opp.title || '',
+      eventTime: opp.eventDetails.eventStartTime || '',
+      eventTimeEnd: opp.eventDetails.eventEndTime || ''
+    } : {}),
+    demographic: {
+      age: currentDemo.age || fallbackDemo.age,
+      genderSexualPreference: currentDemo.genderSexualPreference || fallbackDemo.genderSexualPreference,
+      ethnicity: currentDemo.ethnicity || fallbackDemo.ethnicity,
+      disability: currentDemo.disability || fallbackDemo.disability,
+      lowerSocioEconomicBackground: currentDemo.lowerSocioEconomicBackground || fallbackDemo.lowerSocioEconomicBackground,
+      industry: (opp.industryTags && opp.industryTags.length ? opp.industryTags : null) || currentDemo.industry || toArray(opp.industry)
+    }
+  };
+}
+
+function isDescriptionUsable(description) {
+  if (!description) return false;
+  const trimmed = description.trim();
+  if (trimmed.length < 20) return false;
+  if (/unclear/i.test(trimmed)) return false;
+  return true;
+}
+
+function validateServerPublishPayload(opp) {
+  const errors = [];
+  if (!opp.title) errors.push('Title is required.');
+  if (!opp.opportunityType) errors.push('Opportunity type is required.');
+  if (!opp.applicationDeadline) errors.push('Application deadline is missing or invalid.');
+  if (!isDescriptionUsable(opp.description)) {
+    errors.push('Description looks incomplete or unclear — write a proper summary before publishing.');
+  }
+  return errors;
+}
+
+// Best-effort — lets a human spot a stuck row in the sheet without needing to check Railway
+// logs. Column M (ERROR_NOTES) is the same column queue-processor.cjs already uses for this.
+async function writeQueueRowError(rowIndex, message) {
+  try {
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: `Queue!M${rowIndex}:M${rowIndex}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[message]] },
+    });
+  } catch (err) {
+    console.error(`❌ SCHEDULER: failed to write error note for row ${rowIndex}:`, err.message);
+  }
+}
+
+async function processDueSchedules() {
+  const doc = await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).get();
+  const scheduleState = doc.exists ? (doc.data().scheduleState || {}) : {};
+  const todayISO = toISODateUTC(new Date());
+
+  const dueEntries = Object.entries(scheduleState).filter(([, entry]) => {
+    return entry && (entry.status || '').toLowerCase() === 'scheduled' && entry.schedulePost && entry.schedulePost <= todayISO;
+  });
+
+  if (dueEntries.length === 0) {
+    console.log('⏰ SCHEDULER: no opportunities due.');
+    return { published: 0, failed: 0 };
+  }
+
+  console.log(`⏰ SCHEDULER: ${dueEntries.length} opportunity(ies) due for publish.`);
+  let published = 0;
+  let failed = 0;
+  let changed = false;
+
+  for (const [rowIndexKey, entry] of dueEntries) {
+    const rowIndex = Number(rowIndexKey);
+    try {
+      const payload = buildServerPublishPayload(entry);
+      const errors = validateServerPublishPayload(payload);
+      if (errors.length > 0) {
+        console.error(`⏰ SCHEDULER: row ${rowIndex} not publish-ready — ${errors.join(' ')}`);
+        await writeQueueRowError(rowIndex, `Scheduler blocked publish: ${errors.join(' ')}`);
+        failed += 1;
+        continue;
+      }
+
+      await publishOpportunityToPortal({ rowIndex, editedOpportunity: payload });
+      delete scheduleState[rowIndexKey];
+      changed = true;
+      published += 1;
+      console.log(`✅ SCHEDULER: published row ${rowIndex} ("${payload.title}").`);
+    } catch (err) {
+      console.error(`❌ SCHEDULER: failed to publish row ${rowIndex}:`, err.message);
+      failed += 1;
+    }
+  }
+
+  if (changed) {
+    await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).set({ scheduleState });
+  }
+
+  return { published, failed };
+}
+
+// Manual trigger for testing/ops — lets the due-schedule check be run on demand instead of
+// waiting for the hourly cron tick.
+app.post('/process-due-schedules', async (req, res) => {
+  try {
+    const result = await processDueSchedules();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('❌ /process-due-schedules error:', err.message);
+    res.status(500).json({ error: 'Failed to process due schedules', details: err.message });
   }
 });
 
@@ -1559,5 +1735,22 @@ app.listen(config.port, () => {
     startQueueProcessor();
   } else {
     console.log('⚠️  QUEUE PROCESSOR: Skipping — no Google Sheets credentials found.');
+  }
+
+  // Publish-when-due scheduler: only needs Google Sheets creds (to write the row) and
+  // Firestore (already initialized above) — no Anthropic/Claude dependency, so this still
+  // runs even when queue-processor's extraction step can't (e.g. Claude API unavailable).
+  if (hasGoogleSheetsCreds) {
+    const cron = require('node-cron');
+    cron.schedule('0 * * * *', () => {
+      processDueSchedules().catch(err => console.error('❌ SCHEDULER: cron run failed:', err.message));
+    });
+    console.log('⏰ SCHEDULER: hourly publish-when-due check scheduled.');
+    // Also run once at startup so a deploy/restart doesn't leave a due opportunity waiting
+    // up to an hour — covers the case where the dyno was asleep/restarting exactly when
+    // something was due.
+    processDueSchedules().catch(err => console.error('❌ SCHEDULER: startup run failed:', err.message));
+  } else {
+    console.log('⚠️  SCHEDULER: Skipping — no Google Sheets credentials found.');
   }
 });
