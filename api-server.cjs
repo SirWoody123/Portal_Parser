@@ -1393,6 +1393,19 @@ const TEST_QUEUE_ROWS = [
 
 const CATCH_ALL_DEMOGRAPHICS = 'Age: All ages\nGender: All genders & preferences\nEthnicity: All ethnicities\nDisability: All disability\nEconomic Background: All backgrounds';
 
+app.get('/admin/raw-queue-dump', async (req, res) => {
+  try {
+    const sheets = getSheetsClient();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!A1:M60',
+    });
+    res.json({ values: response.data.values || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/admin/seed-test-queue-rows', async (req, res) => {
   try {
     const sheets = getSheetsClient();
