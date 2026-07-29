@@ -1525,6 +1525,21 @@ function toISODateUTC(date) {
   return `${y}-${m}-${d}`;
 }
 
+// Railway runs this process in UTC, but schedulePost dates mean "this UK calendar day" to
+// whoever picked them. Using the server's own UTC date instead would flip a day over up to an
+// hour late during BST (UK midnight is 23:00 UTC, not 00:00 UTC) — this reads the wall-clock
+// date directly in the Europe/London zone instead, correct across the GMT/BST switch.
+function todayISOInLondon() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const get = type => parts.find(p => p.type === type).value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
 function normalizeDateForBackend(raw) {
   if (!raw) return '';
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(raw)) return raw;
@@ -1610,7 +1625,7 @@ async function writeQueueRowError(rowIndex, message) {
 async function processDueSchedules() {
   const doc = await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).get();
   const scheduleState = doc.exists ? (doc.data().scheduleState || {}) : {};
-  const todayISO = toISODateUTC(new Date());
+  const todayISO = todayISOInLondon();
 
   const dueEntries = Object.entries(scheduleState).filter(([, entry]) => {
     return entry && (entry.status || '').toLowerCase() === 'scheduled' && entry.schedulePost && entry.schedulePost <= todayISO;
@@ -1742,10 +1757,12 @@ app.listen(config.port, () => {
   // runs even when queue-processor's extraction step can't (e.g. Claude API unavailable).
   if (hasGoogleSheetsCreds) {
     const cron = require('node-cron');
+    // Timezone only matters here for keeping the hourly tick itself sane across the GMT/BST
+    // switch — the actual "is it due yet" day comparison uses todayISOInLondon() above.
     cron.schedule('0 * * * *', () => {
       processDueSchedules().catch(err => console.error('❌ SCHEDULER: cron run failed:', err.message));
-    });
-    console.log('⏰ SCHEDULER: hourly publish-when-due check scheduled.');
+    }, { timezone: 'Europe/London' });
+    console.log('⏰ SCHEDULER: hourly publish-when-due check scheduled (Europe/London).');
     // Also run once at startup so a deploy/restart doesn't leave a due opportunity waiting
     // up to an hour — covers the case where the dyno was asleep/restarting exactly when
     // something was due.

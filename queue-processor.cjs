@@ -339,10 +339,13 @@ async function processQueue() {
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 function startQueueProcessor() {
-  console.log('⏱ QUEUE PROCESSOR: Starting — will check every 15 minutes.');
-  // Run immediately on start, then every 15 minutes
+  console.log('⏱ QUEUE PROCESSOR: Starting — will check at 4am and 9am UK time daily.');
+  // Run immediately on start, then on a UK-anchored schedule. 4am gives extraction (and the
+  // publish scheduler, see api-server.cjs) hours of runway before Phoebe's ~8am login; 9am is
+  // a second pass for anything added to the Backlog/Queue overnight or missed by the first run.
+  // Europe/London (not a fixed UTC offset) so this stays correct across the GMT/BST switch.
   processQueue();
-  cron.schedule('0 9 * * *', processQueue); // Daily at 9am UTC
+  cron.schedule('0 4,9 * * *', processQueue, { timezone: 'Europe/London' });
 }
 
 module.exports = { startQueueProcessor, processQueue };
