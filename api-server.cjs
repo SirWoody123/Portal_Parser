@@ -1393,6 +1393,18 @@ const TEST_QUEUE_ROWS = [
 
 const CATCH_ALL_DEMOGRAPHICS = 'Age: All ages\nGender: All genders & preferences\nEthnicity: All ethnicities\nDisability: All disability\nEconomic Background: All backgrounds';
 
+app.post('/admin/clear-range', async (req, res) => {
+  try {
+    const { range } = req.body;
+    if (!range || typeof range !== 'string') return res.status(400).json({ error: 'range required' });
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.values.clear({ spreadsheetId: QUEUE_SPREADSHEET_ID, range });
+    res.json({ success: true, cleared: range });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/admin/raw-queue-dump', async (req, res) => {
   try {
     const sheets = getSheetsClient();
@@ -1424,14 +1436,19 @@ app.post('/admin/seed-test-queue-rows', async (req, res) => {
       '',
       '',
     ]);
-    const result = await sheets.spreadsheets.values.append({
+    // values.append's table auto-detection landed this at Queue!M1019:Y1036 on a real run —
+    // offset by both row and column, invisible to /queue-review's A2:M1000 read. Targeting an
+    // explicit range instead: row 6 is confirmed empty (rows 2-5 hold the only real data).
+    const startRow = 6;
+    const endRow = startRow + rows.length - 1;
+    const range = `Queue!A${startRow}:M${endRow}`;
+    const result = await sheets.spreadsheets.values.update({
       spreadsheetId: QUEUE_SPREADSHEET_ID,
-      range: 'Queue!A:M',
+      range,
       valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
       requestBody: { values: rows },
     });
-    res.json({ success: true, updatedRange: result.data.updates.updatedRange, count: rows.length });
+    res.json({ success: true, updatedRange: result.data.updatedRange, count: rows.length });
   } catch (err) {
     console.error('❌ /admin/seed-test-queue-rows error:', err.message);
     res.status(500).json({ error: err.message });
