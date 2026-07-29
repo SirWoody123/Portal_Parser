@@ -1398,7 +1398,7 @@ app.get('/admin/raw-queue-dump', async (req, res) => {
     const sheets = getSheetsClient();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: QUEUE_SPREADSHEET_ID,
-      range: 'Queue!A1:M60',
+      range: req.query.range || 'Queue!A1:M60',
     });
     res.json({ values: response.data.values || [] });
   } catch (err) {
