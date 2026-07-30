@@ -1383,10 +1383,15 @@ app.get('/queue-review', async (req, res) => {
   }
 });
 
+// Isolated from `announcements` and `queueScheduleState` — a durable record of every publish,
+// since the scheduler can send something live with nobody's browser open to see it happen.
+const PUBLISH_LOG_COLLECTION = 'publishLog';
+
 // Marks a Queue row as "Drafted" and writes the transformed opportunity into the real
 // portal's Firestore collection. Shared by the /update-queue route (copywriter clicks
-// Publish) and the due-schedule cron (nobody's browser needs to be open).
-async function publishOpportunityToPortal({ rowIndex, editedOpportunity }) {
+// Publish) and the due-schedule cron (nobody's browser needs to be open). `via` distinguishes
+// the two in the publish log — 'manual' vs 'scheduler'.
+async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = 'manual' }) {
   const sheets = getSheetsClient();
 
   const demographic = editedOpportunity.demographic || {};
@@ -1428,8 +1433,27 @@ async function publishOpportunityToPortal({ rowIndex, editedOpportunity }) {
   const transformedData = transformData(editedOpportunity);
   const docRef = await db.collection('announcements').doc('announcements').collection('list').add(transformedData);
 
+  await db.collection(PUBLISH_LOG_COLLECTION).add({
+    rowIndex,
+    title: editedOpportunity.title || '',
+    opportunityType: editedOpportunity.opportunityType || '',
+    masterPortalDocId: docRef.id,
+    publishedAt: new Date().toISOString(),
+    via,
+  });
+
   return { masterPortalDocId: docRef.id };
 }
+
+app.get('/publish-log', async (req, res) => {
+  try {
+    const snap = await db.collection(PUBLISH_LOG_COLLECTION).orderBy('publishedAt', 'desc').limit(200).get();
+    res.json({ entries: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  } catch (err) {
+    console.error('❌ /publish-log error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch publish log', details: err.message });
+  }
+});
 
 app.post('/update-queue', async (req, res) => {
   try {
@@ -1671,7 +1695,7 @@ async function processDueSchedules() {
         continue;
       }
 
-      await publishOpportunityToPortal({ rowIndex, editedOpportunity: payload });
+      await publishOpportunityToPortal({ rowIndex, editedOpportunity: payload, via: 'scheduler' });
       delete scheduleState[rowIndexKey];
       changed = true;
       published += 1;
