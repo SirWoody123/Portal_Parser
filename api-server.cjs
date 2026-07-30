@@ -68,6 +68,12 @@ const TAG_NAME_TO_ID = {
   "Asian or Asian British": "RRPIGD8goCRgLEiCoTsi", // Fixed: correct CSV mapping
   "Black": "igXCnhhokWdi5FvqiDha",
   "African, Caribbean or Black British": "DUK2DyQTTnvJXp83Cuuw", // Fixed: correct CSV mapping
+  // PATCH31: alias without the comma — the review app's checkbox label omits it (deliberately;
+  // a comma inside a single demographic value breaks the comma-separated serialization used for
+  // the Queue sheet's Demographics column and App.jsx's toArray() parsing of it), so without
+  // this alias the option silently resolved to zero tags every time it was selected directly
+  // (the "All ethnicities" catch-all expansion already used the comma'd form and worked fine).
+  "African Caribbean or Black British": "DUK2DyQTTnvJXp83Cuuw",
   "Arab": "uoo9FHEqHrUFVGSc2McX", // Fixed: correct CSV mapping from ethnicity section
   "Prefer not to say": "WMLPtNRCGSBbv7bViz1S", // Using Race ID
 
@@ -97,7 +103,12 @@ const TAG_NAME_TO_ID = {
   "Podcasting": "nHy5ygseyuQtNDUVxn0J",
   "Radio": "VxeP5CwyZNoKYK3hF8eC",
   "Audio": "Uq7j4jOln0DVzS5VQZIl",
-  "Social Media": "2Bhal1Eyn4bfN719dFdM", // FIXED: Correct portal ID from working document 7AoSL3MXC7EuxSobSBKS
+  // PATCH31: "Social Media" previously pointed at the generic "#media" tag's ID (a copy-paste
+  // mix-up from an earlier "fix") — every opportunity tagged Social Media has actually been
+  // tagged as generic Media instead. Verified against the live `tags` collection (2026-07-29):
+  // 2Bhal1Eyn4bfN719dFdM = "#media", 2YMJoKoU41yC7sCleDnd = "#Social media".
+  "Social Media": "2YMJoKoU41yC7sCleDnd",
+  "Media": "2Bhal1Eyn4bfN719dFdM",
   "Videography": "GjC6ilPu74QiVYRvRvgg",
   "Publishing": "ybNc8iJxaoo7TjoJyl71",
   "Writing": "OWX5xMlENH8zEqL6ZJzI",
@@ -110,7 +121,14 @@ const TAG_NAME_TO_ID = {
   "Architecture": "u6YjM78DnfHgJYoEn6td",
   "Travel": "VS2ca4vwGXaOZ6khfjff",
   "Visual arts": "etbVDUKJ63EHFcPlbn68",
-  
+  "Visual art": "etbVDUKJ63EHFcPlbn68", // alias — the review app's option label is singular
+  // PATCH31: these four industry options existed in the review app's picker but had no
+  // TAG_NAME_TO_ID entry at all, so selecting them silently produced zero tags on publish.
+  // IDs verified against the live `tags` collection (2026-07-29), industry-categorized docs.
+  "Photography": "ZEtRdZGb5YmvbtjniiBI",
+  "Heritage": "38I250bSWDUG6sbheu4W",
+  "E-sport": "LnCw0jhbobNNgU9ndhil",
+
   // --- CAREER (from CSV) ---
   "CVs & Portfolios": "Cfm3Qi6fKuYCnkrzNdqz",
   "Money & finance": "Fsupenr6EtZuhFXCUGAY",
@@ -1295,18 +1313,6 @@ app.get('/opportunities/:docId', async (req, res) => {
       error: 'Error reading document',
       details: error.message
     });
-  }
-});
-
-// TEMPORARY, read-only — dumps the real tags collection to check our TAG_NAME_TO_ID mapping
-// against it for gaps. No writes, safe. Remove once the investigation is done.
-app.get('/admin/tags-dump', async (req, res) => {
-  try {
-    const snap = await db.collection('tags').get();
-    const tags = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    res.json({ count: tags.length, tags });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 
