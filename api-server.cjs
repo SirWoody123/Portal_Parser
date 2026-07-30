@@ -1316,21 +1316,6 @@ app.get('/opportunities/:docId', async (req, res) => {
   }
 });
 
-// TEMPORARY, read-only — for investigating why some seeded test rows disappeared from
-// /queue-review. Remove once done.
-app.get('/admin/raw-queue-dump', async (req, res) => {
-  try {
-    const sheets = getSheetsClient();
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: QUEUE_SPREADSHEET_ID,
-      range: req.query.range || 'Queue!A1:M30',
-    });
-    res.json({ values: response.data.values || [] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
