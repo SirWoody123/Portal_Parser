@@ -1298,6 +1298,18 @@ app.get('/opportunities/:docId', async (req, res) => {
   }
 });
 
+// TEMPORARY, read-only — dumps the real tags collection to check our TAG_NAME_TO_ID mapping
+// against it for gaps. No writes, safe. Remove once the investigation is done.
+app.get('/admin/tags-dump', async (req, res) => {
+  try {
+    const snap = await db.collection('tags').get();
+    const tags = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json({ count: tags.length, tags });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
