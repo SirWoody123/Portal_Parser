@@ -1325,19 +1325,6 @@ app.get('/opportunities/:docId', async (req, res) => {
   }
 });
 
-// TEMPORARY, read-only — checking whether test content published during live testing is still
-// live on the real portal. Remove after checking.
-app.get('/admin/find-doc', async (req, res) => {
-  try {
-    const { collection: coll, title } = req.query;
-    if (!coll || !title) return res.status(400).json({ error: 'collection and title required' });
-    const snap = await db.collection('announcements').doc(coll).collection('list').where('title', '==', title).get();
-    res.json({ docs: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
