@@ -1118,7 +1118,16 @@ const transformData = (data) => {
   status: data.status || 'scouted',
     tags: tags,
     title: data.title || '',
-    type: data.type || 'announcements',
+    // PATCH32: Events are a separate top-level content type on the real portal (stored at
+    // announcements/events/list, not announcements/announcements/list) — confirmed via the
+    // portal's own announcementsCreate()/fetchAnnouncement() (api/announcements.ts), which
+    // build the Firestore path from `type` directly, and getQweryName() (api/review.ts,
+    // api/announcements.ts), where 'Event' is conspicuously absent from the `announcementsSubtypes`
+    // list every other category (Course, Apprenticeship, ...) is in. Previously this always
+    // fell through to 'announcements' regardless of category, which is why every Event ever
+    // published through this pipeline landed in the wrong collection and couldn't be opened
+    // for editing on the real portal.
+    type: data.type || (resolvedCatLabel === 'Event' ? 'events' : 'announcements'),
     userClaps: Array.isArray(data.userClaps) ? data.userClaps : [],
     userContentView: Array.isArray(data.userContentView) ? data.userContentView : [],
     // Optional/extra fields for compatibility
@@ -1317,6 +1326,31 @@ app.get('/opportunities/:docId', async (req, res) => {
 });
 
 // Health check endpoint
+// TEMPORARY — verifying the Event-routing fix lands docs in the right Firestore collection
+// before trusting it. Both read and delete are scoped to exact-title lookups only. Remove once
+// verified.
+app.get('/admin/find-doc', async (req, res) => {
+  try {
+    const { collection: coll, title } = req.query;
+    if (!coll || !title) return res.status(400).json({ error: 'collection and title required' });
+    const snap = await db.collection('announcements').doc(coll).collection('list').where('title', '==', title).get();
+    res.json({ docs: snap.docs.map(d => ({ id: d.id, type: d.data().type, category: d.data().category })) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/admin/delete-doc', async (req, res) => {
+  try {
+    const { collection: coll, id } = req.body;
+    if (!coll || !id) return res.status(400).json({ error: 'collection and id required' });
+    await db.collection('announcements').doc(coll).collection('list').doc(id).delete();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -1431,7 +1465,10 @@ async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = '
   });
 
   const transformedData = transformData(editedOpportunity);
-  const docRef = await db.collection('announcements').doc('announcements').collection('list').add(transformedData);
+  // Events live in their own top-level collection on the real portal — see the PATCH32 note on
+  // transformData()'s `type` field for why.
+  const contentTypeSegment = transformedData.type === 'events' ? 'events' : 'announcements';
+  const docRef = await db.collection('announcements').doc(contentTypeSegment).collection('list').add(transformedData);
 
   await db.collection(PUBLISH_LOG_COLLECTION).add({
     rowIndex,
