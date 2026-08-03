@@ -1784,6 +1784,19 @@ async function processDueSchedules() {
   return { published, failed };
 }
 
+// Manual trigger for testing/ops — runs Claude extraction on "To upload" rows on demand
+// instead of waiting for the 4am/9am UK cron.
+app.post('/process-queue-now', async (req, res) => {
+  try {
+    const { processQueue } = require('./queue-processor.cjs');
+    await processQueue();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ /process-queue-now error:', err.message);
+    res.status(500).json({ error: 'Failed to process queue', details: err.message });
+  }
+});
+
 // Manual trigger for testing/ops — lets the due-schedule check be run on demand instead of
 // waiting for the hourly cron tick.
 app.post('/process-due-schedules', async (req, res) => {
