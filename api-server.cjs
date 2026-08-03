@@ -1628,6 +1628,31 @@ function todayISOInLondon() {
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
+function todayDateInLondon() {
+  const [y, m, d] = todayISOInLondon().split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// Mirrors the review app's parseDateOnly() (src/calendarUtils.js) — must stay in sync, no
+// shared package between the two repos. JS's Date constructor defaults year-less strings like
+// "19 Aug" to the year 2001, which without this correction gets sent to the real portal as a
+// literal 2001 deadline instead of the next real occurrence of that month/day.
+function parseDateOnly(raw) {
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [y, m, d] = raw.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  const dt = new Date(raw);
+  if (Number.isNaN(dt.getTime())) return null;
+  if (dt.getFullYear() === 2001 && !/2001/.test(raw)) {
+    const today = todayDateInLondon();
+    const thisYear = new Date(today.getFullYear(), dt.getMonth(), dt.getDate());
+    return thisYear < today ? new Date(today.getFullYear() + 1, dt.getMonth(), dt.getDate()) : thisYear;
+  }
+  return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+}
+
 function normalizeDateForBackend(raw) {
   if (!raw) return '';
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(raw)) return raw;
@@ -1639,8 +1664,8 @@ function normalizeDateForBackend(raw) {
     const yyyy = dmyMatch[3];
     return `${yyyy}-${mm}-${dd}T00:00:00.000Z`;
   }
-  const parsed = new Date(raw);
-  if (Number.isNaN(parsed.getTime())) return '';
+  const parsed = parseDateOnly(raw);
+  if (!parsed) return '';
   return `${toISODateUTC(parsed)}T00:00:00.000Z`;
 }
 
