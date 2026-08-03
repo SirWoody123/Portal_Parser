@@ -1453,6 +1453,32 @@ app.post('/admin/seed-extraction-test-rows', async (req, res) => {
   }
 });
 
+// TEMPORARY — read/delete a specific Firestore announcements doc by id, for verifying a
+// test publish landed correctly before cleaning it up. Remove after use.
+app.get('/admin/find-doc', async (req, res) => {
+  const { id, type } = req.query;
+  if (!id || !type) return res.status(400).json({ error: 'id and type query params required' });
+  try {
+    const docRef = db.collection('announcements').doc(type).collection('list').doc(id);
+    const doc = await docRef.get();
+    if (!doc.exists) return res.status(404).json({ error: 'not found' });
+    res.json({ id: doc.id, data: doc.data() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/admin/delete-doc', async (req, res) => {
+  const { id, type } = req.query;
+  if (!id || !type) return res.status(400).json({ error: 'id and type query params required' });
+  try {
+    await db.collection('announcements').doc(type).collection('list').doc(id).delete();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
