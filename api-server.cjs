@@ -1326,31 +1326,6 @@ app.get('/opportunities/:docId', async (req, res) => {
 });
 
 // Health check endpoint
-// TEMPORARY — verifying the Event-routing fix lands docs in the right Firestore collection
-// before trusting it. Both read and delete are scoped to exact-title lookups only. Remove once
-// verified.
-app.get('/admin/find-doc', async (req, res) => {
-  try {
-    const { collection: coll, title } = req.query;
-    if (!coll || !title) return res.status(400).json({ error: 'collection and title required' });
-    const snap = await db.collection('announcements').doc(coll).collection('list').where('title', '==', title).get();
-    res.json({ docs: snap.docs.map(d => ({ id: d.id, type: d.data().type, category: d.data().category })) });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/admin/delete-doc', async (req, res) => {
-  try {
-    const { collection: coll, id } = req.body;
-    if (!coll || !id) return res.status(400).json({ error: 'collection and id required' });
-    await db.collection('announcements').doc(coll).collection('list').doc(id).delete();
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
