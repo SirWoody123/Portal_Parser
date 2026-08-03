@@ -1419,6 +1419,40 @@ app.post('/admin/add-queue-columns-nw', async (req, res) => {
   }
 });
 
+// TEMPORARY — seeds 4 disposable "To upload" test rows (Course, Apprenticeship, Event,
+// Internship-as-negative-control) at the next empty row, so extraction of the new N-W
+// columns can be verified end-to-end without touching real production rows. Remove after use.
+app.post('/admin/seed-extraction-test-rows', async (req, res) => {
+  try {
+    const sheets = getSheetsClient();
+    const colA = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!A:A',
+    });
+    const nextRow = (colA.data.values || []).length + 1;
+
+    // [Status, CompanyID, Industry, Opportunity, Date, Link, Location, PublishDate]
+    const rows = [
+      ['To upload', '', 'Design', 'Course', '19/09/2026', 'https://example.com', 'Manchester', ''],
+      ['To upload', '', 'Craft', 'Apprenticeship', '19/09/2026', 'https://example.com', 'Sheffield', ''],
+      ['To upload', '', 'Music', 'Event', '19/09/2026', 'https://example.com', 'London', ''],
+      ['To upload', '', 'Writing', 'Internship', '19/09/2026', 'https://example.com', 'Leeds', ''],
+    ];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: `Queue!A${nextRow}:H${nextRow + rows.length - 1}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: rows },
+    });
+
+    res.json({ ok: true, firstRow: nextRow, lastRow: nextRow + rows.length - 1 });
+  } catch (err) {
+    console.error('❌ /admin/seed-extraction-test-rows error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
