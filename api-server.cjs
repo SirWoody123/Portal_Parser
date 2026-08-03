@@ -1509,6 +1509,40 @@ app.post('/schedule-state', async (req, res) => {
   }
 });
 
+// Removes an opportunity from the review app without ever sending it to the real portal.
+// Marks the Queue row Status as "Deleted" (rather than blanking it — keeps an audit trail and
+// avoids leaving an empty row that a future values.append could land data on top of, which
+// bit us during test-data seeding) and clears any pending queueScheduleState entry so the
+// hourly scheduler doesn't try to publish a row that's already been deleted out from under it.
+app.post('/delete-queue-row', async (req, res) => {
+  try {
+    const { rowIndex } = req.body;
+    if (!rowIndex || typeof rowIndex !== 'number' || rowIndex < 2 || rowIndex > 1000) {
+      return res.status(400).json({ error: 'Invalid rowIndex' });
+    }
+
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: `Queue!A${rowIndex}:A${rowIndex}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [['Deleted']] },
+    });
+
+    const doc = await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).get();
+    const scheduleState = doc.exists ? (doc.data().scheduleState || {}) : {};
+    if (scheduleState[rowIndex]) {
+      delete scheduleState[rowIndex];
+      await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).set({ scheduleState });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('❌ /delete-queue-row error:', err.message);
+    res.status(500).json({ error: 'Failed to delete row', details: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------------
 // Publish-when-due scheduler. The review app's own "publish when due" effect only
 // runs while a browser tab has it open, so a scheduled opportunity could sit past its
