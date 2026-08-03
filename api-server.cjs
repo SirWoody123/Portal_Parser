@@ -1425,11 +1425,18 @@ app.get('/queue-review', async (req, res) => {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: QUEUE_SPREADSHEET_ID,
-      range: 'Queue!A2:M1000',
+      range: 'Queue!A2:W1000',
     });
 
     const rows = response.data.values || [];
-    const COL = { STATUS: 0, COMPANY_ID: 1, INDUSTRY: 2, OPPORTUNITY: 3, DATE: 4, LINK: 5, LOCATION: 6, PUBLISH_DATE: 7, OPP_NAME: 8, DRAFTED_CONTENT: 9, DEMOGRAPHICS: 10, DRAFTED_DATE: 11, ERROR_NOTES: 12 };
+    const COL = {
+      STATUS: 0, COMPANY_ID: 1, INDUSTRY: 2, OPPORTUNITY: 3, DATE: 4, LINK: 5, LOCATION: 6,
+      PUBLISH_DATE: 7, OPP_NAME: 8, DRAFTED_CONTENT: 9, DEMOGRAPHICS: 10, DRAFTED_DATE: 11, ERROR_NOTES: 12,
+      ANYTHING_ELSE_IMPORTANT: 13, SALARY: 14,
+      LENGTH_OF_COURSE: 15, PAID_OR_FREE_COURSES: 16, COURSE_LOCATION: 17,
+      LENGTH_OF_APPRENTICESHIP: 18, LEVEL_OF_APPRENTICESHIP: 19,
+      EVENT_DATE: 20, EVENT_START_TIME: 21, EVENT_END_TIME: 22,
+    };
     const opportunities = [];
 
     rows.forEach((row, idx) => {
@@ -1450,6 +1457,16 @@ app.get('/queue-review', async (req, res) => {
           demographics: row[COL.DEMOGRAPHICS] || '',
           draftedDate: row[COL.DRAFTED_DATE] || '',
           errorNotes: row[COL.ERROR_NOTES] || '',
+          anythingElseImportant: row[COL.ANYTHING_ELSE_IMPORTANT] || '',
+          salary: row[COL.SALARY] || '',
+          lengthOfCourse: row[COL.LENGTH_OF_COURSE] || '',
+          paidOrFreeCourses: row[COL.PAID_OR_FREE_COURSES] || '',
+          courseLocation: row[COL.COURSE_LOCATION] || '',
+          lengthOfApprenticeship: row[COL.LENGTH_OF_APPRENTICESHIP] || '',
+          levelOfApprenticeship: row[COL.LEVEL_OF_APPRENTICESHIP] || '',
+          eventDate: row[COL.EVENT_DATE] || '',
+          eventStartTime: row[COL.EVENT_START_TIME] || '',
+          eventEndTime: row[COL.EVENT_END_TIME] || '',
         });
       }
     });
@@ -1753,11 +1770,9 @@ function buildServerPublishPayload(opp) {
     ukWide: toBool(opp.ukWide),
     status: 'live',
     eventDate: normalizeDateForBackend(opp.eventDate),
-    ...(opp.eventDetails ? {
-      eventName: opp.eventDetails.eventTitle || opp.title || '',
-      eventTime: opp.eventDetails.eventStartTime || '',
-      eventTimeEnd: opp.eventDetails.eventEndTime || ''
-    } : {}),
+    eventName: opp.title || '',
+    eventTime: opp.eventStartTime || '',
+    eventTimeEnd: opp.eventEndTime || '',
     demographic: {
       age: currentDemo.age || fallbackDemo.age,
       genderSexualPreference: currentDemo.genderSexualPreference || fallbackDemo.genderSexualPreference,

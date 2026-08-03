@@ -20,20 +20,31 @@ const SPREADSHEET_ID = '1N05E3Tahh9APAA-vysvD3HlP3ChISTgPwao9Te5mW18';
 const QUEUE_TAB = 'Queue';
 
 // Column indices (0-based), matching the header row written by setup-queue-tab.cjs
+// (N-W added by the one-off /admin/add-queue-columns-nw endpoint)
 const COL = {
-  STATUS:           0,  // A
-  COMPANY_ID:       1,  // B
-  INDUSTRY:         2,  // C
-  OPPORTUNITY:      3,  // D
-  DATE:             4,  // E
-  LINK:             5,  // F
-  LOCATION:         6,  // G
-  PUBLISH_DATE:     7,  // H
-  OPP_NAME:         8,  // I
-  DRAFTED_CONTENT:  9,  // J
-  DEMOGRAPHICS:     10, // K
-  DRAFTED_DATE:     11, // L
-  ERROR_NOTES:      12, // M
+  STATUS:                    0,  // A
+  COMPANY_ID:                1,  // B
+  INDUSTRY:                  2,  // C
+  OPPORTUNITY:               3,  // D
+  DATE:                      4,  // E
+  LINK:                      5,  // F
+  LOCATION:                  6,  // G
+  PUBLISH_DATE:              7,  // H
+  OPP_NAME:                  8,  // I
+  DRAFTED_CONTENT:           9,  // J
+  DEMOGRAPHICS:              10, // K
+  DRAFTED_DATE:              11, // L
+  ERROR_NOTES:               12, // M
+  ANYTHING_ELSE_IMPORTANT:   13, // N
+  SALARY:                    14, // O
+  LENGTH_OF_COURSE:          15, // P
+  PAID_OR_FREE_COURSES:      16, // Q
+  COURSE_LOCATION:           17, // R
+  LENGTH_OF_APPRENTICESHIP:  18, // S
+  LEVEL_OF_APPRENTICESHIP:   19, // T
+  EVENT_DATE:                20, // U
+  EVENT_START_TIME:          21, // V
+  EVENT_END_TIME:            22, // W
 };
 
 const STATUS = {
@@ -130,12 +141,22 @@ Your job is ONLY to extract/generate the following missing fields:
 9. Remote: Yes or No.
 10. UK Wide: Yes or No.
 11. Region: One or more from: North East, North West, Yorkshire and the Humber, East Midlands, West Midlands, East of England, London, South East, South West, Wales, Scotland, Northern Ireland. If remote or UK-wide select all. If in-person at a specific location select ONLY that region.
+12. Salary: The pay/stipend/cost to the applicant, as stated (e.g. '£20,000', 'Unpaid', 'Free'). Applies to every opportunity type.
+13. Length of course: ONLY if Opportunity type is "Course" — e.g. '6 weeks'. Empty string for any other type.
+14. Paid or free (course): ONLY if Opportunity type is "Course" — e.g. 'Free', 'Paid'. Empty string for any other type.
+15. Course location: ONLY if Opportunity type is "Course" — e.g. online, or a specific venue if different from the general Location field. Empty string for any other type.
+16. Length of apprenticeship: ONLY if Opportunity type is "Apprenticeship" — e.g. '18 months'. Empty string for any other type.
+17. Level of apprenticeship: ONLY if Opportunity type is "Apprenticeship" — e.g. 'Level 4'. Empty string for any other type.
+18. Event date: ONLY if Opportunity type is "Event" — the date the event takes place, DD/MM/YYYY if determinable. Empty string for any other type.
+19. Event start time: ONLY if Opportunity type is "Event" — e.g. '6:00pm'. Empty string for any other type.
+20. Event end time: ONLY if Opportunity type is "Event" — e.g. '9:00pm'. Empty string for any other type.
 
 CRITICAL RULES:
 - If you cannot determine a value, write 'Unclear' — never guess or fabricate.
 - For demographics: only narrow from the defaults if the opportunity explicitly targets specific groups.
 - For disability: if neurodivergent/autistic/ADHD/dyslexic is mentioned → 'Neurodiversity'. If wheelchair/blind/deaf → 'Physical disability'. If mental health/anxiety/depression → 'Mental health'. If chronic illness → 'Chronic illness'. Only use 'All disability' when nothing specific is mentioned.
 - For gender: if explicitly for women → She/Her. If LGBTQIA+ related → LGBTQIA+. Only 'All genders & preferences' when nothing specific.
+- For fields 13-20: these are type-specific. If the opportunity type given to you doesn't match the field's type, return an empty string '' for it — never 'Unclear', never a value borrowed from a different type.
 
 Output ONLY valid JSON. No markdown, no explanation, no extra text.`;
 
@@ -164,7 +185,16 @@ Return JSON with exactly these keys:
   "economicBackground": ["..."],
   "remote": "Yes" or "No",
   "ukWide": "Yes" or "No",
-  "region": ["..."]
+  "region": ["..."],
+  "salary": "...",
+  "lengthOfCourse": "...",
+  "paidOrFreeCourses": "...",
+  "courseLocation": "...",
+  "lengthOfApprenticeship": "...",
+  "levelOfApprenticeship": "...",
+  "eventDate": "...",
+  "eventStartTime": "...",
+  "eventEndTime": "..."
 }`;
 }
 
@@ -207,8 +237,7 @@ function formatDemographics(extracted) {
 // to the real portal's public description — it used to also bundle Category/Application
 // deadline/Location/Link into the same text, which now duplicate the review app's own
 // dedicated fields for those and were never meant to be public-facing copy. Just the clean
-// description now. (extracted.anythingElseImportant has no dedicated Queue sheet column yet,
-// so it doesn't currently survive this round-trip — needs its own column in a future pass.)
+// description now. `anythingElseImportant` gets its own column (N) instead — see processQueue().
 function formatDraftedContent(row, extracted) {
   return (extracted.description || '').trim();
 }
@@ -224,7 +253,7 @@ async function processQueue() {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${QUEUE_TAB}!A2:M1000`,
+      range: `${QUEUE_TAB}!A2:W1000`,
     });
     rows = res.data.values || [];
   } catch (err) {
@@ -288,10 +317,16 @@ async function processQueue() {
       const finalOppName    = `${baseName}-${dateSuffix}-${timeSuffix}${pageAccessFailed ? ' [Check]' : ''}`;
       const draftedDate     = now.toLocaleDateString('en-GB');
 
+      // Enforced in code, not just prompted — only persist type-specific fields for the
+      // row's actual opportunity type, regardless of what Claude returned.
+      const isCourse        = rowData.opportunity === 'Course';
+      const isApprenticeship = rowData.opportunity === 'Apprenticeship';
+      const isEvent          = rowData.opportunity === 'Event';
+
       // Write results back to the sheet row
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${QUEUE_TAB}!A${rowIndex}:M${rowIndex}`,
+        range: `${QUEUE_TAB}!A${rowIndex}:W${rowIndex}`,
         valueInputOption: 'RAW',
         requestBody: {
           values: [[
@@ -308,6 +343,16 @@ async function processQueue() {
             demographics,                      // K - Demographics
             draftedDate,                       // L - Drafted Date
             '',                                // M - Error Notes (clear any old errors)
+            extracted.anythingElseImportant || '',                        // N
+            extracted.salary || '',                                       // O
+            isCourse ? (extracted.lengthOfCourse || '') : '',             // P
+            isCourse ? (extracted.paidOrFreeCourses || '') : '',          // Q
+            isCourse ? (extracted.courseLocation || '') : '',             // R
+            isApprenticeship ? (extracted.lengthOfApprenticeship || '') : '', // S
+            isApprenticeship ? (extracted.levelOfApprenticeship || '') : '', // T
+            isEvent ? (extracted.eventDate || '') : '',                   // U
+            isEvent ? (extracted.eventStartTime || '') : '',              // V
+            isEvent ? (extracted.eventEndTime || '') : '',                // W
           ]],
         },
       });
@@ -320,13 +365,14 @@ async function processQueue() {
       // Mark as error and log the message
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${QUEUE_TAB}!A${rowIndex}:M${rowIndex}`,
+        range: `${QUEUE_TAB}!A${rowIndex}:W${rowIndex}`,
         valueInputOption: 'RAW',
         requestBody: {
           values: [[
             STATUS.TO_UPLOAD,     // A - Reset to To upload so it can be retried
-            ...Array(11).fill(''),
-            err.message,          // M - Error Notes
+            ...Array(11).fill(''), // B-L
+            err.message,           // M - Error Notes
+            ...Array(10).fill(''), // N-W
           ]],
         },
       });
