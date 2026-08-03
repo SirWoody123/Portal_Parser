@@ -1350,6 +1350,75 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
+// TEMPORARY — one-off admin endpoint to append columns N-W to the live Queue tab
+// (Anything Else Important, Salary, Course x3, Apprenticeship x2, Event x3).
+// Additive only, aborts if N1:Z5 already has data. Remove after use.
+app.post('/admin/add-queue-columns-nw', async (req, res) => {
+  const NEW_HEADERS = [
+    'Anything Else Important', 'Salary',
+    'Length of Course', 'Paid or Free (Course)', 'Course Location',
+    'Length of Apprenticeship', 'Level of Apprenticeship',
+    'Event Date', 'Event Start Time', 'Event End Time',
+  ];
+  try {
+    const sheets = getSheetsClient();
+    const before = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!N1:Z5',
+    });
+    const beforeValues = before.data.values || [];
+    if (beforeValues.length > 0) {
+      return res.status(409).json({ error: 'N1:Z5 is not empty', existing: beforeValues });
+    }
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!N1:W1',
+      valueInputOption: 'RAW',
+      requestBody: { values: [NEW_HEADERS] },
+    });
+
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: QUEUE_SPREADSHEET_ID });
+    const sheet = meta.data.sheets.find(s => s.properties.title === 'Queue');
+    const sheetId = sheet.properties.sheetId;
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      requestBody: {
+        requests: [
+          {
+            repeatCell: {
+              range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 13, endColumnIndex: 23 },
+              cell: {
+                userEnteredFormat: {
+                  textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } },
+                  backgroundColor: { red: 0.204, green: 0.204, blue: 0.204 },
+                },
+              },
+              fields: 'userEnteredFormat(textFormat,backgroundColor)',
+            },
+          },
+          ...Array.from({ length: 10 }, (_, i) => ({
+            updateDimensionProperties: {
+              range: { sheetId, dimension: 'COLUMNS', startIndex: 13 + i, endIndex: 14 + i },
+              properties: { pixelSize: 180 },
+              fields: 'pixelSize',
+            },
+          })),
+        ],
+      },
+    });
+
+    const after = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!A1:W1',
+    });
+    res.json({ ok: true, headerRow: after.data.values[0] });
+  } catch (err) {
+    console.error('❌ /admin/add-queue-columns-nw error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
