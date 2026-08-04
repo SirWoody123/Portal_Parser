@@ -1417,6 +1417,32 @@ app.post('/admin/add-demographics-columns', async (req, res) => {
   }
 });
 
+// TEMPORARY — seeds a single disposable "To upload" Event test row, to verify the
+// demographics-column split against real content. Remove after use.
+app.post('/admin/seed-demographics-test-row', async (req, res) => {
+  try {
+    const sheets = getSheetsClient();
+    const colA = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!A:A',
+    });
+    const nextRow = (colA.data.values || []).length + 1;
+    const row = ['To upload', '', 'Craft', 'Event', '23/08/2026',
+      'https://www.eventbrite.co.uk/e/hard-labour-badgemaking-workshop-tickets-1994236831045',
+      'Glasgow', ''];
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: `Queue!A${nextRow}:H${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [row] },
+    });
+    res.json({ ok: true, rowIndex: nextRow });
+  } catch (err) {
+    console.error('❌ /admin/seed-demographics-test-row error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
