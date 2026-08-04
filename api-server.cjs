@@ -1353,6 +1353,9 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
+    // Railway sets this automatically — lets us confirm which commit is actually deployed
+    // without needing dashboard/CLI access, useful whenever a deploy seems stuck/delayed.
+    gitCommit: process.env.RAILWAY_GIT_COMMIT_SHA || null,
     config: {
       port: config.port,
       firebaseProject: config.firebaseProjectUrl
