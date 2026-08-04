@@ -196,6 +196,7 @@ const cors = require('cors');
 const admin = require('firebase-admin');
 const { readFileSync } = require('fs');
 const { join } = require('path');
+const { getLocationCoordinates } = require('./ukLocationGeocode.cjs');
 
 console.log('Script start');
 
@@ -1201,15 +1202,20 @@ const transformData = (data) => {
       }
     } : {}),
     
-    // GEOLOCATION FEATURE: Add _geoloc field for location-based filtering
-    ...(data._geoloc && typeof data._geoloc === 'object' && 
-        typeof data._geoloc.lat === 'number' && 
-        typeof data._geoloc.lng === 'number' ? {
-      _geoloc: {
-        lat: data._geoloc.lat,
-        lng: data._geoloc.lng
+    // GEOLOCATION FEATURE: prefers an explicitly provided _geoloc (e.g. from the legacy
+    // /opportunities text-parser path), else derives one from the Location field via the same
+    // UK town/city/region dictionary the old Apps Script pipeline used before this repo moved
+    // to the Google Sheets Queue + review app — that lookup was never ported over, so every
+    // opportunity published since has gone out with no map pin. Restored via
+    // ukLocationGeocode.cjs (a faithful port, not a rewrite).
+    ...(() => {
+      if (data._geoloc && typeof data._geoloc === 'object' &&
+          typeof data._geoloc.lat === 'number' && typeof data._geoloc.lng === 'number') {
+        return { _geoloc: { lat: data._geoloc.lat, lng: data._geoloc.lng } };
       }
-    } : {})
+      const derived = getLocationCoordinates(data.location);
+      return derived ? { _geoloc: derived } : {};
+    })()
   };
 };
 
