@@ -1382,56 +1382,26 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
-// TEMPORARY — appends a single real "To upload" row to the Queue tab at the user's request.
-// Remove after use.
-app.post('/admin/add-queue-row', async (req, res) => {
+// TEMPORARY — read/delete a Firestore announcements doc by id, for cleaning up the map/geoloc
+// test docs. Remove after use.
+app.get('/admin/find-doc', async (req, res) => {
+  const { id, type } = req.query;
+  if (!id || !type) return res.status(400).json({ error: 'id and type query params required' });
   try {
-    const sheets = getSheetsClient();
-    const colA = await sheets.spreadsheets.values.get({
-      spreadsheetId: QUEUE_SPREADSHEET_ID,
-      range: 'Queue!A:A',
-    });
-    const nextRow = (colA.data.values || []).length + 1;
-    const { industry, opportunity, date, link, location } = req.body;
-    const row = ['To upload', '', industry || '', opportunity || '', date || '', link || '', location || '', ''];
-    await sheets.spreadsheets.values.update({
-      spreadsheetId: QUEUE_SPREADSHEET_ID,
-      range: `Queue!A${nextRow}:H${nextRow}`,
-      valueInputOption: 'RAW',
-      requestBody: { values: [row] },
-    });
-    res.json({ ok: true, rowIndex: nextRow });
+    const doc = await db.collection('announcements').doc(type).collection('list').doc(id).get();
+    if (!doc.exists) return res.status(404).json({ error: 'not found' });
+    res.json({ id: doc.id, data: doc.data() });
   } catch (err) {
-    console.error('❌ /admin/add-queue-row error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// TEMPORARY — read-only: sample real Event docs (any source) to see the actual shape of
-// eventTime/eventTimeEnd/eventDate on already-working real content. Remove after use.
-app.get('/admin/sample-event-docs', async (req, res) => {
-  const limit = Number(req.query.limit) || 300;
+app.delete('/admin/delete-doc', async (req, res) => {
+  const { id, type } = req.query;
+  if (!id || !type) return res.status(400).json({ error: 'id and type query params required' });
   try {
-    const snap = await db.collection('announcements').doc('events').collection('list').limit(limit).get();
-    const samples = [];
-    snap.docs.forEach(d => {
-      const data = d.data();
-      if (data.eventTime || data.eventTimeEnd) {
-        samples.push({
-          id: d.id,
-          title: data.title || data.eventName,
-          editor: data.editor,
-          eventDate: data.eventDate,
-          eventDateType: typeof data.eventDate,
-          eventTime: data.eventTime,
-          eventTimeType: typeof data.eventTime,
-          eventTimeIsObject: data.eventTime && typeof data.eventTime === 'object' ? Object.keys(data.eventTime) : null,
-          eventTimeEnd: data.eventTimeEnd,
-          eventTimeEndType: typeof data.eventTimeEnd,
-        });
-      }
-    });
-    res.json({ count: samples.length, samples: samples.slice(0, 15) });
+    await db.collection('announcements').doc(type).collection('list').doc(id).delete();
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
