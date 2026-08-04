@@ -1385,9 +1385,15 @@ app.get('/debug-creds', (req, res) => {
 // TEMPORARY — read-only: find a doc by title substring, to inspect what value the real
 // portal's own time picker wrote after the user manually fixed one row. Remove after use.
 app.get('/admin/find-doc-by-title', async (req, res) => {
-  const { title, type } = req.query;
-  if (!title || !type) return res.status(400).json({ error: 'title and type query params required' });
+  const { title, type, id } = req.query;
+  if (!type) return res.status(400).json({ error: 'type query param required' });
   try {
+    if (id) {
+      const doc = await db.collection('announcements').doc(type).collection('list').doc(id).get();
+      if (!doc.exists) return res.status(404).json({ error: 'not found' });
+      return res.json({ count: 1, matches: [{ id: doc.id, data: doc.data() }] });
+    }
+    if (!title) return res.status(400).json({ error: 'title or id query param required' });
     const snap = await db.collection('announcements').doc(type).collection('list').limit(1000).get();
     const matches = [];
     snap.docs.forEach(d => {
