@@ -20,7 +20,8 @@ const SPREADSHEET_ID = '1N05E3Tahh9APAA-vysvD3HlP3ChISTgPwao9Te5mW18';
 const QUEUE_TAB = 'Queue';
 
 // Column indices (0-based), matching the header row written by setup-queue-tab.cjs
-// (N-W added by the one-off /admin/add-queue-columns-nw endpoint)
+// (N-W added by the one-off /admin/add-queue-columns-nw endpoint, X-AE by
+// /admin/add-demographics-columns)
 const COL = {
   STATUS:                    0,  // A
   COMPANY_ID:                1,  // B
@@ -45,6 +46,14 @@ const COL = {
   EVENT_DATE:                20, // U
   EVENT_START_TIME:          21, // V
   EVENT_END_TIME:            22, // W
+  AGE:                       23, // X
+  GENDER:                    24, // Y
+  ETHNICITY:                 25, // Z
+  DISABILITY:                26, // AA
+  ECONOMIC_BACKGROUND:       27, // AB
+  REMOTE:                    28, // AC
+  UK_WIDE:                   29, // AD
+  REGION:                    30, // AE
 };
 
 const STATUS = {
@@ -302,7 +311,7 @@ async function processQueue() {
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${QUEUE_TAB}!A2:W1000`,
+      range: `${QUEUE_TAB}!A2:AE1000`,
     });
     rows = res.data.values || [];
   } catch (err) {
@@ -377,7 +386,7 @@ async function processQueue() {
       // Write results back to the sheet row
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${QUEUE_TAB}!A${rowIndex}:W${rowIndex}`,
+        range: `${QUEUE_TAB}!A${rowIndex}:AE${rowIndex}`,
         valueInputOption: 'RAW',
         requestBody: {
           values: [[
@@ -391,7 +400,7 @@ async function processQueue() {
             row[COL.PUBLISH_DATE] || '',       // H - Publish Date (unchanged)
             finalOppName,                      // I - Opp Name
             draftedContent,                    // J - Drafted Content
-            demographics,                      // K - Demographics
+            demographics,                      // K - Demographics (readable summary, kept for quick sheet-side reading)
             draftedDate,                       // L - Drafted Date
             '',                                // M - Error Notes (clear any old errors)
             extracted.anythingElseImportant || '',                        // N
@@ -404,6 +413,14 @@ async function processQueue() {
             isEvent ? (extracted.eventDate || '') : '',                   // U
             isEvent ? (extracted.eventStartTime || '') : '',              // V
             isEvent ? (extracted.eventEndTime || '') : '',                // W
+            (extracted.age || []).join(', '),                             // X
+            (extracted.genderSexualPreference || []).join(', '),          // Y
+            (extracted.ethnicity || []).join(', '),                       // Z
+            (extracted.disability || []).join(', '),                      // AA
+            (extracted.economicBackground || []).join(', '),              // AB
+            extracted.remote || 'No',                                     // AC
+            extracted.ukWide || 'No',                                     // AD
+            (extracted.region || []).join(', '),                          // AE
           ]],
         },
       });
@@ -416,14 +433,14 @@ async function processQueue() {
       // Mark as error and log the message
       await sheets.spreadsheets.values.update({
         spreadsheetId: SPREADSHEET_ID,
-        range: `${QUEUE_TAB}!A${rowIndex}:W${rowIndex}`,
+        range: `${QUEUE_TAB}!A${rowIndex}:AE${rowIndex}`,
         valueInputOption: 'RAW',
         requestBody: {
           values: [[
             STATUS.TO_UPLOAD,     // A - Reset to To upload so it can be retried
             ...Array(11).fill(''), // B-L
             err.message,           // M - Error Notes
-            ...Array(10).fill(''), // N-W
+            ...Array(18).fill(''), // N-AE
           ]],
         },
       });

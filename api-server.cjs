@@ -1350,13 +1350,80 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
+// TEMPORARY — one-off admin endpoint to append columns X-AE to the live Queue tab
+// (Age, Gender & Sexual Preference, Ethnicity, Disability, Economic Background, Remote,
+// UK Wide, Region). Additive only, aborts if X1:AZ5 already has data. Remove after use.
+app.post('/admin/add-demographics-columns', async (req, res) => {
+  const NEW_HEADERS = [
+    'Age', 'Gender & Sexual Preference', 'Ethnicity', 'Disability', 'Economic Background',
+    'Remote', 'UK Wide', 'Region',
+  ];
+  try {
+    const sheets = getSheetsClient();
+    const before = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!X1:AZ5',
+    });
+    const beforeValues = before.data.values || [];
+    if (beforeValues.length > 0) {
+      return res.status(409).json({ error: 'X1:AZ5 is not empty', existing: beforeValues });
+    }
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!X1:AE1',
+      valueInputOption: 'RAW',
+      requestBody: { values: [NEW_HEADERS] },
+    });
+
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: QUEUE_SPREADSHEET_ID });
+    const sheet = meta.data.sheets.find(s => s.properties.title === 'Queue');
+    const sheetId = sheet.properties.sheetId;
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      requestBody: {
+        requests: [
+          {
+            repeatCell: {
+              range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 23, endColumnIndex: 31 },
+              cell: {
+                userEnteredFormat: {
+                  textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } },
+                  backgroundColor: { red: 0.204, green: 0.204, blue: 0.204 },
+                },
+              },
+              fields: 'userEnteredFormat(textFormat,backgroundColor)',
+            },
+          },
+          ...Array.from({ length: 8 }, (_, i) => ({
+            updateDimensionProperties: {
+              range: { sheetId, dimension: 'COLUMNS', startIndex: 23 + i, endIndex: 24 + i },
+              properties: { pixelSize: 220 },
+              fields: 'pixelSize',
+            },
+          })),
+        ],
+      },
+    });
+
+    const after = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!A1:AE1',
+    });
+    res.json({ ok: true, headerRow: after.data.values[0] });
+  } catch (err) {
+    console.error('❌ /admin/add-demographics-columns error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: QUEUE_SPREADSHEET_ID,
-      range: 'Queue!A2:W1000',
+      range: 'Queue!A2:AE1000',
     });
 
     const rows = response.data.values || [];
@@ -1367,6 +1434,8 @@ app.get('/queue-review', async (req, res) => {
       LENGTH_OF_COURSE: 15, PAID_OR_FREE_COURSES: 16, COURSE_LOCATION: 17,
       LENGTH_OF_APPRENTICESHIP: 18, LEVEL_OF_APPRENTICESHIP: 19,
       EVENT_DATE: 20, EVENT_START_TIME: 21, EVENT_END_TIME: 22,
+      AGE: 23, GENDER: 24, ETHNICITY: 25, DISABILITY: 26, ECONOMIC_BACKGROUND: 27,
+      REMOTE: 28, UK_WIDE: 29, REGION: 30,
     };
     const opportunities = [];
 
@@ -1398,6 +1467,18 @@ app.get('/queue-review', async (req, res) => {
           eventDate: row[COL.EVENT_DATE] || '',
           eventStartTime: row[COL.EVENT_START_TIME] || '',
           eventEndTime: row[COL.EVENT_END_TIME] || '',
+          // Parsed server-side from the split X-AE columns, not the human-readable K string —
+          // the editor reads this directly, no client-side string parsing needed.
+          demographic: {
+            age: toArray(row[COL.AGE]),
+            genderSexualPreference: toArray(row[COL.GENDER]),
+            ethnicity: toArray(row[COL.ETHNICITY]),
+            disability: toArray(row[COL.DISABILITY]),
+            lowerSocioEconomicBackground: toArray(row[COL.ECONOMIC_BACKGROUND]),
+          },
+          remote: toBool(row[COL.REMOTE]),
+          ukWide: toBool(row[COL.UK_WIDE]),
+          region: toArray(row[COL.REGION]),
         });
       }
     });
