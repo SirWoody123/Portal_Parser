@@ -1350,6 +1350,33 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
+// TEMPORARY — read-only: list a sample of published docs (any source, not just ours) from
+// an announcements collection to see which location-related fields real content actually has
+// populated. Remove after use.
+app.get('/admin/sample-docs', async (req, res) => {
+  const type = req.query.type || 'announcements';
+  const limit = Number(req.query.limit) || 5;
+  try {
+    const snap = await db.collection('announcements').doc(type).collection('list').limit(limit).get();
+    const docs = snap.docs.map(d => {
+      const data = d.data();
+      return {
+        id: d.id,
+        title: data.title,
+        location: data.location,
+        locationName: data.locationName,
+        regionLocation: data.regionLocation,
+        _geoloc: data._geoloc,
+        author: data.author,
+        editor: data.editor,
+      };
+    });
+    res.json({ count: docs.length, docs });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
