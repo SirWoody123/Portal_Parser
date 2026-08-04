@@ -1716,6 +1716,27 @@ function parseDateOnly(raw) {
   return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
 }
 
+// Mirrors the review app's normalizeTimeInput() (src/calendarUtils.js) — must stay in sync.
+// The real portal's Event start/end time fields are native time pickers expecting strict
+// 24-hour "HH:MM"; anything else renders as a bare "Invalid date" there. Used here so the
+// scheduler's publish path (which never passes through the editor's own display normalizer)
+// still sends a clean value even for a row scheduled before this fix, or one saved without
+// the copywriter ever touching the time fields.
+function normalizeTimeInput(raw) {
+  if (!raw) return '';
+  const trimmed = String(raw).trim();
+  if (/^\d{2}:\d{2}$/.test(trimmed)) return trimmed;
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)?$/i);
+  if (!match) return '';
+  let hours = Number(match[1]);
+  const minutes = match[2];
+  const meridiem = (match[3] || '').toLowerCase().replace(/\./g, '');
+  if (meridiem === 'pm' && hours !== 12) hours += 12;
+  if (meridiem === 'am' && hours === 12) hours = 0;
+  if (hours > 23) return '';
+  return `${String(hours).padStart(2, '0')}:${minutes}`;
+}
+
 function normalizeDateForBackend(raw) {
   if (!raw) return '';
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(raw)) return raw;
@@ -1748,8 +1769,8 @@ function buildServerPublishPayload(opp) {
     status: 'live',
     eventDate: normalizeDateForBackend(opp.eventDate),
     eventName: opp.title || '',
-    eventTime: opp.eventStartTime || '',
-    eventTimeEnd: opp.eventEndTime || '',
+    eventTime: normalizeTimeInput(opp.eventStartTime),
+    eventTimeEnd: normalizeTimeInput(opp.eventEndTime),
     demographic: {
       age: currentDemo.age || fallbackDemo.age,
       genderSexualPreference: currentDemo.genderSexualPreference || fallbackDemo.genderSexualPreference,
