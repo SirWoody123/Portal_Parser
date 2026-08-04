@@ -1382,6 +1382,26 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
+// TEMPORARY — read-only: find a doc by title substring, to inspect what value the real
+// portal's own time picker wrote after the user manually fixed one row. Remove after use.
+app.get('/admin/find-doc-by-title', async (req, res) => {
+  const { title, type } = req.query;
+  if (!title || !type) return res.status(400).json({ error: 'title and type query params required' });
+  try {
+    const snap = await db.collection('announcements').doc(type).collection('list').limit(1000).get();
+    const matches = [];
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if ((data.title || '').includes(title)) {
+        matches.push({ id: d.id, data });
+      }
+    });
+    res.json({ count: matches.length, matches });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
