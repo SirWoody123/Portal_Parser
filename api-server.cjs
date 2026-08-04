@@ -849,6 +849,23 @@ const parseTextFile = (textContent) => {
   return result;
 };
 
+const ALL_REGIONS = [
+  'North East', 'North West', 'Yorkshire and the Humber', 'East Midlands', 'West Midlands',
+  'East of England', 'London', 'South East', 'South West', 'Wales', 'Scotland', 'Northern Ireland',
+];
+
+// queue-processor.cjs's extraction prompt selects every region when an opportunity is
+// remote/UK-wide ("select all") — that's "not tied to a place", not a genuine multi-region
+// span, so it shouldn't produce a regionLocation. A real, specific region (or the small
+// handful the real portal itself sometimes stores, e.g. "North East, North West") should.
+function deriveRegionLocation(regionArray) {
+  const regions = Array.isArray(regionArray) ? regionArray.filter(Boolean) : [];
+  if (regions.length === 0) return null;
+  const isSelectAll = ALL_REGIONS.every(r => regions.includes(r));
+  if (isSelectAll) return null;
+  return regions.join(', ');
+}
+
 /**
  * Transforms data from the standalone parser format to the master portal format.
  * @param {Object} data The data from the standalone parser.
@@ -1139,9 +1156,15 @@ const transformData = (data) => {
     eventTimeEnd: data.eventTimeEnd || '',
     expiredDate: data.expiredDate || '',
     location: data.location || '',
-    locationName: data.locationName || '',
+    // The real portal's own create/update code always blanks `location` on save (confirmed via
+    // a live sample of real published docs) — `locationName` is the field that's actually
+    // displayed. Was never set by this pipeline before, so every opportunity we've published
+    // has shown with no location text. Fixed here.
+    locationName: data.locationName || data.location || '',
     notificated: data.notificated ?? false,
-    regionLocation: data.regionLocation ?? null,
+    // Also confirmed via live sample: regionLocation is a plain string (sometimes multiple
+    // regions comma-joined), not a geo-ID — matches our own Region extraction directly.
+    regionLocation: data.regionLocation ?? deriveRegionLocation(data.region) ?? null,
     remote: data.remote ?? false,
     republish: data.republish ?? false,
     supportSettings: Array.isArray(data.supportSettings) ? data.supportSettings : [],
@@ -1348,36 +1371,6 @@ app.get('/debug-creds', (req, res) => {
     hasEmail: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     privateKeyStart: (process.env.GOOGLE_PRIVATE_KEY || '').substring(0, 50),
   });
-});
-
-// TEMPORARY — read-only: scan a batch of published docs (both content types, any source) and
-// group by regionLocation, to build a region-name -> _geoloc polygon lookup from real data.
-// Remove after use.
-app.get('/admin/region-geoloc-sample', async (req, res) => {
-  const limit = Number(req.query.limit) || 400;
-  try {
-    const byRegion = {};
-    for (const type of ['announcements', 'events']) {
-      const snap = await db.collection('announcements').doc(type).collection('list').limit(limit).get();
-      snap.docs.forEach(d => {
-        const data = d.data();
-        const region = data.regionLocation;
-        if (!region) return;
-        if (!byRegion[region]) byRegion[region] = [];
-        if (byRegion[region].length < 2) {
-          byRegion[region].push({
-            id: d.id,
-            title: data.title,
-            geolocLength: Array.isArray(data._geoloc) ? data._geoloc.length : (data._geoloc ? 'point' : null),
-            _geoloc: data._geoloc,
-          });
-        }
-      });
-    }
-    res.json({ regionsFound: Object.keys(byRegion), byRegion });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 });
 
 app.get('/queue-review', async (req, res) => {
