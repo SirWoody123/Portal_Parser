@@ -1407,6 +1407,36 @@ app.post('/admin/add-queue-row', async (req, res) => {
   }
 });
 
+// TEMPORARY — read-only: sample real Event docs (any source) to see the actual shape of
+// eventTime/eventTimeEnd/eventDate on already-working real content. Remove after use.
+app.get('/admin/sample-event-docs', async (req, res) => {
+  const limit = Number(req.query.limit) || 300;
+  try {
+    const snap = await db.collection('announcements').doc('events').collection('list').limit(limit).get();
+    const samples = [];
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (data.eventTime || data.eventTimeEnd) {
+        samples.push({
+          id: d.id,
+          title: data.title || data.eventName,
+          editor: data.editor,
+          eventDate: data.eventDate,
+          eventDateType: typeof data.eventDate,
+          eventTime: data.eventTime,
+          eventTimeType: typeof data.eventTime,
+          eventTimeIsObject: data.eventTime && typeof data.eventTime === 'object' ? Object.keys(data.eventTime) : null,
+          eventTimeEnd: data.eventTimeEnd,
+          eventTimeEndType: typeof data.eventTimeEnd,
+        });
+      }
+    });
+    res.json({ count: samples.length, samples: samples.slice(0, 15) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
