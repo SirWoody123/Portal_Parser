@@ -121,13 +121,62 @@ async function fetchUrlContent(url) {
   }
 }
 
+// ─── Clean fetched HTML before sending to Claude ─────────────────────────────
+
+// Many source sites (Eventbrite, job boards) embed exact machine-readable event/job
+// data as schema.org JSON-LD for SEO — startDate/endDate/offers.price etc. Pull it out
+// and surface it separately so it isn't buried in 30k chars of raw markup noise.
+function extractStructuredData(html) {
+  const blocks = [];
+  const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = re.exec(html)) !== null) {
+    const raw = match[1].trim();
+    if (raw) blocks.push(raw);
+  }
+  return blocks;
+}
+
+// Strips tags/scripts/styles down to visible text — same underlying content survives,
+// but the char budget sent to Claude stops being ~80% CSS/JS noise.
+function stripHtmlNoise(html) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;|&apos;/gi, "'")
+    .replace(/&#x27;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cleanPageContent(html) {
+  if (!html) return '';
+  const structuredBlocks = extractStructuredData(html);
+  const visibleText = stripHtmlNoise(html);
+  if (structuredBlocks.length === 0) return visibleText;
+  return [
+    'STRUCTURED DATA FOUND ON PAGE (schema.org JSON-LD — treat as ground truth for dates/times/price when present, it is the same data search engines read):',
+    structuredBlocks.join('\n---\n'),
+    '',
+    'VISIBLE PAGE TEXT:',
+    visibleText,
+  ].join('\n');
+}
+
 // ─── Claude extraction ────────────────────────────────────────────────────────
 
 const CLAUDE_SYSTEM_PROMPT = `You are a copywriting assistant trained to extract key information for creative career opportunities for young people aged 16–25.
 
 You will be given:
 - Pre-verified fields (industry, opportunity type, deadline, location) — treat these as FIXED. Do NOT re-extract or change them.
-- The raw webpage content of the opportunity.
+- The webpage content of the opportunity, with HTML markup stripped down to text. If the page embeds schema.org structured data (JSON-LD — the same machine-readable data search engines index), it appears first in a clearly labelled STRUCTURED DATA section before the visible text. When present, treat it as ground truth for exact dates, times, and prices (e.g. its startDate/endDate/offers.price fields) rather than inferring from prose — it's more reliable than free text.
 
 Your job is ONLY to extract/generate the following missing fields:
 1. Opp Name: A friendly name, 2–4 words, hyphen-separated. Must include something unique — prioritise company/brand/venue name. e.g. 'BBC-Writing-Internship', 'Roundhouse-Music-Course'. Never use generic names like 'Creative-Opportunity'.
@@ -141,15 +190,15 @@ Your job is ONLY to extract/generate the following missing fields:
 9. Remote: Yes or No.
 10. UK Wide: Yes or No.
 11. Region: One or more from: North East, North West, Yorkshire and the Humber, East Midlands, West Midlands, East of England, London, South East, South West, Wales, Scotland, Northern Ireland. If remote or UK-wide select all. If in-person at a specific location select ONLY that region.
-12. Salary: The pay/stipend/cost to the applicant, as stated (e.g. '£20,000', 'Unpaid', 'Free'). Applies to every opportunity type.
+12. Salary: The pay/stipend/cost to the applicant, as stated (e.g. '£20,000', 'Unpaid', 'Free'). Applies to every opportunity type. Check structured data's offers/price fields first if present.
 13. Length of course: ONLY if Opportunity type is "Course" — e.g. '6 weeks'. Empty string for any other type.
 14. Paid or free (course): ONLY if Opportunity type is "Course" — e.g. 'Free', 'Paid'. Empty string for any other type.
 15. Course location: ONLY if Opportunity type is "Course" — e.g. online, or a specific venue if different from the general Location field. Empty string for any other type.
 16. Length of apprenticeship: ONLY if Opportunity type is "Apprenticeship" — e.g. '18 months'. Empty string for any other type.
 17. Level of apprenticeship: ONLY if Opportunity type is "Apprenticeship" — e.g. 'Level 4'. Empty string for any other type.
-18. Event date: ONLY if Opportunity type is "Event" — the date the event takes place, DD/MM/YYYY if determinable. Empty string for any other type.
-19. Event start time: ONLY if Opportunity type is "Event" — e.g. '6:00pm'. Empty string for any other type.
-20. Event end time: ONLY if Opportunity type is "Event" — e.g. '9:00pm'. Empty string for any other type.
+18. Event date: ONLY if Opportunity type is "Event" — the date the event takes place, DD/MM/YYYY if determinable. Check structured data's startDate first if present. Empty string for any other type.
+19. Event start time: ONLY if Opportunity type is "Event" — e.g. '6:00pm'. Check structured data's startDate first if present. Empty string for any other type.
+20. Event end time: ONLY if Opportunity type is "Event" — e.g. '9:00pm'. Check structured data's endDate first if present. Empty string for any other type.
 
 CRITICAL RULES:
 - If you cannot determine a value, write 'Unclear' — never guess or fabricate.
@@ -287,8 +336,10 @@ async function processQueue() {
     });
 
     try {
-      // Fetch page content
+      // Fetch page content and strip it down to text (+ any schema.org structured
+      // data) before it eats into the char budget Claude actually reads.
       const pageContent = link ? await fetchUrlContent(link) : null;
+      const cleanedContent = pageContent ? cleanPageContent(pageContent) : null;
 
       // Build row object for Claude
       const rowData = {
@@ -297,7 +348,7 @@ async function processQueue() {
         date:        (row[COL.DATE] || '').trim(),
         link,
         location:    (row[COL.LOCATION] || '').trim(),
-        pageContent: pageContent ? pageContent.substring(0, 30000) : '', // cap at 30k chars
+        pageContent: cleanedContent ? cleanedContent.substring(0, 30000) : '', // cap at 30k chars
       };
 
       // Call Claude
