@@ -1350,6 +1350,38 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
+// TEMPORARY — seeds a single disposable "To upload" Event test row from a real Eventbrite
+// URL, to verify the HTML-cleaning + structured-data extraction changes against real content.
+// Remove after use.
+app.post('/admin/seed-content-quality-test-row', async (req, res) => {
+  try {
+    const sheets = getSheetsClient();
+    const colA = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!A:A',
+    });
+    const nextRow = (colA.data.values || []).length + 1;
+
+    // Real, currently-live Eventbrite listing confirmed (via raw fetch) to embed
+    // schema.org JSON-LD with startDate 2026-08-23T14:00 / endDate 2026-08-23T16:00 / price 0.
+    const row = ['To upload', '', 'Craft', 'Event', '23/08/2026',
+      'https://www.eventbrite.co.uk/e/made-with-love-a-creative-fun-collage-workshop-tickets-1996301265825',
+      'Boscombe', ''];
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: `Queue!A${nextRow}:H${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [row] },
+    });
+
+    res.json({ ok: true, rowIndex: nextRow });
+  } catch (err) {
+    console.error('❌ /admin/seed-content-quality-test-row error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
