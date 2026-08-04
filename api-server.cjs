@@ -1350,6 +1350,36 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
+// TEMPORARY — read-only: scan a batch of published docs (both content types, any source) and
+// group by regionLocation, to build a region-name -> _geoloc polygon lookup from real data.
+// Remove after use.
+app.get('/admin/region-geoloc-sample', async (req, res) => {
+  const limit = Number(req.query.limit) || 400;
+  try {
+    const byRegion = {};
+    for (const type of ['announcements', 'events']) {
+      const snap = await db.collection('announcements').doc(type).collection('list').limit(limit).get();
+      snap.docs.forEach(d => {
+        const data = d.data();
+        const region = data.regionLocation;
+        if (!region) return;
+        if (!byRegion[region]) byRegion[region] = [];
+        if (byRegion[region].length < 2) {
+          byRegion[region].push({
+            id: d.id,
+            title: data.title,
+            geolocLength: Array.isArray(data._geoloc) ? data._geoloc.length : (data._geoloc ? 'point' : null),
+            _geoloc: data._geoloc,
+          });
+        }
+      });
+    }
+    res.json({ regionsFound: Object.keys(byRegion), byRegion });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
