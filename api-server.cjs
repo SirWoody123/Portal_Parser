@@ -1382,6 +1382,31 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
+// TEMPORARY — appends a single real "To upload" row to the Queue tab at the user's request.
+// Remove after use.
+app.post('/admin/add-queue-row', async (req, res) => {
+  try {
+    const sheets = getSheetsClient();
+    const colA = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: 'Queue!A:A',
+    });
+    const nextRow = (colA.data.values || []).length + 1;
+    const { companyId, industry, opportunity, date, link, location } = req.body;
+    const row = ['To upload', companyId || '', industry || '', opportunity || '', date || '', link || '', location || '', ''];
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: `Queue!A${nextRow}:H${nextRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [row] },
+    });
+    res.json({ ok: true, rowIndex: nextRow });
+  } catch (err) {
+    console.error('❌ /admin/add-queue-row error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
