@@ -1763,6 +1763,36 @@ function normalizeTimeInput(raw) {
   return `${String(hours).padStart(2, '0')}:${minutes}`;
 }
 
+// The UK is only ever on GMT (+0) or BST (+1) — checked at noon UTC on the given date to
+// sidestep the 1am transition-day edge case (DST changes happen at 1am UK time).
+function londonUtcOffsetMinutes(dateOnlyISO) {
+  const noonUTC = new Date(`${dateOnlyISO}T12:00:00.000Z`);
+  const londonHour = Number(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London', hour: 'numeric', hour12: false,
+  }).format(noonUTC));
+  return londonHour === 13 ? 60 : 0;
+}
+
+// Combines an already-normalized date (normalizeDateForBackend()'s output, so DD/MM/YYYY and
+// every other source format is already handled — this only ever sees clean
+// "YYYY-MM-DDTHH:MM:SS.sssZ") with a "HH:MM" Europe/London wall-clock time into a full ISO
+// instant. Live-verified this is what the real portal's Event start/end time fields actually
+// need — a bare "HH:MM" string renders as "Invalid date" there even when syntactically valid
+// 24-hour (confirmed on a real published row). Watching the real portal's own time picker
+// write a value directly showed it always stores a *full* timestamp — using today's date with
+// whichever hour/minute was picked — so only the time-of-day portion is actually meaningful to
+// it, but it still needs a genuinely parseable full instant, not a bare time.
+function combineLondonDateAndTime(normalizedDateISO, timeRaw) {
+  const time = normalizeTimeInput(timeRaw);
+  const dateOnlyISO = (normalizedDateISO || '').slice(0, 10);
+  if (!time || !/^\d{4}-\d{2}-\d{2}$/.test(dateOnlyISO)) return '';
+  const [hh, mm] = time.split(':').map(Number);
+  const offsetMinutes = londonUtcOffsetMinutes(dateOnlyISO);
+  const instant = new Date(`${dateOnlyISO}T00:00:00.000Z`);
+  instant.setUTCMinutes(instant.getUTCMinutes() + hh * 60 + mm - offsetMinutes);
+  return instant.toISOString();
+}
+
 function normalizeDateForBackend(raw) {
   if (!raw) return '';
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(raw)) return raw;
@@ -1795,8 +1825,8 @@ function buildServerPublishPayload(opp) {
     status: 'live',
     eventDate: normalizeDateForBackend(opp.eventDate),
     eventName: opp.title || '',
-    eventTime: normalizeTimeInput(opp.eventStartTime),
-    eventTimeEnd: normalizeTimeInput(opp.eventEndTime),
+    eventTime: combineLondonDateAndTime(normalizeDateForBackend(opp.eventDate), opp.eventStartTime),
+    eventTimeEnd: combineLondonDateAndTime(normalizeDateForBackend(opp.eventDate), opp.eventEndTime),
     demographic: {
       age: currentDemo.age || fallbackDemo.age,
       genderSexualPreference: currentDemo.genderSexualPreference || fallbackDemo.genderSexualPreference,
