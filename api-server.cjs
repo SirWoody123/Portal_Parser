@@ -1409,6 +1409,23 @@ app.post('/admin/add-queue-row', async (req, res) => {
 
 // TEMPORARY — read a Firestore announcements doc by id, to verify a fresh publish end-to-end.
 // Remove after use.
+app.post('/admin/reset-row-status', async (req, res) => {
+  const { rowIndex, status } = req.body;
+  if (!rowIndex || !status) return res.status(400).json({ error: 'rowIndex and status required' });
+  try {
+    const sheets = getSheetsClient();
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: `Queue!A${rowIndex}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [[status]] },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/admin/find-doc', async (req, res) => {
   const { id, type } = req.query;
   if (!id || !type) return res.status(400).json({ error: 'id and type query params required' });
