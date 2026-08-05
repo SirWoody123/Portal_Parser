@@ -1382,32 +1382,6 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
-// TEMPORARY — read/write a Firestore announcements doc by id, to test the exact stored
-// eventTime/eventTimeEnd shape needed to fix "Invalid date" on the real portal. Remove after use.
-app.get('/admin/find-doc', async (req, res) => {
-  const { id, type } = req.query;
-  if (!id || !type) return res.status(400).json({ error: 'id and type query params required' });
-  try {
-    const doc = await db.collection('announcements').doc(type).collection('list').doc(id).get();
-    if (!doc.exists) return res.status(404).json({ error: 'not found' });
-    res.json({ id: doc.id, data: doc.data() });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/admin/set-doc-fields', async (req, res) => {
-  const { id, type, fields } = req.body;
-  if (!id || !type || !fields) return res.status(400).json({ error: 'id, type, fields required' });
-  try {
-    await db.collection('announcements').doc(type).collection('list').doc(id).update(fields);
-    const doc = await db.collection('announcements').doc(type).collection('list').doc(id).get();
-    res.json({ ok: true, data: doc.data() });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
