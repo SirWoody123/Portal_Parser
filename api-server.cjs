@@ -295,6 +295,21 @@ function getSheetsClient() {
   });
 }
 
+// Read-only access to the "ERIC Image Bank" Drive folder, shared with this same service
+// account. Separate scope from Sheets access, same credentials.
+function getDriveClient() {
+  const { google } = require('googleapis');
+  return google.drive({
+    version: 'v3',
+    auth: new google.auth.GoogleAuth({
+      credentials: loadGoogleCredentials(),
+      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+    }),
+  });
+}
+
+const IMAGE_BANK_ROOT_FOLDER_ID = '1fiOLUVwTuJRstZZNTFzUHJ9-ID7nYCtq';
+
 /**
  * Parses text file format into JSON structure expected by transformData().
  * Handles key: value pairs and converts demographic text values into proper arrays.
@@ -1380,6 +1395,21 @@ app.get('/debug-creds', (req, res) => {
     hasEmail: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     privateKeyStart: (process.env.GOOGLE_PRIVATE_KEY || '').substring(0, 50),
   });
+});
+
+// TEMPORARY — verify the service account can read the shared Image Bank folder. Remove after use.
+app.get('/admin/test-drive-access', async (req, res) => {
+  try {
+    const drive = getDriveClient();
+    const folders = await drive.files.list({
+      q: `'${IMAGE_BANK_ROOT_FOLDER_ID}' in parents and trashed = false`,
+      fields: 'files(id, name, mimeType)',
+      pageSize: 50,
+    });
+    res.json({ ok: true, items: folders.data.files });
+  } catch (err) {
+    res.status(500).json({ error: err.message, stack: err.stack });
+  }
 });
 
 app.get('/queue-review', async (req, res) => {
