@@ -1397,22 +1397,6 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
-// TEMPORARY — verify the service account can read the shared Image Bank folder. Remove after use.
-app.get('/admin/test-drive-access', async (req, res) => {
-  try {
-    const drive = getDriveClient();
-    const folderId = req.query.folderId || IMAGE_BANK_ROOT_FOLDER_ID;
-    const folders = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false`,
-      fields: 'files(id, name, mimeType, thumbnailLink, imageMediaMetadata)',
-      pageSize: 50,
-    });
-    res.json({ ok: true, items: folders.data.files });
-  } catch (err) {
-    res.status(500).json({ error: err.message, stack: err.stack });
-  }
-});
-
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
@@ -1952,10 +1936,34 @@ app.post('/process-due-schedules', async (req, res) => {
   }
 });
 
-// Uploads a banner image and returns a public download URL in the same
+// Shared by /upload-banner (manual file upload) and /image-bank/select (Drive image bank) —
+// both end up with the same raw image bytes, just from a different source. Returns a public
+// download URL in the same
 // https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media&token={token}
 // format the real portal's own client-side saveAnnouncementsBanner() produces (api/announcements.ts),
 // so bannerPic values look identical regardless of which side wrote them.
+async function uploadImageBufferToStorage(buffer, contentType, filenameHint) {
+  const { randomUUID } = require('crypto');
+  const token = randomUUID();
+  // Matches api/announcements.ts's saveAnnouncementsBanner(): literal "announcements" folder,
+  // then {type}, then {companyId} — same fixedCompanyID used everywhere else in transformData().
+  const type = 'announcements';
+  const companyId = 'S7IvlojyomcTNsUXlrqC';
+  const safeFilename = (filenameHint || 'image').replace(/[^a-zA-Z0-9._-]/g, '');
+  const storagePath = `announcements/${type}/${companyId}/${Date.now()}${safeFilename}`;
+
+  const bucket = admin.storage().bucket();
+  const file = bucket.file(storagePath);
+  await file.save(buffer, {
+    metadata: {
+      contentType,
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+  });
+
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
+}
+
 app.post('/upload-banner', async (req, res) => {
   try {
     const { imageBase64, filename } = req.body;
@@ -1976,29 +1984,79 @@ app.post('/upload-banner', async (req, res) => {
       return res.status(400).json({ error: 'Image too large (max 8MB)' });
     }
 
-    const { randomUUID } = require('crypto');
-    const token = randomUUID();
-    // Matches api/announcements.ts's saveAnnouncementsBanner(): literal "announcements" folder,
-    // then {type}, then {companyId} — same fixedCompanyID used everywhere else in transformData().
-    const type = 'announcements';
-    const companyId = 'S7IvlojyomcTNsUXlrqC';
-    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '');
-    const storagePath = `announcements/${type}/${companyId}/${Date.now()}${safeFilename}`;
-
-    const bucket = admin.storage().bucket();
-    const file = bucket.file(storagePath);
-    await file.save(buffer, {
-      metadata: {
-        contentType,
-        metadata: { firebaseStorageDownloadTokens: token },
-      },
-    });
-
-    const url = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
+    const url = await uploadImageBufferToStorage(buffer, contentType, filename);
     res.json({ success: true, url });
   } catch (err) {
     console.error('❌ /upload-banner error:', err.message);
     res.status(500).json({ error: 'Failed to upload banner image', details: err.message });
+  }
+});
+
+// ─── Image Bank (Google Drive) ─────────────────────────────────────────────
+// Shared asset library the team already uses for banner images. The service account has
+// read-only access to this one folder (shared explicitly, not domain-wide) — see
+// IMAGE_BANK_ROOT_FOLDER_ID above.
+
+app.get('/image-bank/categories', async (req, res) => {
+  try {
+    const drive = getDriveClient();
+    const result = await drive.files.list({
+      q: `'${IMAGE_BANK_ROOT_FOLDER_ID}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: 'files(id, name)',
+      pageSize: 100,
+      orderBy: 'name',
+    });
+    res.json({ categories: result.data.files });
+  } catch (err) {
+    console.error('❌ /image-bank/categories error:', err.message);
+    res.status(500).json({ error: 'Failed to list image bank categories', details: err.message });
+  }
+});
+
+app.get('/image-bank/categories/:folderId/images', async (req, res) => {
+  try {
+    const drive = getDriveClient();
+    const result = await drive.files.list({
+      q: `'${req.params.folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+      fields: 'files(id, name, thumbnailLink, imageMediaMetadata)',
+      pageSize: 200,
+      orderBy: 'name',
+    });
+    res.json({ images: result.data.files });
+  } catch (err) {
+    console.error('❌ /image-bank/categories/:folderId/images error:', err.message);
+    res.status(500).json({ error: 'Failed to list images', details: err.message });
+  }
+});
+
+// Downloads the full-resolution file from Drive and re-uploads it through the same Storage
+// path as a manual upload, so bannerPic always looks the same regardless of source.
+app.post('/image-bank/select', async (req, res) => {
+  try {
+    const { fileId } = req.body;
+    if (!fileId || typeof fileId !== 'string') {
+      return res.status(400).json({ error: 'Invalid fileId' });
+    }
+
+    const drive = getDriveClient();
+    const meta = await drive.files.get({ fileId, fields: 'name, mimeType' });
+    const contentType = meta.data.mimeType || 'image/jpeg';
+
+    const fileRes = await drive.files.get(
+      { fileId, alt: 'media' },
+      { responseType: 'arraybuffer' }
+    );
+    const buffer = Buffer.from(fileRes.data);
+
+    if (buffer.length > 8 * 1024 * 1024) {
+      return res.status(400).json({ error: 'Image too large (max 8MB)' });
+    }
+
+    const url = await uploadImageBufferToStorage(buffer, contentType, meta.data.name);
+    res.json({ success: true, url });
+  } catch (err) {
+    console.error('❌ /image-bank/select error:', err.message);
+    res.status(500).json({ error: 'Failed to select image bank image', details: err.message });
   }
 });
 
