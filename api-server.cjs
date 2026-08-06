@@ -1401,9 +1401,10 @@ app.get('/debug-creds', (req, res) => {
 app.get('/admin/test-drive-access', async (req, res) => {
   try {
     const drive = getDriveClient();
+    const folderId = req.query.folderId || IMAGE_BANK_ROOT_FOLDER_ID;
     const folders = await drive.files.list({
-      q: `'${IMAGE_BANK_ROOT_FOLDER_ID}' in parents and trashed = false`,
-      fields: 'files(id, name, mimeType)',
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: 'files(id, name, mimeType, thumbnailLink, imageMediaMetadata)',
       pageSize: 50,
     });
     res.json({ ok: true, items: folders.data.files });
