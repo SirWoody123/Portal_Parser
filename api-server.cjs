@@ -1417,6 +1417,18 @@ app.get('/admin/find-doc-by-title', async (req, res) => {
   }
 });
 
+app.get('/admin/find-doc', async (req, res) => {
+  const { id, type } = req.query;
+  if (!id || !type) return res.status(400).json({ error: 'id and type query params required' });
+  try {
+    const doc = await db.collection('announcements').doc(type).collection('list').doc(id).get();
+    if (!doc.exists) return res.status(404).json({ error: 'not found' });
+    res.json({ id: doc.id, data: doc.data() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
