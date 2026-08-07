@@ -1831,7 +1831,9 @@ function buildServerPublishPayload(opp) {
     schedulePost: opp.schedulePost || '',
     remote: toBool(opp.remote),
     ukWide: toBool(opp.ukWide),
-    status: 'live',
+    // Mirrors App.jsx's buildPublishPayload() — live-sampled a confirmed-searchable real
+    // opportunity and found its status was "published", not "live".
+    status: 'published',
     eventDate: normalizeDateForBackend(opp.eventDate),
     eventName: opp.title || '',
     eventTime: combineLondonDateAndTime(normalizeDateForBackend(opp.eventDate), opp.eventStartTime),
