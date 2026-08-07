@@ -194,6 +194,7 @@ const DEMOGRAPHIC_ALL_EXPANSIONS = {
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
+const Anthropic = require('@anthropic-ai/sdk');
 const { readFileSync } = require('fs');
 const { join } = require('path');
 const { getLocationCoordinates } = require('./ukLocationGeocode.cjs');
@@ -1965,6 +1966,54 @@ async function uploadImageBufferToStorage(buffer, contentType, filenameHint) {
 
   return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
 }
+
+const TITLE_SYSTEM_PROMPT = `You write short, fun, scroll-stopping titles for a creative-careers app aimed at 16-25 year olds (ERIC). Real examples of the house style:
+- "The Edinburgh Writing Club you've Been Waiting For"
+- "Wanna Write Songs but Don't Know Where to Start?"
+- "Don't Miss this Creative Escape at Spike Island 🌿"
+- "Ready to Take Better Photos?"
+- "Free How to DJ Workshop"
+- "Learn to Draw at this Creative Art Workshop"
+
+Style rules:
+- Conversational, upbeat, sometimes a direct question or a bit cheeky — never corporate or generic.
+- Short: aim for 4-10 words.
+- Can mention what's free/the hook, but don't stuff in every detail — pick the single most compelling angle.
+- No emoji unless it genuinely fits (most examples don't use one).
+- No quotation marks around the title itself.
+- Output ONLY the title text, nothing else — no explanation, no markdown.`;
+
+app.post('/generate-title', async (req, res) => {
+  try {
+    const { description, opportunityType, location, salary, anythingElseImportant, industry } = req.body;
+    if (!description || typeof description !== 'string') {
+      return res.status(400).json({ error: 'description is required' });
+    }
+
+    const userPrompt = `Write one title for this opportunity:
+- Type: ${opportunityType || 'Unclear'}
+- Industry: ${industry || 'Unclear'}
+- Location: ${location || 'Unclear'}
+- Cost/salary: ${salary || 'Unclear'}
+- Description: ${description}
+${anythingElseImportant ? `- Anything else important: ${anythingElseImportant}` : ''}`;
+
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const message = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 100,
+      system: TITLE_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const title = (message.content[0]?.text || '').trim().replace(/^["']|["']$/g, '');
+    if (!title) throw new Error('Claude returned an empty title');
+    res.json({ title });
+  } catch (err) {
+    console.error('❌ /generate-title error:', err.message);
+    res.status(500).json({ error: 'Failed to generate title', details: err.message });
+  }
+});
 
 app.post('/upload-banner', async (req, res) => {
   try {
