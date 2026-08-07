@@ -205,7 +205,7 @@ Your job is ONLY to extract/generate the following missing fields:
 15. Course location: ONLY if Opportunity type is "Course" — e.g. online, or a specific venue if different from the general Location field. Empty string for any other type.
 16. Length of apprenticeship: ONLY if Opportunity type is "Apprenticeship" — e.g. '18 months'. Empty string for any other type.
 17. Level of apprenticeship: ONLY if Opportunity type is "Apprenticeship" — e.g. 'Level 4'. Empty string for any other type.
-18. Event date: ONLY if Opportunity type is "Event" — the date the event takes place, DD/MM/YYYY if determinable. Check structured data's startDate first if present. Empty string for any other type.
+18. Event date: ONLY if Opportunity type is "Event" — the date the event takes place, DD/MM/YYYY if determinable. Check structured data's startDate first if present. Default to the same date as the pre-verified Deadline field unless the page clearly states a genuinely different date (e.g. "apply by 15th, event happens on the 20th") — for a one-off event, the deadline and the event date are almost always the same day. Empty string for any other type.
 19. Event start time: ONLY if Opportunity type is "Event" — strict 24-hour "HH:MM", e.g. '18:00' for 6pm, '09:15' for 9:15am. The real portal's time picker rejects anything else. Check structured data's startDate first if present. Empty string for any other type.
 20. Event end time: ONLY if Opportunity type is "Event" — strict 24-hour "HH:MM", same format as Event start time. Check structured data's endDate first if present. Empty string for any other type.
 

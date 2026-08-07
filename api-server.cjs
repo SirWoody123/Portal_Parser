@@ -1815,10 +1815,14 @@ function buildServerPublishPayload(opp) {
     // Mirrors App.jsx's buildPublishPayload() — live-sampled a confirmed-searchable real
     // opportunity and found its status was "published", not "live".
     status: 'published',
-    eventDate: normalizeDateForBackend(opp.eventDate),
+    // Mirrors App.jsx's buildPublishPayload() — a one-off event's date and its application
+    // deadline are almost always the same day; fall back to the deadline whenever extraction
+    // didn't land a separate event date, rather than publishing a blank eventDate/eventTime
+    // (which threw "Invalid time value" on the consumer app when it tried to format an empty date).
+    eventDate: normalizeDateForBackend(opp.eventDate || opp.applicationDeadline),
     eventName: opp.title || '',
-    eventTime: combineLondonDateAndTime(normalizeDateForBackend(opp.eventDate), opp.eventStartTime),
-    eventTimeEnd: combineLondonDateAndTime(normalizeDateForBackend(opp.eventDate), opp.eventEndTime),
+    eventTime: combineLondonDateAndTime(normalizeDateForBackend(opp.eventDate || opp.applicationDeadline), opp.eventStartTime),
+    eventTimeEnd: combineLondonDateAndTime(normalizeDateForBackend(opp.eventDate || opp.applicationDeadline), opp.eventEndTime),
     demographic: {
       age: currentDemo.age || fallbackDemo.age,
       genderSexualPreference: currentDemo.genderSexualPreference || fallbackDemo.genderSexualPreference,
