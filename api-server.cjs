@@ -1397,6 +1397,20 @@ app.get('/debug-creds', (req, res) => {
   });
 });
 
+// TEMPORARY — patch a specific doc's fields directly, for one-off corrections on real content
+// published with a stale frontend bundle before the status:'published' fix. Remove after use.
+app.post('/admin/set-doc-fields', async (req, res) => {
+  const { id, type, fields } = req.body;
+  if (!id || !type || !fields) return res.status(400).json({ error: 'id, type, fields required' });
+  try {
+    await db.collection('announcements').doc(type).collection('list').doc(id).update(fields);
+    const doc = await db.collection('announcements').doc(type).collection('list').doc(id).get();
+    res.json({ ok: true, data: doc.data() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
