@@ -1429,6 +1429,17 @@ app.get('/admin/find-doc', async (req, res) => {
   }
 });
 
+app.delete('/admin/delete-doc', async (req, res) => {
+  const { id, type } = req.query;
+  if (!id || !type) return res.status(400).json({ error: 'id and type query params required' });
+  try {
+    await db.collection('announcements').doc(type).collection('list').doc(id).delete();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/queue-review', async (req, res) => {
   try {
     const sheets = getSheetsClient();
