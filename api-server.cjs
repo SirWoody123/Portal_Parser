@@ -309,7 +309,12 @@ function getDriveClient() {
   });
 }
 
-const IMAGE_BANK_ROOT_FOLDER_ID = '1fiOLUVwTuJRstZZNTFzUHJ9-ID7nYCtq';
+// "Image bank" — the combined folder covering every year's image bank (ASOS Images, ERIC
+// Image Bank 1-15, ITV Academy, etc.), not just the most recent one. Structure is inconsistent
+// across sub-folders (some go straight to images, some have a category layer first, one has
+// both) — the /image-bank endpoints below list whatever's actually in a folder rather than
+// assuming a fixed depth, so the frontend can navigate it like a generic folder browser.
+const IMAGE_BANK_ROOT_FOLDER_ID = '1czCFcWY3YgXqolTmokc6Z3XuqXkrkzBI';
 
 /**
  * Parses text file format into JSON structure expected by transformData().
@@ -2077,19 +2082,31 @@ app.get('/image-bank/categories', async (req, res) => {
   }
 });
 
+// Returns both subfolders and images directly inside the given folder — some image-bank
+// folders go straight to images, some have a category layer first, and at least one has both,
+// so the frontend navigates this like a generic folder browser rather than assuming one fixed
+// depth for every bank.
 app.get('/image-bank/categories/:folderId/images', async (req, res) => {
   try {
     const drive = getDriveClient();
-    const result = await drive.files.list({
-      q: `'${req.params.folderId}' in parents and mimeType contains 'image/' and trashed = false`,
-      fields: 'files(id, name, thumbnailLink, imageMediaMetadata)',
-      pageSize: 200,
-      orderBy: 'name',
-    });
-    res.json({ images: result.data.files });
+    const [foldersResult, imagesResult] = await Promise.all([
+      drive.files.list({
+        q: `'${req.params.folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+        fields: 'files(id, name)',
+        pageSize: 100,
+        orderBy: 'name',
+      }),
+      drive.files.list({
+        q: `'${req.params.folderId}' in parents and mimeType contains 'image/' and trashed = false`,
+        fields: 'files(id, name, thumbnailLink, imageMediaMetadata)',
+        pageSize: 200,
+        orderBy: 'name',
+      }),
+    ]);
+    res.json({ folders: foldersResult.data.files, images: imagesResult.data.files });
   } catch (err) {
     console.error('❌ /image-bank/categories/:folderId/images error:', err.message);
-    res.status(500).json({ error: 'Failed to list images', details: err.message });
+    res.status(500).json({ error: 'Failed to list folder contents', details: err.message });
   }
 });
 
