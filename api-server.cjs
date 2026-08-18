@@ -1543,6 +1543,10 @@ async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = '
     title: editedOpportunity.title || '',
     opportunityType: editedOpportunity.opportunityType || '',
     masterPortalDocId: docRef.id,
+    // So the review app can build a direct link to this doc's real-portal edit page
+    // (https://meet-eric.co/content/edit/{contentTypeSegment}/{masterPortalDocId}) without
+    // having to re-derive Event-vs-not client-side.
+    contentTypeSegment,
     publishedAt: new Date().toISOString(),
     via,
   });
