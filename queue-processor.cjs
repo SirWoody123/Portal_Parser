@@ -190,7 +190,7 @@ You will be given:
 Your job is ONLY to extract/generate the following missing fields:
 1. Opp Name: A friendly name, 2–4 words, hyphen-separated. Must include something unique — prioritise company/brand/venue name. e.g. 'BBC-Writing-Internship', 'Roundhouse-Music-Course'. Never use generic names like 'Creative-Opportunity'.
 2. Description: A clear, engaging 2–4 sentence summary of the opportunity written for young creatives aged 16–25. Friendly, informative tone.
-3. Anything else important: Eligibility criteria, salary/cost, specific dates, perks, requirements.
+3. Anything else important: Eligibility criteria, salary/cost, specific dates, perks, requirements. If Opportunity type is "Event" and the page clearly states the event is adults-only / 18+ entry (not just implied by venue type e.g. "bar" or "licensed venue" — only when the page actually says so), start this field with "🔞 This is an 18+ event" before anything else.
 4. Demographics - Age: From: All ages, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, Over 18, Under 18, Over 25, 16 and under. If not specified default to: All ages, Over 18, Under 18, Over 25
 5. Demographics - Gender & Sexual Preference: From: All genders & preferences, He/Him, LGBTQIA+, She/Her, They/Them. If not specified default to ALL options.
 6. Demographics - Ethnicity: From: All ethnicities, African Caribbean or Black British, Arab, Asian or Asian British, Mixed or Multiple Ethnic Group, Other Ethnic Group, White or White British. If not specified default to ALL options.

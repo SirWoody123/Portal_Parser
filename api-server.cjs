@@ -883,6 +883,15 @@ function deriveRegionLocation(regionArray) {
   return regions.join(', ');
 }
 
+// Tags every outbound link with utm_source so click-throughs from this pipeline are
+// distinguishable in the destination site's own analytics.
+function appendUtmSource(link) {
+  if (!link) return link;
+  if (/[?&]utm_source=/.test(link)) return link;
+  const separator = link.includes('?') ? '&' : '?';
+  return `${link}${separator}utm_source=www.meet-eric.com`;
+}
+
 /**
  * Transforms data from the standalone parser format to the master portal format.
  * @param {Object} data The data from the standalone parser.
@@ -1145,7 +1154,7 @@ const transformData = (data) => {
     lengthOfInternship: data.lengthOfInternship || '',
     levelOfApprenticeship: data.levelOfApprenticeship || '',
     salary: data.salary || '',
-    link: data.link || '',
+    link: appendUtmSource(data.link || ''),
     paidOrFreeCourses: data.paidOrFreeCourses || '',
     publishedAt: data.publishedAt || '',
     schedulePost: data.schedulePost || '',
