@@ -2173,6 +2173,21 @@ app.post('/image-bank/select', async (req, res) => {
   }
 });
 
+// TEMPORARY — read-only, remove alongside the other admin investigation endpoints.
+app.get('/admin/get-doc', async (req, res) => {
+  try {
+    const { collectionType, docId } = req.query;
+    if (!['announcements', 'events'].includes(collectionType) || !docId) {
+      return res.status(400).json({ error: 'Invalid collectionType or docId' });
+    }
+    const doc = await db.collection('announcements').doc(collectionType).collection('list').doc(docId).get();
+    if (!doc.exists) return res.status(404).json({ error: 'not found' });
+    res.json({ id: doc.id, data: doc.data() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // TEMPORARY — read-only, remove after diagnosing the feed-visibility investigation.
 app.get('/admin/find-doc', async (req, res) => {
   try {
