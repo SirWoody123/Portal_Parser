@@ -2157,6 +2157,37 @@ app.post('/image-bank/select', async (req, res) => {
   }
 });
 
+// TEMPORARY — read-only, remove after diagnosing the Queer Zines feed-visibility investigation.
+app.get('/admin/get-doc', async (req, res) => {
+  try {
+    const { collectionType, docId } = req.query;
+    if (!['announcements', 'events'].includes(collectionType) || !docId) {
+      return res.status(400).json({ error: 'Invalid collectionType or docId' });
+    }
+    const doc = await db.collection('announcements').doc(collectionType).collection('list').doc(docId).get();
+    if (!doc.exists) return res.status(404).json({ error: 'not found' });
+    res.json({ id: doc.id, data: doc.data() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// TEMPORARY — read-only, remove alongside /admin/get-doc.
+app.get('/admin/sample-docs', async (req, res) => {
+  try {
+    const { collectionType, editor, limit } = req.query;
+    if (!['announcements', 'events'].includes(collectionType)) {
+      return res.status(400).json({ error: 'Invalid collectionType' });
+    }
+    let q = db.collection('announcements').doc(collectionType).collection('list');
+    if (editor) q = q.where('editor', '==', editor);
+    const snap = await q.limit(Number(limit) || 5).get();
+    res.json({ docs: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(config.port, () => {
   console.log(`🚀 API Bridge server listening at http://localhost:${config.port}`);
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
