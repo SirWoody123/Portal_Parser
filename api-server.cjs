@@ -197,7 +197,7 @@ const admin = require('firebase-admin');
 const Anthropic = require('@anthropic-ai/sdk');
 const { readFileSync } = require('fs');
 const { join } = require('path');
-const { getLocationCoordinatesLive } = require('./ukLocationGeocode.cjs');
+const { getLocationCoordinatesLive, checkLocationRecognition } = require('./ukLocationGeocode.cjs');
 
 console.log('Script start');
 
@@ -2032,6 +2032,20 @@ ${anythingElseImportant ? `- Anything else important: ${anythingElseImportant}` 
   } catch (err) {
     console.error('❌ /generate-title error:', err.message);
     res.status(500).json({ error: 'Failed to generate title', details: err.message });
+  }
+});
+
+// Live "is this location recognized" check for the editor's Location field — same lookup used
+// at publish time (dictionary, then live Geocoding API), surfaced immediately while editing
+// instead of only being discoverable after publish by checking the resulting Firestore doc.
+app.get('/geocode-check', async (req, res) => {
+  try {
+    const location = String(req.query.location || '');
+    const result = await checkLocationRecognition(location);
+    res.json(result);
+  } catch (err) {
+    console.error('❌ /geocode-check error:', err.message);
+    res.status(500).json({ error: 'Failed to check location', details: err.message });
   }
 });
 

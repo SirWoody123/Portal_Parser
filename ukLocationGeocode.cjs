@@ -400,4 +400,49 @@ async function getLocationCoordinatesLive(locationName) {
   return null;
 }
 
-module.exports = { getLocationCoordinates, getLocationCoordinatesLive };
+// Same lookup order as getLocationCoordinatesLive(), but returns a richer result for the
+// editor's live "is this location recognized" check — includes Google's own formatted address
+// when a live lookup resolves it (e.g. "Salford, Greater Manchester, UK"), so a copywriter gets
+// the same kind of confirmation the real portal's own address picker shows, without needing a
+// full map widget.
+async function checkLocationRecognition(locationName) {
+  if (!locationName || !locationName.trim()) {
+    return { recognized: false, isVirtual: false, source: null, formattedAddress: null };
+  }
+  if (isVirtualLocation(locationName)) {
+    return { recognized: true, isVirtual: true, source: 'virtual', formattedAddress: null };
+  }
+
+  const dictionaryMatch = getLocationCoordinates(locationName);
+  if (dictionaryMatch) {
+    return { recognized: true, isVirtual: false, source: 'dictionary', formattedAddress: null };
+  }
+
+  const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
+  if (!apiKey) {
+    return { recognized: false, isVirtual: false, source: null, formattedAddress: null };
+  }
+
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationName)}&region=uk&components=country:GB&key=${apiKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === 'OK' && data.results?.[0]) {
+      return {
+        recognized: true,
+        isVirtual: false,
+        source: 'live',
+        formattedAddress: data.results[0].formatted_address || null,
+      };
+    }
+    if (data.status !== 'ZERO_RESULTS') {
+      console.error(`❌ Geocoding API returned ${data.status} for "${locationName}": ${data.error_message || ''}`);
+    }
+  } catch (err) {
+    console.error(`❌ Geocoding API request failed for "${locationName}":`, err.message);
+  }
+
+  return { recognized: false, isVirtual: false, source: null, formattedAddress: null };
+}
+
+module.exports = { getLocationCoordinates, getLocationCoordinatesLive, checkLocationRecognition };
