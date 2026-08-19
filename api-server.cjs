@@ -2173,68 +2173,6 @@ app.post('/image-bank/select', async (req, res) => {
   }
 });
 
-// TEMPORARY — read-only, remove alongside the other admin investigation endpoints.
-app.get('/admin/get-doc', async (req, res) => {
-  try {
-    const { collectionType, docId } = req.query;
-    if (!['announcements', 'events'].includes(collectionType) || !docId) {
-      return res.status(400).json({ error: 'Invalid collectionType or docId' });
-    }
-    const doc = await db.collection('announcements').doc(collectionType).collection('list').doc(docId).get();
-    if (!doc.exists) return res.status(404).json({ error: 'not found' });
-    res.json({ id: doc.id, data: doc.data() });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// TEMPORARY — read-only, remove after diagnosing the feed-visibility investigation.
-app.get('/admin/find-doc', async (req, res) => {
-  try {
-    const { collectionType, title } = req.query;
-    if (!['announcements', 'events'].includes(collectionType) || !title) {
-      return res.status(400).json({ error: 'Invalid collectionType or title' });
-    }
-    const snap = await db.collection('announcements').doc(collectionType).collection('list')
-      .where('title', '==', title).limit(3).get();
-    res.json({ docs: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// TEMPORARY — read-only, remove alongside /admin/find-doc.
-app.get('/admin/search-titles', async (req, res) => {
-  try {
-    const { collectionType, contains } = req.query;
-    if (!['announcements', 'events'].includes(collectionType) || !contains) {
-      return res.status(400).json({ error: 'Invalid collectionType or contains' });
-    }
-    const needle = contains.toLowerCase();
-    const snap = await db.collection('announcements').doc(collectionType).collection('list').get();
-    const matches = snap.docs
-      .filter(d => (d.data().title || '').toLowerCase().includes(needle))
-      .map(d => ({ id: d.id, ...d.data() }));
-    res.json({ docs: matches });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// TEMPORARY — remove after cleaning up FEEDTEST-Generic-Manchester test docs.
-app.post('/admin/delete-doc', async (req, res) => {
-  try {
-    const { collectionType, docId } = req.body;
-    if (!['announcements', 'events'].includes(collectionType) || !docId) {
-      return res.status(400).json({ error: 'Invalid collectionType or docId' });
-    }
-    await db.collection('announcements').doc(collectionType).collection('list').doc(docId).delete();
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.listen(config.port, () => {
   console.log(`🚀 API Bridge server listening at http://localhost:${config.port}`);
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
