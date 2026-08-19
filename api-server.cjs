@@ -2188,6 +2188,22 @@ app.get('/admin/sample-docs', async (req, res) => {
   }
 });
 
+// TEMPORARY — read-only, remove alongside the other admin/get-doc endpoints.
+app.get('/admin/get-queue-row', async (req, res) => {
+  try {
+    const rowIndex = Number(req.query.rowIndex);
+    if (!rowIndex || rowIndex < 2) return res.status(400).json({ error: 'Invalid rowIndex' });
+    const sheets = getSheetsClient();
+    const result = await sheets.spreadsheets.values.get({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: `Queue!A${rowIndex}:AE${rowIndex}`,
+    });
+    res.json({ row: result.data.values?.[0] || [] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(config.port, () => {
   console.log(`🚀 API Bridge server listening at http://localhost:${config.port}`);
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
