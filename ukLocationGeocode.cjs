@@ -372,13 +372,19 @@ function isVirtualLocation(locationName) {
 // through to a live lookup. Explicitly virtual locations (remote/online/UK-wide/etc) short-
 // circuit to null before ever reaching either path — geocoding "Remote" isn't meaningful, and
 // resolving it live risked matching some unrelated real place that happens to share the name.
-async function getLocationCoordinatesLive(locationName) {
-  if (!locationName || !locationName.trim()) return null;
-  if (isVirtualLocation(locationName)) return null;
+// With `components=country:GB` as a filter, Google's Geocoding API doesn't return
+// ZERO_RESULTS for nonsense input the way you'd expect — it falls back to matching the
+// country itself ("United Kingdom"), which would otherwise read as a false-positive "yes,
+// recognized" for garbage text. Reject anything that resolves to just the country (or has no
+// more specific type at all) rather than an actual place within it.
+function isTooBroadMatch(result) {
+  const types = result?.types || [];
+  if (types.length === 0) return true;
+  if (types.includes('country')) return true;
+  return false;
+}
 
-  const dictionaryMatch = getLocationCoordinates(locationName);
-  if (dictionaryMatch) return dictionaryMatch;
-
+async function geocodeViaGoogle(locationName) {
   const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
   if (!apiKey) return null;
 
@@ -386,9 +392,13 @@ async function getLocationCoordinatesLive(locationName) {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationName)}&region=uk&components=country:GB&key=${apiKey}`;
     const res = await fetch(url);
     const data = await res.json();
-    if (data.status === 'OK' && data.results?.[0]?.geometry?.location) {
-      const { lat, lng } = data.results[0].geometry.location;
-      return { lat, lng };
+    if (data.status === 'OK' && data.results?.[0] && !isTooBroadMatch(data.results[0])) {
+      const result = data.results[0];
+      return {
+        lat: result.geometry.location.lat,
+        lng: result.geometry.location.lng,
+        formattedAddress: result.formatted_address || null,
+      };
     }
     if (data.status !== 'ZERO_RESULTS') {
       console.error(`❌ Geocoding API returned ${data.status} for "${locationName}": ${data.error_message || ''}`);
@@ -398,6 +408,17 @@ async function getLocationCoordinatesLive(locationName) {
   }
 
   return null;
+}
+
+async function getLocationCoordinatesLive(locationName) {
+  if (!locationName || !locationName.trim()) return null;
+  if (isVirtualLocation(locationName)) return null;
+
+  const dictionaryMatch = getLocationCoordinates(locationName);
+  if (dictionaryMatch) return dictionaryMatch;
+
+  const live = await geocodeViaGoogle(locationName);
+  return live ? { lat: live.lat, lng: live.lng } : null;
 }
 
 // Same lookup order as getLocationCoordinatesLive(), but returns a richer result for the
@@ -418,28 +439,9 @@ async function checkLocationRecognition(locationName) {
     return { recognized: true, isVirtual: false, source: 'dictionary', formattedAddress: null };
   }
 
-  const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
-  if (!apiKey) {
-    return { recognized: false, isVirtual: false, source: null, formattedAddress: null };
-  }
-
-  try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationName)}&region=uk&components=country:GB&key=${apiKey}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.status === 'OK' && data.results?.[0]) {
-      return {
-        recognized: true,
-        isVirtual: false,
-        source: 'live',
-        formattedAddress: data.results[0].formatted_address || null,
-      };
-    }
-    if (data.status !== 'ZERO_RESULTS') {
-      console.error(`❌ Geocoding API returned ${data.status} for "${locationName}": ${data.error_message || ''}`);
-    }
-  } catch (err) {
-    console.error(`❌ Geocoding API request failed for "${locationName}":`, err.message);
+  const live = await geocodeViaGoogle(locationName);
+  if (live) {
+    return { recognized: true, isVirtual: false, source: 'live', formattedAddress: live.formattedAddress };
   }
 
   return { recognized: false, isVirtual: false, source: null, formattedAddress: null };
