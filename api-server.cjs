@@ -197,7 +197,7 @@ const admin = require('firebase-admin');
 const Anthropic = require('@anthropic-ai/sdk');
 const { readFileSync } = require('fs');
 const { join } = require('path');
-const { getLocationCoordinates } = require('./ukLocationGeocode.cjs');
+const { getLocationCoordinatesLive } = require('./ukLocationGeocode.cjs');
 
 console.log('Script start');
 
@@ -902,7 +902,7 @@ function appendUtmSource(link) {
  * @param {Object} data The data from the standalone parser.
  * @returns {Object} The transformed data for the master portal.
  */
-const transformData = (data) => {
+const transformData = async (data) => {
   // Always use this companyID and created value
   const fixedCompanyID = 'S7IvlojyomcTNsUXlrqC';
   
@@ -1135,6 +1135,18 @@ const transformData = (data) => {
     }
   }
 
+  // GEOLOCATION FEATURE: prefers an explicitly provided _geoloc (e.g. from the legacy
+  // /opportunities text-parser path), else derives one from the Location field — first via the
+  // static UK town/city/region dictionary (instant, no API quota), then a live Google Geocoding
+  // API call for anywhere the dictionary doesn't cover (small towns, exact postcodes). See
+  // ukLocationGeocode.cjs for the full explanation and virtual-location (remote/online/etc)
+  // handling.
+  const explicitGeoloc = data._geoloc && typeof data._geoloc === 'object' &&
+    typeof data._geoloc.lat === 'number' && typeof data._geoloc.lng === 'number'
+    ? { lat: data._geoloc.lat, lng: data._geoloc.lng }
+    : null;
+  const resolvedGeoloc = explicitGeoloc || await getLocationCoordinatesLive(data.location);
+
   return {
     // Required fields from actual portal format
     anythingElseImportant: data.anythingElseImportant ?? '',
@@ -1231,21 +1243,7 @@ const transformData = (data) => {
         specialRequirements: data.eventDetails.specialRequirements || ''
       }
     } : {}),
-    
-    // GEOLOCATION FEATURE: prefers an explicitly provided _geoloc (e.g. from the legacy
-    // /opportunities text-parser path), else derives one from the Location field via the same
-    // UK town/city/region dictionary the old Apps Script pipeline used before this repo moved
-    // to the Google Sheets Queue + review app — that lookup was never ported over, so every
-    // opportunity published since has gone out with no map pin. Restored via
-    // ukLocationGeocode.cjs (a faithful port, not a rewrite).
-    ...(() => {
-      if (data._geoloc && typeof data._geoloc === 'object' &&
-          typeof data._geoloc.lat === 'number' && typeof data._geoloc.lng === 'number') {
-        return { _geoloc: { lat: data._geoloc.lat, lng: data._geoloc.lng } };
-      }
-      const derived = getLocationCoordinates(data.location);
-      return derived ? { _geoloc: derived } : {};
-    })()
+    ...(resolvedGeoloc ? { _geoloc: resolvedGeoloc } : {})
   };
 };
 
@@ -1294,7 +1292,7 @@ app.post('/opportunities', async (req, res) => {
     });
 
     // 1. Transform the data
-    const transformedData = transformData(opportunityData);
+    const transformedData = await transformData(opportunityData);
 
     // 2. Save to master portal's Firebase using configured collection path
     const [collection, subcollection, listCollection] = config.targetCollectionPath.split('/');
@@ -1532,7 +1530,7 @@ async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = '
     },
   });
 
-  const transformedData = transformData(editedOpportunity);
+  const transformedData = await transformData(editedOpportunity);
   // Events live in their own top-level collection on the real portal — see the PATCH32 note on
   // transformData()'s `type` field for why.
   const contentTypeSegment = transformedData.type === 'events' ? 'events' : 'announcements';

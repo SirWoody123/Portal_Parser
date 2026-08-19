@@ -360,4 +360,44 @@ function getLocationCoordinates(locationName) {
   return null;
 }
 
-module.exports = { getLocationCoordinates };
+const VIRTUAL_LOCATIONS = new Set(['online', 'remote', 'uk wide', 'uk-wide', 'nationwide', 'virtual', 'global', 'international']);
+
+function isVirtualLocation(locationName) {
+  return VIRTUAL_LOCATIONS.has(String(locationName || '').toLowerCase().trim());
+}
+
+// Live Google Geocoding API call, used as a supplement for real places this dictionary doesn't
+// cover (small towns like Riddlesden/Halesowen) — the ~250-entry dictionary is checked first
+// since it's instant and doesn't spend API quota; only genuinely unmatched locations fall
+// through to a live lookup. Explicitly virtual locations (remote/online/UK-wide/etc) short-
+// circuit to null before ever reaching either path — geocoding "Remote" isn't meaningful, and
+// resolving it live risked matching some unrelated real place that happens to share the name.
+async function getLocationCoordinatesLive(locationName) {
+  if (!locationName || !locationName.trim()) return null;
+  if (isVirtualLocation(locationName)) return null;
+
+  const dictionaryMatch = getLocationCoordinates(locationName);
+  if (dictionaryMatch) return dictionaryMatch;
+
+  const apiKey = process.env.GOOGLE_GEOCODING_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(locationName)}&region=uk&components=country:GB&key=${apiKey}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status === 'OK' && data.results?.[0]?.geometry?.location) {
+      const { lat, lng } = data.results[0].geometry.location;
+      return { lat, lng };
+    }
+    if (data.status !== 'ZERO_RESULTS') {
+      console.error(`❌ Geocoding API returned ${data.status} for "${locationName}": ${data.error_message || ''}`);
+    }
+  } catch (err) {
+    console.error(`❌ Geocoding API request failed for "${locationName}":`, err.message);
+  }
+
+  return null;
+}
+
+module.exports = { getLocationCoordinates, getLocationCoordinatesLive };
