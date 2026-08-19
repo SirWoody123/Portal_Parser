@@ -2173,6 +2173,21 @@ app.post('/image-bank/select', async (req, res) => {
   }
 });
 
+// TEMPORARY — read-only, remove after diagnosing the feed-visibility investigation.
+app.get('/admin/find-doc', async (req, res) => {
+  try {
+    const { collectionType, title } = req.query;
+    if (!['announcements', 'events'].includes(collectionType) || !title) {
+      return res.status(400).json({ error: 'Invalid collectionType or title' });
+    }
+    const snap = await db.collection('announcements').doc(collectionType).collection('list')
+      .where('title', '==', title).limit(3).get();
+    res.json({ docs: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // TEMPORARY — remove after cleaning up FEEDTEST-Generic-Manchester test docs.
 app.post('/admin/delete-doc', async (req, res) => {
   try {
