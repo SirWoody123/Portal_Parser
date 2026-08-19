@@ -897,6 +897,22 @@ function appendUtmSource(link) {
   return `${link}${separator}utm_source=www.meet-eric.com`;
 }
 
+// The consumer app renders `description` as rich text/HTML — a bare "\n" gets silently
+// collapsed (standard HTML whitespace handling) unless it's an actual `<br>` tag. Confirmed
+// live: published two otherwise-identical test opportunities, one with raw newlines (collapsed
+// on the app) and one with `<br>` tags (rendered correctly) — this converts the copywriter's
+// own line breaks into the tag the renderer actually respects, matching what re-typing through
+// the real portal's own editor already did by hand. Escapes existing angle brackets/ampersands
+// first so nothing a copywriter types is ever interpreted as unintended markup.
+function formatDescriptionForPortal(text) {
+  if (!text) return '';
+  const escaped = String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped.replace(/\r\n|\r|\n/g, '<br>');
+}
+
 /**
  * Transforms data from the standalone parser format to the master portal format.
  * @param {Object} data The data from the standalone parser.
@@ -1161,7 +1177,7 @@ const transformData = async (data) => {
     courseLocation: data.courseLocation || '',
     created: fixedCompanyID,
     createdAt: data.createdAt || '',
-    description: data.description || '',
+    description: formatDescriptionForPortal(data.description),
     editedAt: data.editedAt || '',
     editor: data.editor || 'scheduler',
     id: data.id || '',
