@@ -2180,35 +2180,6 @@ app.post('/image-bank/select', async (req, res) => {
   }
 });
 
-// TEMPORARY — read-only, remove after the manual-vs-pipeline replication test.
-app.get('/admin/get-doc', async (req, res) => {
-  try {
-    const { collectionType, docId } = req.query;
-    if (!['announcements', 'events'].includes(collectionType) || !docId) {
-      return res.status(400).json({ error: 'Invalid collectionType or docId' });
-    }
-    const doc = await db.collection('announcements').doc(collectionType).collection('list').doc(docId).get();
-    if (!doc.exists) return res.status(404).json({ error: 'not found' });
-    res.json({ id: doc.id, data: doc.data() });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// TEMPORARY — remove alongside /admin/get-doc.
-app.post('/admin/delete-doc', async (req, res) => {
-  try {
-    const { collectionType, docId } = req.body;
-    if (!['announcements', 'events'].includes(collectionType) || !docId) {
-      return res.status(400).json({ error: 'Invalid collectionType or docId' });
-    }
-    await db.collection('announcements').doc(collectionType).collection('list').doc(docId).delete();
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.listen(config.port, () => {
   console.log(`🚀 API Bridge server listening at http://localhost:${config.port}`);
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
