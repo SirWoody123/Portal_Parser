@@ -2188,6 +2188,20 @@ app.get('/admin/get-doc', async (req, res) => {
   }
 });
 
+// TEMPORARY — remove alongside /admin/get-doc.
+app.post('/admin/delete-doc', async (req, res) => {
+  try {
+    const { collectionType, docId } = req.body;
+    if (!['announcements', 'events'].includes(collectionType) || !docId) {
+      return res.status(400).json({ error: 'Invalid collectionType or docId' });
+    }
+    await db.collection('announcements').doc(collectionType).collection('list').doc(docId).delete();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(config.port, () => {
   console.log(`🚀 API Bridge server listening at http://localhost:${config.port}`);
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
