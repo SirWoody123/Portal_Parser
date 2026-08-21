@@ -183,12 +183,19 @@ const TAG_NAME_TO_ID = {
 // pipeline (Queue sheet -> queue-processor.cjs -> review app now calls this API directly),
 // so without this table, catch-all demographic values silently resolved to zero tags.
 const DEMOGRAPHIC_ALL_EXPANSIONS = {
-  "All ages": ["21", "22", "23", "24", "25", "Over 18", "Under 18", "Over 25", "16 and under"],
+  // Confirmed live against a real, manually-completed opportunity (2026-08-21) that the
+  // consumer app actually served — its "All ages" selection resolved to individual tags for
+  // every age 16-25, not just the "16 and under"/"Over 18"/etc buckets this list previously had.
+  "All ages": ["16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "Over 18", "Under 18", "Over 25", "16 and under"],
   "All genders & preferences": ["He/Him", "She/Her", "They/Them", "Non-binary", "Transgender", "Intersex", "Other", "Prefer not to say"],
   "All ethnicities": ["White or White British", "African, Caribbean or Black British", "Asian or Asian British", "Mixed or Multiple Ethnic group", "Other Ethnic Group", "Arab", "Prefer not to say"],
   "All disability": ["Chronic illness", "Hearing impairment", "Neurodiversity", "Physical disability", "Visual impairment"],
-  // Raw tag IDs (not names) — matches the legacy script's allSocioEconomicOptions exactly.
-  "All backgrounds": ["20fXkU9RdlTlpfcS5K5D", "V9J6aDjeQc7hIePqgsCh"],
+  // Previously also included "Only those from lower socio-economic background"
+  // (V9J6aDjeQc7hIePqgsCh) — directly contradicts what "All backgrounds" means (no
+  // restriction), inherited from the old pre-review-app script and never caught until compared
+  // against a real, working opportunity's own tags. Confirmed live: a human's manual "All
+  // backgrounds" selection resolves to just the one genuine all/no-restriction tag.
+  "All backgrounds": ["20fXkU9RdlTlpfcS5K5D"],
 };
 
 const express = require('express');
