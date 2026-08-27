@@ -1908,6 +1908,39 @@ async function writeQueueRowError(rowIndex, message) {
   }
 }
 
+// Atomically removes one entry from queueScheduleState and returns it, or null if it's already
+// gone (claimed by a concurrent run). Doing this per-entry, inside a transaction, is what
+// actually prevents double-publishing — reading the whole map once and writing it back once at
+// the end (the old approach) left a window where two overlapping calls to
+// processDueSchedules() (e.g. the hourly cron firing right as a deploy/restart triggers the
+// startup run — confirmed from real duplicate "auto (scheduled)" log entries seconds apart)
+// would both see the same due entry and both publish it.
+async function claimScheduleEntry(rowIndexKey) {
+  const stateRef = db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC);
+  return db.runTransaction(async tx => {
+    const snap = await tx.get(stateRef);
+    const scheduleState = snap.exists ? (snap.data().scheduleState || {}) : {};
+    const entry = scheduleState[rowIndexKey];
+    if (!entry) return null;
+    const next = { ...scheduleState };
+    delete next[rowIndexKey];
+    tx.set(stateRef, { scheduleState: next });
+    return entry;
+  });
+}
+
+// Puts a claimed entry back if publishing it didn't actually succeed, so it's retried on the
+// next hourly tick instead of silently vanishing — matches the pre-transaction behavior, where
+// a validation failure left the entry in place rather than removing it.
+async function restoreScheduleEntry(rowIndexKey, entry) {
+  const stateRef = db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC);
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(stateRef);
+    const scheduleState = snap.exists ? (snap.data().scheduleState || {}) : {};
+    tx.set(stateRef, { scheduleState: { ...scheduleState, [rowIndexKey]: entry } });
+  });
+}
+
 async function processDueSchedules() {
   const doc = await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).get();
   const scheduleState = doc.exists ? (doc.data().scheduleState || {}) : {};
@@ -1925,33 +1958,34 @@ async function processDueSchedules() {
   console.log(`⏰ SCHEDULER: ${dueEntries.length} opportunity(ies) due for publish.`);
   let published = 0;
   let failed = 0;
-  let changed = false;
 
-  for (const [rowIndexKey, entry] of dueEntries) {
+  for (const [rowIndexKey] of dueEntries) {
     const rowIndex = Number(rowIndexKey);
+    const entry = await claimScheduleEntry(rowIndexKey);
+    if (!entry) {
+      console.log(`⏰ SCHEDULER: row ${rowIndex} already claimed by a concurrent run, skipping.`);
+      continue;
+    }
+
     try {
       const payload = buildServerPublishPayload(entry);
       const errors = validateServerPublishPayload(payload);
       if (errors.length > 0) {
         console.error(`⏰ SCHEDULER: row ${rowIndex} not publish-ready — ${errors.join(' ')}`);
         await writeQueueRowError(rowIndex, `Scheduler blocked publish: ${errors.join(' ')}`);
+        await restoreScheduleEntry(rowIndexKey, entry);
         failed += 1;
         continue;
       }
 
       await publishOpportunityToPortal({ rowIndex, editedOpportunity: payload, via: 'scheduler' });
-      delete scheduleState[rowIndexKey];
-      changed = true;
       published += 1;
       console.log(`✅ SCHEDULER: published row ${rowIndex} ("${payload.title}").`);
     } catch (err) {
       console.error(`❌ SCHEDULER: failed to publish row ${rowIndex}:`, err.message);
+      await restoreScheduleEntry(rowIndexKey, entry);
       failed += 1;
     }
-  }
-
-  if (changed) {
-    await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).set({ scheduleState });
   }
 
   return { published, failed };
