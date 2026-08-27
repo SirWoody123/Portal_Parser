@@ -1583,6 +1583,8 @@ async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = '
     const docRef = await db.collection('announcements').doc(contentTypeSegment).collection('list').add(transformedData);
     await claimRef.set({ masterPortalDocId: docRef.id }, { merge: true });
 
+    const summarySource = editedOpportunity.draftedContent || editedOpportunity.description || '';
+
     await db.collection(PUBLISH_LOG_COLLECTION).add({
       rowIndex,
       title: editedOpportunity.title || '',
@@ -1594,6 +1596,13 @@ async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = '
       contentTypeSegment,
       publishedAt: new Date().toISOString(),
       via,
+      // So a "sent" card on the Schedule tab can show its scheduled day/time and real content
+      // instead of placeholders — publishLog previously only carried enough to build the Log
+      // tab's flat list, not enough to render a full card.
+      schedulePost: editedOpportunity.schedulePost || '',
+      scheduleTime: editedOpportunity.scheduleTime || '',
+      location: editedOpportunity.location || editedOpportunity.locationName || '',
+      summary: summarySource.length > 160 ? `${summarySource.slice(0, 160)}...` : summarySource,
     });
 
     return { masterPortalDocId: docRef.id };
@@ -1605,7 +1614,14 @@ async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = '
 
 app.get('/publish-log', async (req, res) => {
   try {
-    const snap = await db.collection(PUBLISH_LOG_COLLECTION).orderBy('publishedAt', 'desc').limit(200).get();
+    // The Schedule tab needs a full 12-month view of what's already gone out, which 200 rows
+    // can easily truncate on an active queue — the Log tab (its previous only consumer) never
+    // needed more than the most recent handful, hence the low default.
+    const requestedLimit = Number(req.query.limit);
+    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, 1000)
+      : 200;
+    const snap = await db.collection(PUBLISH_LOG_COLLECTION).orderBy('publishedAt', 'desc').limit(limit).get();
     res.json({ entries: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
   } catch (err) {
     console.error('❌ /publish-log error:', err.message);
@@ -1878,6 +1894,7 @@ function buildServerPublishPayload(opp) {
     publishedAt: normalizeDateForBackend(opp.publishDate),
     description: opp.draftedContent || opp.description || '',
     schedulePost: opp.schedulePost || '',
+    scheduleTime: opp.scheduleTime || '',
     remote: toBool(opp.remote),
     ukWide: toBool(opp.ukWide),
     // Mirrors App.jsx's buildPublishPayload() — live-sampled a confirmed-searchable real
@@ -1909,6 +1926,46 @@ function isDescriptionUsable(description) {
   if (/unclear/i.test(trimmed)) return false;
   return true;
 }
+
+// Mirrors the review app's isBlankish()/computeHealth() (src/opportunityHealth.js) — must stay
+// in sync, no shared package between the two repos. Operates on the raw editor-shaped
+// opportunity (queueScheduleState entries store the full edited opportunity, same shape
+// ReviewDetailPanel works with — draftedContent/industryTags/bannerPic, not the already-
+// transformed publish payload), same input computeHealth() takes client-side.
+function isBlankish(value) {
+  if (value === undefined || value === null) return true;
+  const trimmed = String(value).trim();
+  if (!trimmed) return true;
+  return /unclear/i.test(trimmed);
+}
+
+function computeHealth(edited) {
+  const hasAnyDemographic = Object.values(edited.demographic || {}).some(arr => (arr || []).length > 0);
+  const checks = [
+    !isBlankish(edited.title),
+    isDescriptionUsable(edited.draftedContent),
+    !isBlankish(edited.applicationDeadline),
+    (edited.industryTags || []).length > 0,
+    hasAnyDemographic,
+    edited.ukWide || !isBlankish(edited.location),
+    !isBlankish(edited.link),
+    !isBlankish(edited.bannerPic),
+  ];
+
+  if (edited.opportunityType === 'Event') {
+    checks.push(!isBlankish(edited.eventDate), !isBlankish(edited.eventStartTime));
+  } else if (edited.opportunityType === 'Course') {
+    checks.push(!isBlankish(edited.lengthOfCourse), !isBlankish(edited.paidOrFreeCourses));
+  } else if (edited.opportunityType === 'Apprenticeship') {
+    checks.push(!isBlankish(edited.lengthOfApprenticeship), !isBlankish(edited.levelOfApprenticeship));
+  }
+
+  const passed = checks.filter(Boolean).length;
+  return Math.round((passed / checks.length) * 100);
+}
+
+// Default publish time once an opportunity is 100% complete — mirrors calendarUtils.js.
+const DEFAULT_SCHEDULE_TIME = '07:30';
 
 function validateServerPublishPayload(opp) {
   const errors = [];
@@ -1970,13 +2027,24 @@ async function restoreScheduleEntry(rowIndexKey, entry) {
   });
 }
 
+// An entry is due once its scheduled date+time has actually passed, not just its date — a
+// 07:30 target shouldn't fire at midnight. combineLondonDateAndTime() already handles the
+// BST/GMT offset correctly; falls back to the old date-only compare if a time is genuinely
+// unparseable (shouldn't happen given the default, but better to fire late than never).
+function isScheduleEntryDue(entry, nowMs, todayISO) {
+  const dueInstant = combineLondonDateAndTime(entry.schedulePost, entry.scheduleTime || DEFAULT_SCHEDULE_TIME);
+  if (dueInstant) return Date.parse(dueInstant) <= nowMs;
+  return entry.schedulePost <= todayISO;
+}
+
 async function processDueSchedules() {
   const doc = await db.collection(SCHEDULE_STATE_COLLECTION).doc(SCHEDULE_STATE_DOC).get();
   const scheduleState = doc.exists ? (doc.data().scheduleState || {}) : {};
   const todayISO = todayISOInLondon();
+  const nowMs = Date.now();
 
   const dueEntries = Object.entries(scheduleState).filter(([, entry]) => {
-    return entry && (entry.status || '').toLowerCase() === 'scheduled' && entry.schedulePost && entry.schedulePost <= todayISO;
+    return entry && (entry.status || '').toLowerCase() === 'scheduled' && entry.schedulePost && isScheduleEntryDue(entry, nowMs, todayISO);
   });
 
   if (dueEntries.length === 0) {
@@ -1997,6 +2065,15 @@ async function processDueSchedules() {
     }
 
     try {
+      const healthPercent = computeHealth(entry);
+      if (healthPercent < 100) {
+        console.error(`⏰ SCHEDULER: row ${rowIndex} is only ${healthPercent}% complete — waiting, not publishing.`);
+        await writeQueueRowError(rowIndex, `Scheduler blocked publish: opportunity is only ${healthPercent}% complete. Finish it in the review app — it'll send automatically once it's 100%.`);
+        await restoreScheduleEntry(rowIndexKey, entry);
+        failed += 1;
+        continue;
+      }
+
       const payload = buildServerPublishPayload(entry);
       const errors = validateServerPublishPayload(payload);
       if (errors.length > 0) {
