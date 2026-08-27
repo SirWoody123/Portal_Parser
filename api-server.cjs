@@ -1510,11 +1510,30 @@ app.get('/queue-review', async (req, res) => {
 // since the scheduler can send something live with nobody's browser open to see it happen.
 const PUBLISH_LOG_COLLECTION = 'publishLog';
 
+// One doc per rowIndex, created the instant a publish attempt starts — the actual guard
+// against duplicate publishes. Two independent triggers can race to publish the same row (the
+// hourly scheduler, the "Publish now" button on a stale browser tab, previously also a
+// client-side auto-publish effect) — a Firestore create() is atomic and throws ALREADY_EXISTS
+// if another caller got there first, so this covers every caller at the one point that
+// actually matters, rather than trying to coordinate each entry point separately.
+const PUBLISH_CLAIMS_COLLECTION = 'publishClaims';
+
 // Marks a Queue row as "Drafted" and writes the transformed opportunity into the real
 // portal's Firestore collection. Shared by the /update-queue route (copywriter clicks
 // Publish) and the due-schedule cron (nobody's browser needs to be open). `via` distinguishes
 // the two in the publish log — 'manual' vs 'scheduler'.
 async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = 'manual' }) {
+  const claimRef = db.collection(PUBLISH_CLAIMS_COLLECTION).doc(String(rowIndex));
+  try {
+    await claimRef.create({ claimedAt: new Date().toISOString(), via });
+  } catch (err) {
+    const alreadyClaimed = err.code === 6 || /already exists/i.test(err.message || '');
+    if (!alreadyClaimed) throw err;
+    const existing = await claimRef.get();
+    console.log(`⏭️  PUBLISH: row ${rowIndex} already claimed/published, skipping duplicate.`);
+    return { masterPortalDocId: existing.data()?.masterPortalDocId || null, alreadyPublished: true };
+  }
+
   const sheets = getSheetsClient();
 
   const demographic = editedOpportunity.demographic || {};
@@ -1558,6 +1577,7 @@ async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = '
   // transformData()'s `type` field for why.
   const contentTypeSegment = transformedData.type === 'events' ? 'events' : 'announcements';
   const docRef = await db.collection('announcements').doc(contentTypeSegment).collection('list').add(transformedData);
+  await claimRef.set({ masterPortalDocId: docRef.id }, { merge: true });
 
   await db.collection(PUBLISH_LOG_COLLECTION).add({
     rowIndex,
@@ -1597,11 +1617,12 @@ app.post('/update-queue', async (req, res) => {
       return res.status(400).json({ error: 'Invalid editedOpportunity' });
     }
 
-    const { masterPortalDocId } = await publishOpportunityToPortal({ rowIndex, editedOpportunity });
+    const { masterPortalDocId, alreadyPublished } = await publishOpportunityToPortal({ rowIndex, editedOpportunity });
 
     res.json({
       success: true,
       masterPortalDocId,
+      alreadyPublished: !!alreadyPublished,
       rowUpdated: rowIndex,
     });
   } catch (err) {
@@ -1978,9 +1999,11 @@ async function processDueSchedules() {
         continue;
       }
 
-      await publishOpportunityToPortal({ rowIndex, editedOpportunity: payload, via: 'scheduler' });
+      const result = await publishOpportunityToPortal({ rowIndex, editedOpportunity: payload, via: 'scheduler' });
       published += 1;
-      console.log(`✅ SCHEDULER: published row ${rowIndex} ("${payload.title}").`);
+      console.log(result.alreadyPublished
+        ? `⏭️  SCHEDULER: row ${rowIndex} was already published (claim guard caught a duplicate attempt).`
+        : `✅ SCHEDULER: published row ${rowIndex} ("${payload.title}").`);
     } catch (err) {
       console.error(`❌ SCHEDULER: failed to publish row ${rowIndex}:`, err.message);
       await restoreScheduleEntry(rowIndexKey, entry);
@@ -2238,12 +2261,14 @@ app.listen(config.port, () => {
   // runs even when queue-processor's extraction step can't (e.g. Claude API unavailable).
   if (hasGoogleSheetsCreds) {
     const cron = require('node-cron');
-    // Timezone only matters here for keeping the hourly tick itself sane across the GMT/BST
-    // switch — the actual "is it due yet" day comparison uses todayISOInLondon() above.
-    cron.schedule('0 * * * *', () => {
+    // Every 10 minutes rather than hourly — now that opportunities can have a specific target
+    // time (not just a date), an hourly tick would mean "7:30" could actually publish as late
+    // as 8:00. Timezone only matters here for keeping the tick itself sane across the GMT/BST
+    // switch — the actual "is it due yet" comparison uses combineLondonDateAndTime() above.
+    cron.schedule('*/10 * * * *', () => {
       processDueSchedules().catch(err => console.error('❌ SCHEDULER: cron run failed:', err.message));
     }, { timezone: 'Europe/London' });
-    console.log('⏰ SCHEDULER: hourly publish-when-due check scheduled (Europe/London).');
+    console.log('⏰ SCHEDULER: publish-when-due check scheduled every 10 minutes (Europe/London).');
     // Also run once at startup so a deploy/restart doesn't leave a due opportunity waiting
     // up to an hour — covers the case where the dyno was asleep/restarting exactly when
     // something was due.
