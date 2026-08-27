@@ -1534,65 +1534,73 @@ async function publishOpportunityToPortal({ rowIndex, editedOpportunity, via = '
     return { masterPortalDocId: existing.data()?.masterPortalDocId || null, alreadyPublished: true };
   }
 
-  const sheets = getSheetsClient();
+  // From here on, if anything fails, the claim must be released — otherwise a transient
+  // failure (a bad sheet range, a network blip) permanently bricks this row: every future
+  // attempt would see the claim, assume it's already published, and silently no-op forever.
+  try {
+    const sheets = getSheetsClient();
 
-  const demographic = editedOpportunity.demographic || {};
-  const demographicsStr = [
-    demographic.age?.length ? `Age: ${demographic.age.join(', ')}` : '',
-    demographic.genderSexualPreference?.length ? `Gender: ${demographic.genderSexualPreference.join(', ')}` : '',
-    demographic.ethnicity?.length ? `Ethnicity: ${demographic.ethnicity.join(', ')}` : '',
-    demographic.disability?.length ? `Disability: ${demographic.disability.join(', ')}` : '',
-    demographic.lowerSocioEconomicBackground?.length ? `Economic Background: ${demographic.lowerSocioEconomicBackground.join(', ')}` : '',
-    editedOpportunity.remote ? `Remote: ${editedOpportunity.remote ? 'Yes' : 'No'}` : '',
-    editedOpportunity.ukWide ? `UK Wide: ${editedOpportunity.ukWide ? 'Yes' : 'No'}` : '',
-  ].filter(Boolean).join('\n');
+    const demographic = editedOpportunity.demographic || {};
+    const demographicsStr = [
+      demographic.age?.length ? `Age: ${demographic.age.join(', ')}` : '',
+      demographic.genderSexualPreference?.length ? `Gender: ${demographic.genderSexualPreference.join(', ')}` : '',
+      demographic.ethnicity?.length ? `Ethnicity: ${demographic.ethnicity.join(', ')}` : '',
+      demographic.disability?.length ? `Disability: ${demographic.disability.join(', ')}` : '',
+      demographic.lowerSocioEconomicBackground?.length ? `Economic Background: ${demographic.lowerSocioEconomicBackground.join(', ')}` : '',
+      editedOpportunity.remote ? `Remote: ${editedOpportunity.remote ? 'Yes' : 'No'}` : '',
+      editedOpportunity.ukWide ? `UK Wide: ${editedOpportunity.ukWide ? 'Yes' : 'No'}` : '',
+    ].filter(Boolean).join('\n');
 
-  const today = new Date().toLocaleDateString('en-GB');
+    const today = new Date().toLocaleDateString('en-GB');
 
-  await sheets.spreadsheets.values.update({
-    spreadsheetId: QUEUE_SPREADSHEET_ID,
-    range: `Queue!A${rowIndex}:M${rowIndex}`,
-    valueInputOption: 'RAW',
-    requestBody: {
-      values: [[
-        'Drafted',
-        editedOpportunity.companyID || '',
-        editedOpportunity.industry || '',
-        editedOpportunity.opportunityType || '',
-        editedOpportunity.applicationDeadline || '',
-        editedOpportunity.link || '',
-        editedOpportunity.location || '',
-        editedOpportunity.publishDate || '',
-        editedOpportunity.title || '',
-        JSON.stringify(editedOpportunity),
-        demographicsStr,
-        today,
-        '',
-      ]],
-    },
-  });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: QUEUE_SPREADSHEET_ID,
+      range: `Queue!A${rowIndex}:M${rowIndex}`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[
+          'Drafted',
+          editedOpportunity.companyID || '',
+          editedOpportunity.industry || '',
+          editedOpportunity.opportunityType || '',
+          editedOpportunity.applicationDeadline || '',
+          editedOpportunity.link || '',
+          editedOpportunity.location || '',
+          editedOpportunity.publishDate || '',
+          editedOpportunity.title || '',
+          JSON.stringify(editedOpportunity),
+          demographicsStr,
+          today,
+          '',
+        ]],
+      },
+    });
 
-  const transformedData = await transformData(editedOpportunity);
-  // Events live in their own top-level collection on the real portal — see the PATCH32 note on
-  // transformData()'s `type` field for why.
-  const contentTypeSegment = transformedData.type === 'events' ? 'events' : 'announcements';
-  const docRef = await db.collection('announcements').doc(contentTypeSegment).collection('list').add(transformedData);
-  await claimRef.set({ masterPortalDocId: docRef.id }, { merge: true });
+    const transformedData = await transformData(editedOpportunity);
+    // Events live in their own top-level collection on the real portal — see the PATCH32 note on
+    // transformData()'s `type` field for why.
+    const contentTypeSegment = transformedData.type === 'events' ? 'events' : 'announcements';
+    const docRef = await db.collection('announcements').doc(contentTypeSegment).collection('list').add(transformedData);
+    await claimRef.set({ masterPortalDocId: docRef.id }, { merge: true });
 
-  await db.collection(PUBLISH_LOG_COLLECTION).add({
-    rowIndex,
-    title: editedOpportunity.title || '',
-    opportunityType: editedOpportunity.opportunityType || '',
-    masterPortalDocId: docRef.id,
-    // So the review app can build a direct link to this doc's real-portal edit page
-    // (https://meet-eric.co/content/edit/{contentTypeSegment}/{masterPortalDocId}) without
-    // having to re-derive Event-vs-not client-side.
-    contentTypeSegment,
-    publishedAt: new Date().toISOString(),
-    via,
-  });
+    await db.collection(PUBLISH_LOG_COLLECTION).add({
+      rowIndex,
+      title: editedOpportunity.title || '',
+      opportunityType: editedOpportunity.opportunityType || '',
+      masterPortalDocId: docRef.id,
+      // So the review app can build a direct link to this doc's real-portal edit page
+      // (https://meet-eric.co/content/edit/{contentTypeSegment}/{masterPortalDocId}) without
+      // having to re-derive Event-vs-not client-side.
+      contentTypeSegment,
+      publishedAt: new Date().toISOString(),
+      via,
+    });
 
-  return { masterPortalDocId: docRef.id };
+    return { masterPortalDocId: docRef.id };
+  } catch (err) {
+    await claimRef.delete().catch(() => {});
+    throw err;
+  }
 }
 
 app.get('/publish-log', async (req, res) => {
@@ -2234,6 +2242,18 @@ app.post('/image-bank/select', async (req, res) => {
   } catch (err) {
     console.error('❌ /image-bank/select error:', err.message);
     res.status(500).json({ error: 'Failed to select image bank image', details: err.message });
+  }
+});
+
+// TEMPORARY — remove after clearing the stray publishClaims/987 doc from the pre-fix test.
+app.post('/admin/delete-claim', async (req, res) => {
+  try {
+    const { rowIndex } = req.body;
+    if (!rowIndex) return res.status(400).json({ error: 'Invalid rowIndex' });
+    await db.collection(PUBLISH_CLAIMS_COLLECTION).doc(String(rowIndex)).delete();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
