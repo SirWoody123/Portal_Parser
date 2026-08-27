@@ -2245,12 +2245,26 @@ app.post('/image-bank/select', async (req, res) => {
   }
 });
 
-// TEMPORARY — remove after clearing the stray publishClaims/987 doc from the pre-fix test.
+// TEMPORARY — remove after Part 0 verification cleanup.
 app.post('/admin/delete-claim', async (req, res) => {
   try {
     const { rowIndex } = req.body;
     if (!rowIndex) return res.status(400).json({ error: 'Invalid rowIndex' });
     await db.collection(PUBLISH_CLAIMS_COLLECTION).doc(String(rowIndex)).delete();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// TEMPORARY — remove alongside /admin/delete-claim.
+app.post('/admin/delete-doc', async (req, res) => {
+  try {
+    const { collectionType, docId } = req.body;
+    if (!['announcements', 'events'].includes(collectionType) || !docId) {
+      return res.status(400).json({ error: 'Invalid collectionType or docId' });
+    }
+    await db.collection('announcements').doc(collectionType).collection('list').doc(docId).delete();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
