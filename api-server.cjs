@@ -2322,18 +2322,6 @@ app.post('/image-bank/select', async (req, res) => {
   }
 });
 
-// TEMPORARY — remove after clearing the stale DUPETEST publishLog entry.
-app.post('/admin/delete-publish-log-entry', async (req, res) => {
-  try {
-    const { id } = req.body;
-    if (!id) return res.status(400).json({ error: 'Invalid id' });
-    await db.collection(PUBLISH_LOG_COLLECTION).doc(id).delete();
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 app.listen(config.port, () => {
   console.log(`🚀 API Bridge server listening at http://localhost:${config.port}`);
   console.log(`📊 Health check available at http://localhost:${config.port}/health`);
